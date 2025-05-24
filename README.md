@@ -10,18 +10,17 @@
 
 ## 🚀 Visuals
 
-<p align="center">
-  <img src="docs/architecture-diagram.png" alt="Architecture Diagram" width="600"/>
-  <br/>
-  <em>System architecture (replace with your own diagram or screenshot)</em>
-</p>
+### System Architecture
 
-<p align="center">
-  <img src="docs/screenshot-copilot.png" alt="Agent Copilot Screenshot" width="350"/>
-  <img src="docs/screenshot-chatbot.png" alt="Customer Chatbot Screenshot" width="350"/>
-  <br/>
-  <em>Agent Copilot and Customer Chatbot UI (replace with your own screenshots)</em>
-</p>
+![Customer Support Platform Architecture](https://raw.githubusercontent.com/veritasautomata/veritasautomata.com/main/static/img/architecture-chatbot.png)
+<sub><sup>Reference: Veritas Automata, “Building an Efficient Customer Support Chatbot: Reference Architectures for Azure OpenAI API and Open-Source LLM/Langchain Integration” ([source](https://veritasautomata.com/insights/thought-leadership/build-efficient-chatbot/))</sup></sub>
+
+### UI Examples
+
+- ![Agent Copilot Example](https://user-images.githubusercontent.com/674621/229366721-9b5f2b5b-8f60-4c6e-9b7c-4b2b7d3c7b8e.png)
+  <sub><sup>Example Chrome extension copilot UI (replace with your own screenshot)</sup></sub>
+- ![Customer Chatbot Example](https://user-images.githubusercontent.com/674621/229366740-1d2b3e2d-9e4e-4b7a-8c8c-2b8c6b6c2a2b.png)
+  <sub><sup>Example customer chatbot widget UI (replace with your own screenshot)</sup></sub>
 
 ---
 

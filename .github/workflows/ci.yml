@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.10]
+        node-version: [18.x]
+    steps:
+      - uses: actions/checkout@v4
+
+      # Python backend setup
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install backend dependencies
+        run: |
+          pip install -r apps/backend/requirements.txt
+
+      - name: Lint backend
+        run: |
+          pip install flake8
+          flake8 apps/backend || true
+
+      - name: Test backend (if tests exist)
+        run: |
+          if [ -d "apps/backend/tests" ]; then pytest apps/backend/tests; fi
+
+      # Node.js frontend setup
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install frontend dependencies
+        run: |
+          cd apps/agent-copilot && npm install
+          cd ../customer-bot && npm install
+
+      - name: Lint frontends
+        run: |
+          cd apps/agent-copilot && npx eslint . || true
+          cd ../customer-bot && npx eslint . || true
+
+      - name: Test frontends (if tests exist)
+        run: |
+          cd apps/agent-copilot && if [ -d "__tests__" ]; then npm test; fi
+          cd ../customer-bot && if [ -d "__tests__" ]; then npm test; fi
