@@ -1,57 +1,164 @@
-# Support Intelligence Core Monorepo
+🧠 Support Intelligence Core (SIC) — Monorepo
+A modular, LLM-powered customer support platform designed for rapid deployment and internal extensibility.
 
-A full-stack, LLM-powered customer support platform with:
-- FastAPI backend (LangChain RAG, Pinecone, OpenAI, ingestion)
-- Chrome extension for agent copilot
-- Next.js + Tailwind chatbot widget for customers
-- Shared models/utilities and a unified design system
+Includes:
 
----
+🚀 FastAPI backend (LangChain RAG, ingestion pipeline, Pinecone, HuggingFace or OpenAI)
 
-## Monorepo Structure
+🧑‍💼 Agent Copilot: Chrome extension that embeds in Zendesk/Intercom
 
-- **`apps/backend`**: FastAPI backend (async, RAG, ingestion, Pinecone, OpenAI)
-- **`apps/agent-copilot`**: Chrome extension (React) for agent support
-- **`apps/customer-bot`**: Next.js + Tailwind chatbot widget
-- **`packages/shared`**: Pydantic models, types, and utilities (used by backend and both frontends)
-- **`packages/llm-engine`**: LangChain RAG chain, embeddings, vector store logic
-- **`packages/observability`**: Observability integrations (LangSmith, PromptLayer, OTEL)
+💬 Customer Chatbot: Website widget (Next.js + Tailwind)
 
-## Key Features
+🧩 Shared models, chains, telemetry, and design system across all apps
 
-- **Retrieval-Augmented Generation (RAG)**: Answers are generated from your docs using Pinecone and OpenAI (or HuggingFace) LLMs.
-- **Document Ingestion**: Ingest new docs via `/ingest_documentation` endpoint (Firecrawl-ready, chunking included).
-- **Agent Copilot**: Chrome sidebar for agents, with real-time suggested replies and KB search.
-- **Customer Bot**: Chat widget for customers, powered by the same backend.
-- **Unified Design System**: Consistent UI primitives and design tokens across all apps.
+Built for speed, reusability, and modularity — to help you build vs. buy with confidence.
 
-## Quickstart
+📁 Monorepo Structure
+bash
+Copy
+Edit
+support-core/
+├── apps/
+│   ├── backend/           # FastAPI API (RAG, ingestion, LLM)
+│   ├── agent-copilot/     # React Chrome Extension for agent support
+│   └── customer-bot/      # Next.js Chatbot widget
+├── packages/
+│   ├── shared/            # Pydantic models, constants, utils
+│   ├── llm-engine/        # LangChain chains, vector store, prompts
+│   └── observability/     # LangSmith, PromptLayer, OpenTelemetry hooks
+├── .env.template
+├── docker-compose.yml
+├── turbo.json
+└── README.md (you are here)
+🔑 Key Features
+📚 Retrieval-Augmented Generation (RAG)
+Query embedding + document search via Pinecone
 
-1. **Setup Environment**
-   - Copy `.env.template` to `.env` and fill in API keys for Pinecone, OpenAI, Firecrawl, etc.
-2. **Install Dependencies**
-   - Backend: `pip install -r apps/backend/requirements.txt`
-   - Frontends: `npm install` in each app folder
-3. **Run Locally**
-   - Backend: `uvicorn apps/backend/main:app --reload`
-   - Agent Copilot: `npm run dev` in `apps/agent-copilot`
-   - Customer Bot: `npm run dev` in `apps/customer-bot`
-4. **Try It Out**
-   - Open the Copilot sidebar or Customer Bot widget and ask a question
-   - Backend will return RAG-powered answers with sources
+Context-aware generation using HuggingFace or OpenAI LLMs
 
-## Backend Endpoints
-- `GET /health` — Health check
-- `POST /generate_reply` — Generate an AI reply (used by both frontends)
-- `POST /ingest_documentation` — Ingest new docs for RAG
+Source citation for all responses
 
-## Developer Notes
-- See each app/package `README.md` for further details
-- All apps use shared models for type safety and data contracts
-- Extend backend for new endpoints, ingestion logic, or TTS as needed
-- See `turbo.json` for monorepo task orchestration
+🔄 Documentation Ingestion
+Ingest content from public URLs (e.g., Firecrawl-ready)
 
----
+Chunk, embed, and store content with /ingest_documentation
 
-For design tokens and shared UI, see `DESIGN_SYSTEM.md`.
-For advanced deployment, see Docker/Turborepo instructions in this folder.
+Markdown & semantic chunking support
+
+🧑‍💻 Agent Copilot (Chrome Extension)
+Injected into Zendesk or Intercom UI
+
+Auto-detects customer query or lets agent paste it in
+
+Shows suggested reply + source documents
+
+Easy copy-paste to reply
+
+💬 Customer Chatbot
+Embeddable floating widget
+
+Asks user questions → backend RAG → shows instant answers
+
+Cites doc links for full context
+
+🛠 Shared Infrastructure
+Shared Pydantic models for contracts across frontend/backend
+
+Shared telemetry via LangSmith + PromptLayer
+
+Modular LangChain chains for RAG and memory
+
+Unified UI design system (via DESIGN_SYSTEM.md)
+
+⚡ Quickstart
+1. Clone + Setup Environment
+bash
+Copy
+Edit
+git clone https://github.com/pauly7610/support101
+cd support101
+cp .env.template .env
+Fill in values for:
+
+PINECONE_API_KEY
+
+FIRECRAWL_API_KEY
+
+HUGGINGFACE_API_KEY (or OpenAI)
+
+LANGSMITH_API_KEY, etc.
+
+2. Install Dependencies
+Backend
+
+bash
+Copy
+Edit
+cd apps/backend
+pip install -r requirements.txt
+Frontends
+
+bash
+Copy
+Edit
+cd apps/agent-copilot && npm install
+cd apps/customer-bot && npm install
+3. Run Locally
+Backend
+
+bash
+Copy
+Edit
+uvicorn apps.backend.main:app --reload
+Agent Copilot Extension
+
+bash
+Copy
+Edit
+cd apps/agent-copilot
+npm run dev
+Customer Bot Widget
+
+bash
+Copy
+Edit
+cd apps/customer-bot
+npm run dev
+4. Test It Out
+Visit a helpdesk page with the extension running — see the Copilot sidebar
+
+Open the website widget → ask a question
+
+Both hit /generate_reply → get grounded answers with source docs
+
+📡 API Endpoints
+Method	Route	Description
+GET	/health	Simple health check
+POST	/generate_reply	Main endpoint for LLM reply generation
+POST	/ingest_documentation	Crawl & embed new doc content
+
+🧠 Developer Notes
+See individual app README.mds for dev details
+
+Uses Turborepo for task orchestration
+
+Docker support in docker-compose.yml (coming soon)
+
+Add new chains or document loaders in packages/llm-engine
+
+Extend observability in packages/observability
+
+🚀 Deployment
+ Railway, Render, or AWS-compatible with Docker
+
+ Add CI via GitHub Actions (lint/test/build)
+
+ Staging + production config via env vars
+
+📐 Resources
+DESIGN_SYSTEM.md: Shared UI guidelines + tokens
+
+packages/shared: Source of truth for all models/types
+
+turbo.json: Task graph for multi-app orchestration
+
