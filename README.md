@@ -1,6 +1,27 @@
 # 🧠 Support Intelligence Core (SIC)
 
+[![Build Status](https://img.shields.io/github/actions/workflow/status/pauly7610/support101/ci.yml?branch=main)](https://github.com/pauly7610/support101/actions)
+[![License](https://img.shields.io/github/license/pauly7610/support101)](LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
 *A modular, LLM-powered customer support platform for rapid deployment and extensibility.*
+
+---
+
+## 🚀 Visuals
+
+<p align="center">
+  <img src="docs/architecture-diagram.png" alt="Architecture Diagram" width="600"/>
+  <br/>
+  <em>System architecture (replace with your own diagram or screenshot)</em>
+</p>
+
+<p align="center">
+  <img src="docs/screenshot-copilot.png" alt="Agent Copilot Screenshot" width="350"/>
+  <img src="docs/screenshot-chatbot.png" alt="Customer Chatbot Screenshot" width="350"/>
+  <br/>
+  <em>Agent Copilot and Customer Chatbot UI (replace with your own screenshots)</em>
+</p>
 
 ---
 
