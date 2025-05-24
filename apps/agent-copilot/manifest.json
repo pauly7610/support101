@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Support Agent Copilot",
+  "version": "0.1.0",
+  "description": "LLM-powered copilot for Zendesk/Intercom.",
+  "permissions": ["scripting", "activeTab"],
+  "host_permissions": ["https://*.zendesk.com/*", "https://*.intercom.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*.zendesk.com/*", "https://*.intercom.com/*"],
+      "js": ["contentScript.js"],
+      "css": ["sidebar.css"]
+    }
+  ],
+  "action": {
+    "default_popup": "index.html"
+  }
+}

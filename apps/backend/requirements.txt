@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+pydantic
+langchain
+pinecone-client
+transformers
+sentence-transformers
+huggingface-hub
+fastembed
+# Firecrawl is optional; install if using web crawling
+dotenv
+# For CORS support
+httpx
