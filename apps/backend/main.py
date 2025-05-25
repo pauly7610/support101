@@ -1,24 +1,25 @@
 import os
 import uuid
-from fastapi import FastAPI, HTTPException, Depends, Body, Request, Response
-from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 
-# Prometheus imports
-from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
-from starlette.responses import Response as StarletteResponse
-
-# Import shared models
-from packages.shared.models import (
-    TicketContext, SuggestedResponse, IngestURLRequest, IngestResponse,
-    CrawledPage, DocumentPayload, DocumentMetadata
-)
-from packages.llm_engine.chains.rag_chain import RAGChain
-from packages.llm_engine.embeddings import get_fastembed_model
-from packages.llm_engine.vector_store import upsert_documents_to_pinecone, get_pinecone_index
-
+from fastapi import Body, Depends, FastAPI, HTTPException, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import FileResponse
+# Prometheus imports
+from prometheus_client import (CONTENT_TYPE_LATEST, Counter, Histogram,
+                               generate_latest)
+from starlette.responses import Response as StarletteResponse
+
+from packages.llm_engine.chains.rag_chain import RAGChain
+from packages.llm_engine.embeddings import get_fastembed_model
+from packages.llm_engine.vector_store import (get_pinecone_index,
+                                              upsert_documents_to_pinecone)
+# Import shared models
+from packages.shared.models import (CrawledPage, DocumentMetadata,
+                                    DocumentPayload, IngestResponse,
+                                    IngestURLRequest, SuggestedResponse,
+                                    TicketContext)
 
 app = FastAPI(title="Support Intelligence Core API")
 
@@ -122,15 +123,16 @@ def _crawl_documentation_firecrawl(base_url: str, limit_pages: int = 5) -> List[
 def chunk_page_content(page_content: str, chunk_size: int = 1000, chunk_overlap: int = 100) -> List[str]:
     return [page_content[i:i + chunk_size] for i in range(0, len(page_content), chunk_size - chunk_overlap)]
 
-from fastapi import File, UploadFile, status, Depends, HTTPException
-from fastapi.responses import JSONResponse
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi_limiter import FastAPILimiter, RateLimiter
 import mimetypes
-import jwt
-import schedule
 import threading
 import time
+
+import jwt
+import schedule
+from fastapi import Depends, File, HTTPException, UploadFile, status
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi_limiter import FastAPILimiter, RateLimiter
 
 JWT_SECRET = os.getenv("JWT_SECRET", "dev_secret")
 JWT_ALGORITHM = "HS256"
@@ -168,11 +170,14 @@ async def ccpa_optout(user_id: str = Body(...), auth=Depends(jwt_auth)):
             count += 1
     return {"status": "success", "message": f"Opt-out processed for user {user_id}", "logs_anonymized": count}
 
+import asyncio
+from collections import defaultdict
+
+from fastapi import APIRouter, Depends
+
 # Persistent escalation analytics using PostgreSQL
 from .db import Escalation, SessionLocal, init_db
-from fastapi import APIRouter, Depends
-from collections import defaultdict
-import asyncio
+
 
 @app.on_event("startup")
 def on_startup():
@@ -195,6 +200,7 @@ async def report_escalation(event: dict, auth=Depends(jwt_auth)):
         await session.commit()
     return {"status": "ok"}
 
+
 @app.get("/analytics/escalations")
 async def get_escalation_analytics(user_id: str = None, start_time: float = None, end_time: float = None, auth=Depends(jwt_auth)):
     async with SessionLocal() as session:
@@ -211,27 +217,27 @@ async def get_escalation_analytics(user_id: str = None, start_time: float = None
         total = 0
         last = None
         for row in rows:
-            # For demo, treat any message with 'urgent' as escalation
-            if 'urgent' in (row.text or '').lower():
-                day = _time.strftime('%Y-%m-%d', _time.localtime(row.timestamp))
-                per_day[day] += 1
-                total += 1
-                last = {
-                    'id': row.id,
-                    'user_id': row.user_id,
-                    'text': row.text,
-                    'timestamp': row.timestamp,
-                    'last_updated': str(row.last_updated),
-                    'confidence': row.confidence,
-                    'source_url': row.source_url
-                }
+            day = time.strftime("%Y-%m-%d", time.gmtime(row.timestamp))
+            per_day[day] += 1
+            total += 1
+            last = {
+                'id': row.id,
+                'user_id': row.user_id,
+                'text': row.text,
+                'timestamp': row.timestamp,
+                'last_updated': str(row.last_updated),
+                'confidence': row.confidence,
+                'source_url': row.source_url
+            }
         return {
             "total_escalations": total,
             "per_day": dict(per_day),
             "last_escalation": last
         }
 
+
 import time as _time
+
 
 def anonymize_chat_logs():
     print("[Schedule] Anonymizing chat logs older than 30 days...")
@@ -245,23 +251,29 @@ def anonymize_chat_logs():
             count += 1
     print(f"Anonymized {count} chat logs.")
 
+
 def schedule_anonymization():
     schedule.every().day.at("00:00").do(anonymize_chat_logs)
     while True:
         schedule.run_pending()
         time.sleep(60)
 
+
 threading.Thread(target=schedule_anonymization, daemon=True).start()
+
 
 @app.get("/openapi.json")
 def custom_openapi():
     return app.openapi()
 
+
 # ADR and SOC2 checklist stubs
 ADR_PATH = os.path.join(os.path.dirname(__file__), "../../docs/ADR.md")
 SOC2_PATH = os.path.join(os.path.dirname(__file__), "../../docs/SOC2_checklist.md")
 
+
 # NOTE: Pinecone encrypts vectors at rest by default (see Pinecone docs). For Vault/API key rotation, see deployment pipeline and ops docs.
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -270,6 +282,7 @@ async def startup_event():
         await FastAPILimiter.init("redis://localhost:6379")
     except Exception as e:
         print(f"Warning: Rate limiter not initialized: {e}")
+
 
 @app.post("/ingest_documentation", response_model=IngestResponse, dependencies=[Depends(RateLimiter(times=10, seconds=60))])
 async def ingest_documentation_endpoint(
@@ -285,11 +298,12 @@ async def ingest_documentation_endpoint(
             status_code=status.HTTP_400_BAD_REQUEST,
             content={
                 "error_type": "invalid_file_type",
-                "message": f"File type {file_type} not allowed. Only PDF, MD, TXT supported.",
+                "message": "Only PDF, Markdown, or TXT files are supported.",
                 "retryable": False,
                 "documentation": "https://api.support101/errors#E415"
             }
         )
+
     # Chunk size validation
     if not (512 <= chunk_size <= 2048):
         return JSONResponse(
@@ -297,13 +311,18 @@ async def ingest_documentation_endpoint(
             content={
                 "error_type": "invalid_chunk_size",
                 "message": "Chunk size must be between 512 and 2048 tokens.",
+                "message": (
+                    "Chunk size must be between 512 and 2048 tokens."
+                ),
                 "retryable": False,
                 "documentation": "https://api.support101/errors#E416"
             }
         )
+
     # Actual file read, parsing, chunking, and upsert logic
-    import pdfplumber
     import io
+
+    import pdfplumber
     documents_to_upsert: List[DocumentPayload] = []
     try:
         contents = await file.read()
@@ -416,7 +435,10 @@ async def generate_reply_endpoint(
             return JSONResponse(status_code=504, content=response.error)
         return response
     except Exception as e:
-        API_ERROR_COUNT.labels(endpoint="/generate_reply", exception_type=type(e).__name__).inc()
+        API_ERROR_COUNT.labels(
+            endpoint="/generate_reply",
+            exception_type=type(e).__name__
+        ).inc()
         print(f"Error in /generate_reply: {e}")
         import traceback
         traceback.print_exc()
@@ -424,8 +446,11 @@ async def generate_reply_endpoint(
             status_code=500,
             content={
                 "error_type": "internal_error",
-                "message": mask_api_keys(f"Failed to generate reply: {str(e)}"),
+                "message": mask_api_keys(
+                    f"Failed to generate reply: {str(e)}"
+                ),
                 "retryable": False,
                 "documentation": "https://api.support101/errors#E500"
             }
         )
+
