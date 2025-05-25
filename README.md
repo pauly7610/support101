@@ -1,7 +1,7 @@
 # 🧠 Support Intelligence Core (SIC)
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/pauly7610/support101/ci.yml?branch=main)](https://github.com/pauly7610/support101/actions)
-[![License](https://img.shields.io/github/license/pauly7610/support101)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 *A modular, LLM-powered customer support platform for rapid deployment and extensibility.*
