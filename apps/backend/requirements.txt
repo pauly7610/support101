@@ -12,3 +12,17 @@ fastembed
 dotenv
 # For CORS support
 httpx
+# For Prometheus metrics
+prometheus_client
+asyncpg
+SQLAlchemy
+# For PEP-8 formatting
+black
+# For PDF parsing
+pdfplumber
+# For file uploads
+python-multipart
+# For JWT authentication
+PyJWT
+# For scheduled anonymization
+schedule

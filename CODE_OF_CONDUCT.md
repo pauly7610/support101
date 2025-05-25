@@ -10,7 +10,9 @@ We pledge to make participation in our project and our community a harassment-fr
 - Show empathy towards other community members
 
 ## Enforcement
-Instances of abusive or unacceptable behavior may be reported by contacting the project maintainers via GitHub Issues or email.
+Instances of abusive or unacceptable behavior may be reported by contacting the project maintainers via GitHub Issues or email. All reports will be handled confidentially and in accordance with analytics data privacy and compliance.
+
+Escalation analytics may be used to monitor for repeated violations and ensure community safety.
 
 ---
 

@@ -1,0 +1,99 @@
+{
+  "info": {
+    "_postman_id": "f3b3e0da-5c1d-4e9c-8c7b-analytics-demo",
+    "name": "Support Intelligence Core API",
+    "description": "Postman collection generated from OpenAPI spec for Support Intelligence Core (SIC)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "/generate_reply",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"user_id\": \"demo-user\",\n  \"ticket\": {\n    \"subject\": \"Example\",\n    \"body\": \"Describe your issue...\",\n    \"context\": \"\"\n  },\n  \"history\": []\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/generate_reply",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["generate_reply"]
+        }
+      }
+    },
+    {
+      "name": "/ingest_documentation",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "file", "type": "file" },
+            { "key": "chunk_size", "value": "1000", "type": "text" }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:8000/ingest_documentation",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["ingest_documentation"]
+        }
+      }
+    },
+    {
+      "name": "/analytics/escalations",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8000/analytics/escalations",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["analytics", "escalations"]
+        }
+      }
+    },
+    {
+      "name": "/report_escalation",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"user_id\": \"demo-user\",\n  \"text\": \"Escalation details...\",\n  \"confidence\": 0.92,\n  \"source_url\": \"https://example.com\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8000/report_escalation",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["report_escalation"]
+        }
+      }
+    },
+    {
+      "name": "/metrics",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8000/metrics",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["metrics"]
+        }
+      }
+    }
+  ]
+}

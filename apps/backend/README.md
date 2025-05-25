@@ -15,9 +15,40 @@ This is the FastAPI backend for the Support Intelligence Core.
 - Returns structured ticket, user, and reply data for design system-driven UIs
 
 ## Setup & Usage
-1. Copy `.env.template` to `.env` and fill in API keys
+1. Copy `.env.template` to `.env` and fill in API keys (including `POSTGRES_URL`)
 2. `pip install -r requirements.txt`
-3. `uvicorn main:app --reload`
+3. Run DB migrations: `python migrations.py`
+4. `uvicorn main:app --reload`
+
+## Prometheus & Grafana Monitoring
+- Metrics are exposed at `/metrics` (Prometheus scrape endpoint)
+- Tracks LLM response times, API error rates, and vector store cache hits (stub)
+
+### Sample Prometheus Scrape Config
+```yaml
+scrape_configs:
+  - job_name: 'support101-backend'
+    static_configs:
+      - targets: ['localhost:8000']  # Adjust host/port as needed
+```
+
+### Example Grafana Alerts
+- **LLM p99 latency > 2s for 5m**
+  ```
+  histogram_quantile(0.99, sum(rate(llm_response_time_seconds_bucket[5m])) by (le)) > 2
+  ```
+- **API error rate > 5/min per endpoint**
+  ```
+  sum(increase(api_error_count[1m])) by (endpoint) > 5
+  ```
+
+### Dashboard
+- Visualize `llm_response_time_seconds`, `api_error_count`, and `vector_store_cache_hits`.
+- Import a dashboard using the above metrics for real-time monitoring.
+
+## Code Formatting
+- Enforce PEP-8 using Black: `black .`
+- All Python code must use type hints and async/await for LLM calls
 
 ## Dev
 - See root README for Docker/dev instructions and environment setup

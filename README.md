@@ -59,6 +59,33 @@ support101/
   - Query embedding & document search via Pinecone
   - Context-aware generation (HuggingFace or OpenAI LLMs)
   - Source citation for all responses
+- **Persistent Analytics:**
+  - Escalation analytics stored in PostgreSQL for reliability and reporting
+  - Advanced dashboard filters (by user, date range) and visualizations
+- **Automated Database Migrations:**
+  - Run `python apps/backend/migrations.py` before starting backend
+- **Testing & Linting:**
+  - Cypress E2E with type definitions (`npm install --save-dev cypress @types/cypress`)
+  - Black for Python, strict TypeScript for frontend
+- **Production Workflow:**
+  - Use `start-all.sh` for full stack startup (migrations, backend, frontend)
+  - Set `POSTGRES_URL` for backend analytics
+
+---
+## Quickstart
+
+1. Clone repo and install dependencies (Python, Node.js)
+2. Set up `.env` files and `POSTGRES_URL`
+3. Run DB migrations: `python apps/backend/migrations.py`
+4. Start all: `./start-all.sh`
+5. Install Cypress types in `apps/customer-bot`: `npm install --save-dev cypress @types/cypress`
+6. Access analytics dashboard for advanced filtering and reporting
+
+---
+## Troubleshooting
+- If you see Cypress or type errors: ensure `@types/cypress` is installed
+- Backend analytics not updating? Check DB connection and run migrations
+- For more, see individual app READMEs
 - **Documentation Ingestion:**
   - Ingest content from public URLs (Firecrawl-ready)
   - Chunk, embed, and store with `/ingest_documentation`

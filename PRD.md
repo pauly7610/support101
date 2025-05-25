@@ -63,7 +63,15 @@ Generate LLM response using context
 
 Return response + source URLs
 
-F-BE-003 — API for Frontend Consumption
+F-BE-003 — Analytics & Compliance
+- Store escalation analytics in PostgreSQL
+- Provide dashboard with filters (user, date range)
+- Expose Prometheus metrics (LLM response times, API errors)
+- Ensure all analytics endpoints have error handling and unified error responses
+- Data privacy: Anonymize logs after 30 days, mask API keys, GDPR/CCPA endpoints
+- Accessibility: ARIA labels, keyboard navigation, color contrast ≥4.5:1
+
+F-BE-004 — API for Frontend Consumption
 POST /generate_reply endpoint
 
 Accepts TicketContext (query, chat history)

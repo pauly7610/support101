@@ -1,0 +1,128 @@
+<implementation_priority>
+    Implement core LLM engine functionality before expanding features
+    Complete all missing backend components within 2 weeks
+    Establish testing framework before merging new features
+</implementation_priority>
+
+<backend_requirements>
+    ## LLM Engine Implementation
+    Create packages/llm_engine/chains/rag_chain.py containing:
+    - LangChain RAG implementation with Pinecone vector store
+    - API error handling with exponential backoff
+    - Source citation functionality using cosine similarity threshold of 0.75
+    
+    ## Pinecone Integration
+    Initialize Pinecone client with environment variables:
+    PINECONE_API_KEY=${SECRETS.PINECONE_KEY}
+    PINECONE_ENVIRONMENT=gcp-starter
+    Create index 'support101' with 768 dimensions using cosine similarity
+    
+    ## FastAPI Endpoints
+    Add validation to /ingest_documentation endpoint:
+    - File type restriction (PDF, MD, TXT)
+    - Chunk size validation (512-2048 tokens)
+    - Rate limiting (10 requests/minute/IP)
+    
+    ## Error Handling
+    Implement unified error responses:
+    {
+        "error_type": "llm_timeout",
+        "message": "LLM response exceeded 30s threshold",
+        "retryable": true,
+        "documentation": "https://api.support101/errors#E429"
+    }
+</backend_requirements>
+
+<frontend_requirements>
+    ## Agent Copilot Chrome Extension
+    Implement real-time websocket connection to backend
+    Add context-aware help using browser tab URL analysis
+    Include citation display component showing [1][3] sources
+    
+    ## Customer Chat Widget
+    Create conversation history persistence using IndexedDB
+    Add sentiment analysis for urgent ticket escalation
+    Implement accessibility features:
+    - ARIA labels for screen readers
+    - Keyboard navigation support
+    - Color contrast ratio ≥4.5:1
+    
+    ## Shared UI Components
+    Develop <CitationPopup> component showing:
+    - Source document excerpt
+    - Confidence score
+    - Last updated timestamp
+</frontend_requirements>
+
+<testing_requirements>
+    ## Unit Tests
+    Create tests/backend/test_rag_chain.py with:
+    - Mock LLM responses validation
+    - Vector similarity threshold tests
+    - Error condition simulations
+    
+    ## Integration Tests
+    Add tests/integration/test_full_flow.py covering:
+    - Document ingestion → Vector storage → Query response
+    - 99% code coverage for /generate_reply endpoint
+    - Load testing with 100 concurrent requests
+    
+    ## Frontend Testing
+    Implement Cypress tests for:
+    - Chrome extension installation flow
+    - Chat widget persistence across page reloads
+    - Accessibility compliance checks
+</testing_requirements>
+
+<devops_requirements>
+    ## CI Pipeline Fixes
+    Remove '|| true' from linting commands
+    Add step: 'Check for missing LLM engine components'
+    Implement artifact caching for node_modules and venv
+    
+    ## Docker Improvements
+    Separate development/production compose files:
+    - dev: Mount volumes for hot-reloading
+    - prod: Build optimized containers
+    Add healthchecks to all services
+    
+    ## Monitoring
+    Implement Prometheus metrics endpoint:
+    - LLM response times
+    - Vector store cache hits
+    - API error rates
+</devops_requirements>
+
+<coding_standards>
+    ## Python
+    Enforce PEP-8 with black formatting
+    Require type hints for all functions
+    Use async/await for LLM API calls
+    
+    ## JavaScript
+    Apply strict TypeScript mode
+    Enforce React hooks rules
+    Forbid any TypeScript type usage
+    
+    ## Documentation
+    Generate API docs via Swagger/OpenAPI
+    Create architecture decision records (ADRs)
+    Maintain Postman collection in /docs/API.postman.json
+</coding_standards>
+
+<security_requirements>
+    ## Authentication
+    Implement JWT validation middleware
+    Rotate API keys quarterly using Vault integration
+    Add rate limiting per endpoint
+    
+    ## Data Protection
+    Encrypt Pinecone vectors at rest
+    Anonymize chat logs after 30 days
+    Mask API keys in error responses
+    
+    ## Compliance
+    Add GDPR data deletion endpoint
+    Implement CCPA opt-out mechanism
+    Maintain SOC2 compliance checklist
+</security_requirements>

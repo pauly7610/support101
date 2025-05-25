@@ -4,6 +4,9 @@ A React-based Chrome extension providing an AI-powered copilot sidebar for suppo
 
 ## Features
 - Interactive sidebar UI with sentiment, suggested responses, customer context, and knowledge base search
+- Real-time websocket connection to backend
+- Context-aware help and citation popup display
+- Escalation analytics integration
 - Connects to FastAPI backend for RAG-powered suggested replies
 - Uses shared design system and UI primitives
 - Demo-ready: enter a customer message and get a real AI-generated reply with sources

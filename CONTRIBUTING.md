@@ -10,13 +10,16 @@ Thank you for your interest in contributing! 🚀
    git checkout -b my-feature
    ```
 3. **Make your changes** with clear commit messages.
-4. **Test your changes** locally before submitting a PR.
-5. **Open a pull request** with a clear description of your changes.
+4. **Run DB migrations** if you add/modify models: `python apps/backend/migrations.py`
+5. **Test your changes** locally (backend: pytest, frontend: Cypress, type checks)
+6. **Open a pull request** with a clear description of your changes and reference the PRD if relevant.
 
 ## Code Style
-- Follow existing code conventions (Python: PEP8, JS/TS: Prettier/ESLint).
-- Document new functions and modules.
-- Add or update tests as appropriate.
+- Python: PEP8, type hints, async/await, Black formatting
+- JS/TS: Strict TypeScript, Prettier, Cypress types for tests
+- Document new functions and modules
+- Add or update tests as appropriate (see `tests/` and PRD for coverage)
+- Ensure compliance and analytics features are not broken
 
 ## Reporting Issues
 - Use GitHub Issues for bugs, feature requests, or questions.

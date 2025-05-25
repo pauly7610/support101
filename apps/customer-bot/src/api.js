@@ -15,3 +15,17 @@ export async function generateSuggestedReply(ticketContext) {
   if (!res.ok) throw new Error("Failed to fetch suggested reply");
   return res.json();
 }
+
+/**
+ * Report an escalation event to the backend analytics endpoint.
+ * @param {Object} escalation - { text, timestamp, user_id, ticket_id, ... }
+ * @returns {Promise<void>}
+ */
+export async function reportEscalation(escalation) {
+  const res = await fetch(`${BACKEND_URL}/report_escalation`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(escalation)
+  });
+  if (!res.ok) throw new Error("Failed to report escalation");
+}

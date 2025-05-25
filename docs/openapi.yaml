@@ -1,0 +1,230 @@
+openapi: 3.0.3
+info:
+  title: Support Intelligence Core API
+  version: '1.0.0'
+  description: |
+    API for Support Intelligence Core (SIC) - LLM-powered customer support platform.
+    Includes endpoints for RAG, analytics, ingestion, and compliance.
+servers:
+  - url: http://localhost:8000
+paths:
+  /generate_reply:
+    post:
+      summary: Generate agent/customer reply (RAG)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateReplyRequest'
+      responses:
+        '200':
+          description: Generated reply with sources
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateReplyResponse'
+  /ingest_documentation:
+    post:
+      summary: Ingest documentation for search
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                chunk_size:
+                  type: integer
+                  minimum: 512
+                  maximum: 2048
+      responses:
+        '200':
+          description: Ingestion result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestResponse'
+        '400':
+          description: Invalid file type or chunk size
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /analytics/escalations:
+    get:
+      summary: Get escalation analytics
+      parameters:
+        - in: query
+          name: user_id
+          schema:
+            type: string
+          required: false
+          description: Filter by user ID
+        - in: query
+          name: start_time
+          schema:
+            type: number
+            format: float
+          required: false
+          description: Filter by start timestamp (epoch seconds)
+        - in: query
+          name: end_time
+          schema:
+            type: number
+            format: float
+          required: false
+          description: Filter by end timestamp (epoch seconds)
+      responses:
+        '200':
+          description: Aggregated escalation analytics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyticsResponse'
+  /report_escalation:
+    post:
+      summary: Report an escalation event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportEscalationRequest'
+      responses:
+        '200':
+          description: Escalation recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /metrics:
+    get:
+      summary: Prometheus metrics endpoint
+      responses:
+        '200':
+          description: Prometheus metrics text
+          content:
+            text/plain:
+              schema:
+                type: string
+components:
+  schemas:
+    GenerateReplyRequest:
+      type: object
+      properties:
+        user_id:
+          type: string
+        ticket:
+          type: object
+          properties:
+            subject:
+              type: string
+            body:
+              type: string
+            context:
+              type: string
+        history:
+          type: array
+          items:
+            type: object
+            properties:
+              sender:
+                type: string
+              message:
+                type: string
+    GenerateReplyResponse:
+      type: object
+      properties:
+        reply:
+          type: string
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourceDocument'
+    SourceDocument:
+      type: object
+      properties:
+        excerpt:
+          type: string
+        confidence:
+          type: number
+        last_updated:
+          type: string
+        url:
+          type: string
+    IngestResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        details:
+          type: string
+    AnalyticsResponse:
+      type: object
+      properties:
+        total_escalations:
+          type: integer
+        per_day:
+          type: object
+          additionalProperties:
+            type: integer
+        last_escalation:
+          $ref: '#/components/schemas/Escalation'
+    Escalation:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: string
+        text:
+          type: string
+        timestamp:
+          type: number
+        last_updated:
+          type: string
+        confidence:
+          type: number
+        source_url:
+          type: string
+    ReportEscalationRequest:
+      type: object
+      properties:
+        user_id:
+          type: string
+        text:
+          type: string
+        confidence:
+          type: number
+        source_url:
+          type: string
+    ErrorResponse:
+      type: object
+      properties:
+        error_type:
+          type: string
+        message:
+          type: string
+        retryable:
+          type: boolean
+        documentation:
+          type: string
