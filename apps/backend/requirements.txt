@@ -1,8 +1,9 @@
 fastapi
 uvicorn
 pydantic
-langchain
-pinecone-client
+langchain-openai
+langchain-community
+pinecone
 transformers
 sentence-transformers
 huggingface-hub
