@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import type { KeyboardEvent, FormEvent } from 'react';
 
 // Simple IndexedDB wrapper using idb-keyval
 import Sentiment from 'sentiment';
@@ -44,7 +45,7 @@ export default function ChatWidget() {
   const [feedback, setFeedback] = useState('');
   const [feedbackSent, setFeedbackSent] = useState(false);
 
-  async function handleFeedbackSubmit(event: SubmitEvent) {
+  async function handleFeedbackSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await fetch('/feedback', {
       method: 'POST',
@@ -83,14 +84,14 @@ export default function ChatWidget() {
   }, [messages]);
 
   // Keyboard accessibility for input: Enter to send, Shift+Enter for newline
-  function handleInputKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+  function handleInputKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend(e as React.FormEvent);
     }
   }
 
-  function handleSend(e: React.FormEvent) {
+  function handleSend(e: FormEvent) {
     e.preventDefault();
     if (!input.trim()) return;
     const sentimentResult = analyzeSentiment(input);

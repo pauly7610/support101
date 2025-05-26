@@ -36,14 +36,14 @@ export default function AnalyticsDashboard() {
     }, 2000);
   }
 
-  const [userId, setUserId] = useState<string>('');
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
-  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
-  const [trend, setTrend] = useState<number[]>([]);
-  const [trendLabels, setTrendLabels] = useState<string[]>([]);
-  const [userBreakdown, setUserBreakdown] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState<boolean>(false);
+  const [userId, setUserId] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [analytics, setAnalytics] = useState(null);
+  const [trend, setTrend] = useState([]);
+  const [trendLabels, setTrendLabels] = useState([]);
+  const [userBreakdown, setUserBreakdown] = useState({});
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let isMounted = true;

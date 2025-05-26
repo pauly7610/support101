@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import type { KeyboardEvent, FormEvent, ChangeEvent } from 'react';
 import Sentiment from 'sentiment';
 import * as idb from 'idb-keyval';
 import { generateSuggestedReply, reportEscalation } from '../api';
@@ -67,14 +68,14 @@ export default function ChatWidgetBackend() {
     if (!minimized) setUnread(0);
   }, [minimized]);
 
-  function handleInputKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+  function handleInputKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend(e as React.FormEvent);
     }
   }
 
-  async function handleSend(e: React.FormEvent) {
+  async function handleSend(e: FormEvent) {
     e.preventDefault();
     if (!input.trim()) return;
     const sentimentResult = analyzeSentiment(input);
@@ -147,7 +148,7 @@ export default function ChatWidgetBackend() {
     setTheme((t) => (t === 'light' ? 'dark' : 'light'));
   }
 
-  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileUpload(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
