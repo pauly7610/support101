@@ -42,6 +42,8 @@ jobs:
         run: |
           test -f apps/backend/migrations.py
           test -f packages/llm_engine/chains/rag_chain.py
+      - name: Add project root to PYTHONPATH
+        run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
       - name: Test backend
         run: |
           pytest apps/backend/tests
