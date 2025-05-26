@@ -68,8 +68,8 @@ jobs:
 
       - name: Install frontend dependencies
         run: |
-          cd apps/agent-copilot && npm install
-          cd ../customer-bot && npm install
+          cd apps/agent-copilot && npm ci --no-audit --no-fund
+          cd ../customer-bot && npm ci --no-audit --no-fund
 
       - name: Lint frontends
         run: |
