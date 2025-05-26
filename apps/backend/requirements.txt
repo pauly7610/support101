@@ -29,3 +29,5 @@ PyJWT
 schedule
 # For impact sorting
 isort
+#For testing
+pytest>=7.0.0
