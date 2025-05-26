@@ -140,9 +140,11 @@ def chunk_page_content(
 
 
 @app.post("/ingest_documentation", response_model=IngestResponse)
-@RateLimiter(times=5, seconds=60)
 async def ingest_documentation_endpoint(
-    file: UploadFile = File(...), chunk_size: int = Body(1000), auth=Depends(jwt_auth)
+    file: UploadFile = File(...),
+    chunk_size: int = Body(1000),
+    auth=Depends(jwt_auth),
+    limiter: None = Depends(RateLimiter(times=5, seconds=60)),
 ):
     allowed_types = {"application/pdf", "text/markdown", "text/plain"}
     file_type, _ = mimetypes.guess_type(file.filename)
@@ -245,25 +247,20 @@ SOC2_PATH = os.path.join(os.path.dirname(__file__), "../../docs/SOC2_checklist.m
 # For Vault/API key rotation, see deployment pipeline and ops docs.
 
 
-@app.on_event("startup")
-async def startup_event():
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app):
     # Initialize rate limiter (assumes Redis running at localhost:6379)
     try:
         await FastAPILimiter.init("redis://localhost:6379")
     except Exception as e:
-        print(
-            "Warning: Rate limiter not initialized: {}".format(e)
-        )
+        print("Warning: Rate limiter not initialized: {}".format(e))
     except HTTPException as he:
         raise he
-    except Exception as e:
-        print(f"Error during ingestion: {e}")
-        import traceback
+    yield
 
-        traceback.print_exc()
-        raise HTTPException(
-            status_code=500, detail=f"Internal server error during ingestion: {str(e)}"
-        )
+app.router.lifespan_context = lifespan
 
 
 @app.post("/generate_reply", response_model=SuggestedResponse)

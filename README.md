@@ -106,15 +106,21 @@ support101/
   - Unified UI (see `DESIGN_SYSTEM.md`)
 
 ---
-
-## Quickstart
 ### 1. Clone & Set Up Environment
 
 ```sh
 git clone https://github.com/pauly7610/support101
 cd support101
-cp .env.template .env
 ```
+
+## ⚠️ Test Suite Note
+
+Some backend tests are marked with `@pytest.mark.xfail` because certain endpoints are not yet implemented or require real API keys (e.g., LLM, analytics, ingest, or compliance endpoints). These tests are expected to fail until the corresponding endpoints are completed and valid keys are provided.
+
+- See `apps/backend/tests/` for details.
+- Remove or update the `xfail` marks as endpoints and keys become available.
+
+cp .env.template .env
 
 Fill in your `.env` with:
 - `PINECONE_API_KEY`
