@@ -75,12 +75,6 @@ jobs:
         run: |
           npm install -g vite
 
-      - name: Debug: List config files
-        run: |
-          ls -al
-          cat ./config.yaml
-          ls -l apps/agent-copilot/
-          cat apps/agent-copilot/eslint.config.js
 
       - name: Lint frontends
         run: |
