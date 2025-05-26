@@ -63,17 +63,30 @@ async def jwt_auth(credentials: HTTPAuthorizationCredentials = Depends(security)
         raise HTTPException(status_code=401, detail="Invalid or expired JWT token.")
 
 
-LLM_RESPONSE_TIME = Histogram(
-    "llm_response_time_seconds",
-    "LLM response time in seconds",
-    buckets=(0.1, 0.5, 1, 2, 5, 10),
-)
-API_ERROR_COUNT = Counter(
-    "api_error_count", "Count of API errors", ["endpoint", "exception_type"]
-)
-VECTOR_STORE_CACHE_HITS = Counter(
-    "vector_store_cache_hits", "Count of vector store cache hits"
-)
+from prometheus_client import Histogram, Counter, REGISTRY
+
+try:
+    LLM_RESPONSE_TIME = Histogram(
+        "llm_response_time_seconds",
+        "LLM response time in seconds",
+        buckets=(0.1, 0.5, 1, 2, 5, 10),
+    )
+except ValueError:
+    LLM_RESPONSE_TIME = REGISTRY._names_to_collectors["llm_response_time_seconds"]
+
+try:
+    API_ERROR_COUNT = Counter(
+        "api_error_count", "Count of API errors", ["endpoint", "exception_type"]
+    )
+except ValueError:
+    API_ERROR_COUNT = REGISTRY._names_to_collectors["api_error_count"]
+
+try:
+    VECTOR_STORE_CACHE_HITS = Counter(
+        "vector_store_cache_hits", "Count of vector store cache hits"
+    )
+except ValueError:
+    VECTOR_STORE_CACHE_HITS = REGISTRY._names_to_collectors["vector_store_cache_hits"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -130,7 +143,7 @@ def chunk_page_content(
 
 
 @app.post("/ingest_documentation", response_model=IngestResponse)
-@RateLimiter(times=5, seconds=60, scope="ingest_documentation")
+@RateLimiter(times=5, seconds=60)
 async def ingest_documentation_endpoint(
     file: UploadFile = File(...), chunk_size: int = Body(1000), auth=Depends(jwt_auth)
 ):
