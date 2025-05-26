@@ -31,3 +31,5 @@ schedule
 isort
 #For testing
 pytest>=7.0.0
+# For rate limiting
+fastapi-limiter>=0.1.5
