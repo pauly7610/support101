@@ -71,9 +71,20 @@ jobs:
           cd apps/agent-copilot && npm ci --no-audit --no-fund
           cd ../customer-bot && npm ci --no-audit --no-fund
 
+      - name: Install vite
+        run: |
+          npm install -g vite
+
+      - name: Debug: List config files
+        run: |
+          ls -al
+          cat ./config.yaml
+          ls -l apps/agent-copilot/
+          cat apps/agent-copilot/eslint.config.js
+
       - name: Lint frontends
         run: |
-          cd apps/agent-copilot && npx eslint .
+          cd apps/agent-copilot && npx --no-install eslint .
           cd ../customer-bot && npx eslint .
 
       - name: Test frontends (if tests exist)

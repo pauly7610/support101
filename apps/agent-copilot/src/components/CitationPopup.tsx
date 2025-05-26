@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 
 interface CitationPopupProps {
   excerpt: string;
@@ -14,7 +14,7 @@ interface CitationPopupProps {
  * - Last updated timestamp
  * - ARIA, keyboard, color contrast ≥4.5:1
  */
-const CitationPopup: React.FC<CitationPopupProps> = ({ excerpt, confidence, lastUpdated, sourceUrl }) => {
+function CitationPopup({ excerpt, confidence, lastUpdated, sourceUrl }: CitationPopupProps) {
   return (
     <div
       role="dialog"
@@ -22,20 +22,20 @@ const CitationPopup: React.FC<CitationPopupProps> = ({ excerpt, confidence, last
       aria-label="Citation details"
       tabIndex={0}
       style={{
-        background: "#fff",
-        color: "#1a1a1a",
-        border: "2px solid #333",
+        background: '#fff',
+        color: '#1a1a1a',
+        border: '2px solid #333',
         borderRadius: 8,
-        boxShadow: "0 4px 24px rgba(0,0,0,0.12)",
+        boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
         padding: 16,
         minWidth: 320,
         maxWidth: 400,
-        outline: "none"
+        outline: 'none',
       }}
     >
       <div style={{ marginBottom: 12 }}>
         <strong>Excerpt:</strong>
-        <div style={{ fontSize: 15, marginTop: 4, color: "#222" }}>{excerpt}</div>
+        <div style={{ fontSize: 15, marginTop: 4, color: '#222' }}>{excerpt}</div>
       </div>
       <div style={{ marginBottom: 8 }}>
         <strong>Confidence:</strong> <span aria-live="polite">{Math.round(confidence * 100)}%</span>
@@ -45,13 +45,18 @@ const CitationPopup: React.FC<CitationPopupProps> = ({ excerpt, confidence, last
       </div>
       {sourceUrl && (
         <div>
-          <a href={sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#0050b3", textDecoration: "underline" }}>
+          <a
+            href={sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: '#0050b3', textDecoration: 'underline' }}
+          >
             View source
           </a>
         </div>
       )}
     </div>
   );
-};
+}
 
 export default CitationPopup;

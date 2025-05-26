@@ -6,6 +6,6 @@
   document.body.appendChild(sidebar);
   // Load React app into this div
   const script = document.createElement('script');
-  script.src = chrome.runtime.getURL('sidebar.js');
+  script.src = /* global chrome */ chrome.runtime.getURL('sidebar.js');
   document.body.appendChild(script);
 })();

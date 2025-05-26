@@ -1,11 +1,11 @@
-import react from "eslint-plugin-react";
+import react from 'eslint-plugin-react';
 
 export default [
   {
-    files: ["**/*.js", "**/*.jsx"],
+    files: ['**/*.js', '**/*.jsx'],
     languageOptions: {
       ecmaVersion: 2022,
-      sourceType: "module",
+      sourceType: 'module',
       parserOptions: {
         ecmaFeatures: {
           jsx: true,
@@ -14,8 +14,8 @@ export default [
     },
     plugins: { react },
     rules: {
-      "react/jsx-uses-react": "warn",
-      "react/jsx-uses-vars": "warn",
+      'react/jsx-uses-react': 'warn',
+      'react/jsx-uses-vars': 'warn',
     },
   },
 ];

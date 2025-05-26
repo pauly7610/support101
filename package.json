@@ -1,15 +1,20 @@
 {
   "devDependencies": {
-    "eslint": "^9.0.0",
-    "eslint-config-prettier": "^8.0.0",
-    "eslint-plugin-react": "^7.0.0",
     "@typescript-eslint/eslint-plugin": "^5.0.0",
     "@typescript-eslint/parser": "^5.0.0",
+    "cypress-axe": "^1.6.0",
+    "cypress-file-upload": "^5.0.8",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^8.0.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "eslint-plugin-react": "^7.0.0",
+    "husky": "^8.0.0",
+    "lint-staged": "^15.0.0",
     "prettier": "^2.8.0",
     "stylelint": "^15.11.0",
     "stylelint-config-standard": "^34.0.0",
-    "lint-staged": "^15.0.0",
-    "husky": "^8.0.0"
+    "typescript": "^5.1.6",
+    "vite": "^6.3.5"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [

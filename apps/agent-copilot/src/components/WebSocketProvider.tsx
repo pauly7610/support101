@@ -1,36 +1,39 @@
-import React, { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import React, { useContext, useEffect, useRef, useState } from 'react';
 
 interface WebSocketContextType {
   socket: WebSocket | null;
-  status: "connecting" | "open" | "closed" | "error";
-  send: (msg: any) => void;
-  lastMessage: any;
+  status: 'connecting' | 'open' | 'closed' | 'error';
+  send: (msg: string | object) => void;
+  lastMessage: string | object | null;
 }
 
-const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
+const WebSocketContext = React.createContext<WebSocketContextType | undefined>(undefined);
 
 // Use Vite/CRA/webpack env variable or fallback
-const WS_URL = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_WS_URL) ||
-               "ws://localhost:8000/ws";
+const WS_URL =
+  (typeof globalThis !== 'undefined' && globalThis.process?.env?.VITE_WS_URL) ||
+  (typeof import.meta !== 'undefined' &&
+    (import.meta as { env?: Record<string, string> }).env?.VITE_WS_URL) ||
+  'ws://localhost:8000/ws';
 
-export function WebSocketProvider({ children }: { children: ReactNode }) {
-  const [status, setStatus] = useState<"connecting" | "open" | "closed" | "error">("connecting");
-  const [lastMessage, setLastMessage] = useState<any>(null);
+export function WebSocketProvider({ children }: { children: React.ReactNode }) {
+  const [status, setStatus] = useState<'connecting' | 'open' | 'closed' | 'error'>('connecting');
+  const [lastMessage, setLastMessage] = useState<string | object | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     let ws: WebSocket;
-    let reconnectTimeout: number;
+    let reconnectTimeout: ReturnType<typeof setTimeout>;
     let reconnectAttempts = 0;
     let intentionalClose = false;
 
     function connect() {
       ws = new window.WebSocket(WS_URL);
       socketRef.current = ws;
-      setStatus("connecting");
+      setStatus('connecting');
 
       ws.onopen = () => {
-        setStatus("open");
+        setStatus('open');
         reconnectAttempts = 0;
       };
 
@@ -39,12 +42,12 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       };
 
       ws.onerror = () => {
-        setStatus("error");
+        setStatus('error');
         ws.close();
       };
 
       ws.onclose = () => {
-        setStatus("closed");
+        setStatus('closed');
         if (!intentionalClose) {
           reconnectAttempts += 1;
           const timeout = Math.min(1000 * 2 ** reconnectAttempts, 30000);
@@ -61,9 +64,9 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const send = (msg: any) => {
+  const send: (msg: string | object) => void = (msg) => {
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(typeof msg === "string" ? msg : JSON.stringify(msg));
+      socketRef.current.send(typeof msg === 'string' ? msg : JSON.stringify(msg));
     }
   };
 
@@ -72,10 +75,10 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       {children}
     </WebSocketContext.Provider>
   );
-};
+}
 
-export const useWebSocket = () => {
+export const useWebSocket = (): WebSocketContextType => {
   const ctx = useContext(WebSocketContext);
-  if (!ctx) throw new Error("useWebSocket must be used within a WebSocketProvider");
+  if (!ctx) throw new Error('useWebSocket must be used within a WebSocketProvider');
   return ctx;
 };

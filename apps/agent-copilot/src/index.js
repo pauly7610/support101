@@ -8,5 +8,5 @@ document.body.appendChild(root);
 createRoot(root).render(
   <WebSocketProvider>
     <CopilotPanel />
-  </WebSocketProvider>
+  </WebSocketProvider>,
 );

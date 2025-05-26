@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from 'react';
 
 interface Escalation {
   id: number;
@@ -16,42 +16,38 @@ interface AnalyticsData {
   last_escalation: Escalation | null;
 }
 
-function formatDateInput(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
-
 export default function AnalyticsDashboard() {
   const [showFeedback, setShowFeedback] = useState(false);
-  const [feedback, setFeedback] = useState("");
+  const [feedback, setFeedback] = useState('');
   const [feedbackSent, setFeedbackSent] = useState(false);
 
-  async function handleFeedbackSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    await fetch("/feedback", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+  async function handleFeedbackSubmit(event: SubmitEvent) {
+    event.preventDefault();
+    await fetch('/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ feedback }),
     });
     setFeedbackSent(true);
     setTimeout(() => {
       setShowFeedback(false);
       setFeedbackSent(false);
-      setFeedback("");
+      setFeedback('');
     }, 2000);
   }
 
-  const [userId, setUserId] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [userId, setUserId] = useState<string>('');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [trend, setTrend] = useState<number[]>([]);
   const [trendLabels, setTrendLabels] = useState<string[]>([]);
   const [userBreakdown, setUserBreakdown] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
     let isMounted = true;
-    let polling: ReturnType<typeof setInterval>;
+    let polling: ReturnType<typeof setInterval> | undefined = undefined;
     let loading = false;
     async function pollAnalytics() {
       if (!isMounted || loading) return;
@@ -70,12 +66,14 @@ export default function AnalyticsDashboard() {
 
   async function fetchAnalytics() {
     setLoading(true);
-    let url = "/analytics/escalations";
+    let url = '/analytics/escalations';
     const params: Record<string, string> = {};
     if (userId) params.user_id = userId;
     if (startDate) params.start_time = `${new Date(startDate).getTime() / 1000}`;
     if (endDate) params.end_time = `${new Date(endDate).getTime() / 1000}`;
-    const qs = Object.keys(params).map(k => `${k}=${encodeURIComponent(params[k])}`).join("&");
+    const qs = Object.keys(params)
+      .map((k) => `${k}=${encodeURIComponent(params[k])}`)
+      .join('&');
     if (qs) url += `?${qs}`;
     const res = await fetch(url);
     const data: AnalyticsData = await res.json();
@@ -84,10 +82,10 @@ export default function AnalyticsDashboard() {
     if (data.per_day) {
       const days = Object.keys(data.per_day).sort();
       setTrendLabels(days);
-      setTrend(days.map(d => data.per_day[d]));
+      setTrend(days.map((d) => data.per_day[d]));
     }
     // For user breakdown, fetch all (no filter) and count by user_id
-    const allRes = await fetch("/analytics/escalations");
+    const allRes = await fetch('/analytics/escalations');
     const allData: AnalyticsData = await allRes.json();
     const userCounts: Record<string, number> = {};
     if (allData.last_escalation) {
@@ -105,32 +103,72 @@ export default function AnalyticsDashboard() {
       <div className="max-w-lg mx-auto my-10 bg-white rounded shadow p-6">
         <h2 className="text-xl font-bold mb-4">Escalation Analytics</h2>
         {/* Filters and dashboard UI */}
-        <form className="flex gap-2 mb-4 items-end flex-wrap" onSubmit={e => { e.preventDefault(); fetchAnalytics(); }}>
+        <form
+          className="flex gap-2 mb-4 items-end flex-wrap"
+          onSubmit={(e) => {
+            e.preventDefault();
+            fetchAnalytics();
+          }}
+        >
           <div>
             <label className="block text-xs mb-1">User ID</label>
-            <input className="border px-2 py-1 rounded text-sm" value={userId} onChange={e => setUserId(e.target.value)} placeholder="user id" />
+            <input
+              className="border px-2 py-1 rounded text-sm"
+              value={userId}
+              onChange={(e) => setUserId(e.target.value)}
+              placeholder="user id"
+            />
           </div>
           <div>
             <label className="block text-xs mb-1">Start Date</label>
-            <input type="date" className="border px-2 py-1 rounded text-sm" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            <input
+              type="date"
+              className="border px-2 py-1 rounded text-sm"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
           </div>
           <div>
             <label className="block text-xs mb-1">End Date</label>
-            <input type="date" className="border px-2 py-1 rounded text-sm" value={endDate} onChange={e => setEndDate(e.target.value)} />
+            <input
+              type="date"
+              className="border px-2 py-1 rounded text-sm"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
           </div>
-          <button type="submit" className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">Filter</button>
+          <button
+            type="submit"
+            className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+          >
+            Filter
+          </button>
         </form>
         {/* Add your stats, charts, etc. here */}
-        {loading ? <div>Loading...</div> : (
+        {loading ? (
+          <div>Loading...</div>
+        ) : (
           <>
-            <div className="mb-4">Total Escalations: <b>{analytics?.total_escalations ?? 0}</b></div>
+            <div className="mb-4">
+              Total Escalations: <b>{analytics?.total_escalations ?? 0}</b>
+            </div>
             <div className="mb-6">
               <h3 className="text-md font-semibold mb-2">Escalation Trend</h3>
               <div className="flex items-end gap-2 h-32">
                 {trendLabels.map((day, i) => (
                   <div key={day} className="flex flex-col items-center" style={{ width: 28 }}>
-                    <div style={{ height: `${(trend[i] / Math.max(...trend, 1)) * 80}px`, background: '#2563eb', width: 16, borderRadius: 4 }} title={`${trend[i]} escalation${trend[i] !== 1 ? 's' : ''}`}></div>
-                    <span className="text-xs mt-1" style={{ color: '#555' }}>{day.slice(5)}</span>
+                    <div
+                      style={{
+                        height: `${(trend[i] / Math.max(...trend, 1)) * 80}px`,
+                        background: '#2563eb',
+                        width: 16,
+                        borderRadius: 4,
+                      }}
+                      title={`${trend[i]} escalation${trend[i] !== 1 ? 's' : ''}`}
+                    ></div>
+                    <span className="text-xs mt-1" style={{ color: '#555' }}>
+                      {day.slice(5)}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -138,10 +176,26 @@ export default function AnalyticsDashboard() {
             <div className="mb-6">
               <h3 className="text-md font-semibold mb-2">User Breakdown</h3>
               <div className="flex items-center gap-4">
-                {Object.keys(userBreakdown).length === 0 && <span className="text-gray-400">No data</span>}
+                {Object.keys(userBreakdown).length === 0 && (
+                  <span className="text-gray-400">No data</span>
+                )}
                 {Object.entries(userBreakdown).map(([user, count]) => (
                   <div key={user} className="flex flex-col items-center">
-                    <div className="rounded-full bg-blue-200" style={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 18, color: '#1e40af' }}>{user.slice(0,2).toUpperCase()}</div>
+                    <div
+                      className="rounded-full bg-blue-200"
+                      style={{
+                        width: 48,
+                        height: 48,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 700,
+                        fontSize: 18,
+                        color: '#1e40af',
+                      }}
+                    >
+                      {user.slice(0, 2).toUpperCase()}
+                    </div>
                     <span className="text-xs mt-1">{user}</span>
                     <span className="text-xs font-semibold">{count}</span>
                   </div>
@@ -152,7 +206,10 @@ export default function AnalyticsDashboard() {
               <div className="mb-4 p-3 bg-gray-100 rounded">
                 <div className="text-xs text-gray-500 mb-1">Last Escalation</div>
                 <div className="text-sm font-semibold">{analytics.last_escalation.text}</div>
-                <div className="text-xs text-gray-500">User: {analytics.last_escalation.user_id} | {new Date(analytics.last_escalation.timestamp * 1000).toLocaleString()}</div>
+                <div className="text-xs text-gray-500">
+                  User: {analytics.last_escalation.user_id} |{' '}
+                  {new Date(analytics.last_escalation.timestamp * 1000).toLocaleString()}
+                </div>
               </div>
             )}
           </>
@@ -179,7 +236,7 @@ export default function AnalyticsDashboard() {
                   className="w-full border rounded p-2 mb-3 dark:bg-gray-800 dark:text-white"
                   rows={4}
                   value={feedback}
-                  onChange={e => setFeedback(e.target.value)}
+                  onChange={(e) => setFeedback(e.target.value)}
                   placeholder="Your feedback or issue..."
                   aria-label="Feedback textarea"
                   required

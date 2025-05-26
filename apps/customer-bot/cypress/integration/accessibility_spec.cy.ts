@@ -1,7 +1,8 @@
 /// <reference types="cypress" />
 import 'cypress-axe';
+import 'cypress-axe';
 
-describe('Accessibility Compliance', () => {
+describe('Accessibility checks', () => {
   beforeEach(() => {
     cy.visit('/');
     cy.injectAxe();
