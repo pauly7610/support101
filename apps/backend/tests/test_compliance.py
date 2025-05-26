@@ -1,6 +1,6 @@
 import jwt
 from fastapi.testclient import TestClient
-
+import pytest
 from ...backend.main import JWT_ALGORITHM, JWT_SECRET, app
 
 client = TestClient(app)
@@ -10,10 +10,7 @@ def make_jwt(user_id="testuser"):
     return jwt.encode({"sub": user_id}, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
-import pytest
-
 @pytest.mark.xfail(reason="Endpoint or auth not implemented or requires real API key")
-
 @pytest.mark.xfail(reason="/gdpr_delete endpoint not implemented (404)")
 def test_gdpr_delete_requires_jwt():
     resp = client.post("/gdpr_delete", json={"user_id": "testuser"})

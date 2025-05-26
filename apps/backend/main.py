@@ -13,6 +13,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
 from prometheus_client import Histogram, Counter, REGISTRY
+from contextlib import asynccontextmanager
 
 from packages.llm_engine.chains.rag_chain import RAGChain
 from packages.llm_engine.embeddings import get_fastembed_model
@@ -27,9 +28,22 @@ from packages.shared.models import (
     TicketContext,
 )
 
+
 app = FastAPI(title="Support Intelligence Core API")
 
 security = HTTPBearer()
+
+
+@asynccontextmanager
+async def lifespan(app):
+    # Initialize rate limiter (assumes Redis running at localhost:6379)
+    try:
+        await FastAPILimiter.init("redis://localhost:6379")
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print("Warning: Rate limiter not initialized: {}".format(e))
+    yield
 
 
 @app.post(
@@ -242,25 +256,8 @@ def custom_openapi():
 ADR_PATH = os.path.join(os.path.dirname(__file__), "../../docs/ADR.md")
 SOC2_PATH = os.path.join(os.path.dirname(__file__), "../../docs/SOC2_checklist.md")
 
-
 # NOTE: Pinecone encrypts vectors at rest by default (see Pinecone docs).
 # For Vault/API key rotation, see deployment pipeline and ops docs.
-
-
-from contextlib import asynccontextmanager
-
-@asynccontextmanager
-async def lifespan(app):
-    # Initialize rate limiter (assumes Redis running at localhost:6379)
-    try:
-        await FastAPILimiter.init("redis://localhost:6379")
-    except Exception as e:
-        print("Warning: Rate limiter not initialized: {}".format(e))
-    except HTTPException as he:
-        raise he
-    yield
-
-app.router.lifespan_context = lifespan
 
 
 @app.post("/generate_reply", response_model=SuggestedResponse)
