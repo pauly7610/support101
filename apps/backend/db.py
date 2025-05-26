@@ -38,20 +38,6 @@ def get_base() -> declarative_base:
 
 async def init_db() -> None:
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-
-class Escalation(Base):
-    __tablename__ = "escalations"
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String(64))
-    text = Column(Text)
-    timestamp = Column(Float)
-    last_updated = Column(DateTime)
-    confidence = Column(Float, nullable=True)
-    source_url = Column(Text, nullable=True)
-
-
-async def init_db():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(
+            Base.metadata.create_all
+        )

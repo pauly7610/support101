@@ -387,21 +387,22 @@ async def ingest_documentation_endpoint(
             }
         )
 
-                doc_id = str(uuid.uuid4())
-                documents_to_upsert.append(
-                    DocumentPayload(
-                        id=doc_id,
-                        content=chunk_content,
-                        source_url=page.url,
-                        title=page.metadata.title,
-                        metadata={
-                            "original_page_title": page.metadata.title,
-                            "crawl_date": page.metadata.crawl_date.isoformat() if page.metadata.crawl_date else None,
-                            "language": page.metadata.language,
-                            "chunk_index": i
-                        }
-                    )
-                )
+        # The following block was incorrectly indented inside the except block. It should be outside.
+        doc_id = str(uuid.uuid4())
+        documents_to_upsert.append(
+            DocumentPayload(
+                id=doc_id,
+                content=chunk_content,
+                source_url=page.url,
+                title=page.metadata.title,
+                metadata={
+                    "original_page_title": page.metadata.title,
+                    "crawl_date": page.metadata.crawl_date.isoformat() if page.metadata.crawl_date else None,
+                    "language": page.metadata.language,
+                    "chunk_index": i
+                }
+            )
+        )
         if not documents_to_upsert:
             return IngestResponse(status="warning", message="No document chunks to process after crawling.", pages_crawled=len(crawled_pages), documents_added=0)
         embedding_model = get_fastembed_model()
@@ -453,4 +454,3 @@ async def generate_reply_endpoint(
                 "documentation": "https://api.support101/errors#E500"
             }
         )
-

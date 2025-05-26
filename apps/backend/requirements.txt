@@ -26,3 +26,5 @@ python-multipart
 PyJWT
 # For scheduled anonymization
 schedule
+# For impact sorting
+isort
