@@ -1,8 +1,9 @@
-import pytest
 from fastapi.testclient import TestClient
+
 from apps.backend.main import app
 
 client = TestClient(app)
+
 
 def test_ingest_and_query_flow(monkeypatch):
     # Simulate a TXT upload and then a query
@@ -10,7 +11,7 @@ def test_ingest_and_query_flow(monkeypatch):
     response = client.post(
         "/ingest_documentation",
         files={"file": ("test.txt", file_content, "text/plain")},
-        data={"chunk_size": 512}
+        data={"chunk_size": 512},
     )
     assert response.status_code == 200
     assert response.json()["status"] == "success"

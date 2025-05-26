@@ -1,26 +1,35 @@
+import io
+import mimetypes
 import os
 import uuid
 from typing import List
 
-from fastapi import Body, Depends, FastAPI, HTTPException, Request, Response
+import jwt
+import pdfplumber
+from fastapi import Body, Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.openapi.utils import get_openapi
-from fastapi.responses import FileResponse
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi_limiter import FastAPILimiter
+from fastapi_limiter.depends import RateLimiter
+from prometheus_client import Histogram, Counter
+
 from packages.llm_engine.chains.rag_chain import RAGChain
 from packages.llm_engine.embeddings import get_fastembed_model
-from packages.llm_engine.vector_store import (get_pinecone_index,
-                                              upsert_documents_to_pinecone)
-# Import shared models
-from packages.shared.models import (CrawledPage, DocumentMetadata,
-                                    DocumentPayload, IngestResponse,
-                                    IngestURLRequest, SuggestedResponse,
-                                    TicketContext)
-# Prometheus imports
-from prometheus_client import (CONTENT_TYPE_LATEST, Counter, Histogram,
-                               generate_latest)
-from starlette.responses import Response as StarletteResponse
+from packages.llm_engine.vector_store import (
+    get_pinecone_index,
+    upsert_documents_to_pinecone,
+)
+from packages.shared.models import (
+    DocumentPayload,
+    IngestResponse,
+    SuggestedResponse,
+    TicketContext,
+)
 
 app = FastAPI(title="Support Intelligence Core API")
+
+security = HTTPBearer()
 
 
 @app.post(
@@ -190,25 +199,24 @@ async def ingest_documentation_endpoint(
                 chunked_count += 1
         if documents_to_upsert:
             embedding_model = get_fastembed_model()
-            upserted = await upsert_documents_to_pinecone(
+            upserted_count = await upsert_documents_to_pinecone(
                 documents_to_upsert, embedding_model
             )
-        else:
-            return JSONResponse(
-                status_code=400,
-                content={
-                    "error_type": "empty_document",
-                    "message": "No valid content found in the uploaded file.",
-                    "retryable": False,
-                    "documentation": "https://api.support101/errors#E417",
-                },
-            )
+        return IngestResponse(
+            status="success",
+            message=(
+                f"Ingested {len(text_pages)} page(s) from file, created {chunked_count} chunk(s), "
+                f"{upserted_count} document(s) added/updated."
+            ),
+            pages_crawled=len(text_pages),
+            documents_added=upserted_count
+        )
     except Exception as e:
         return JSONResponse(
             status_code=500,
             content={
-                "error_type": "internal_server_error",
-                "message": f"Failed to ingest documentation: {e}",
+                "error_type": "ingestion_processing_error",
+                "message": f"Failed during documentation ingestion: {mask_api_keys(str(e))}",
                 "documentation": "https://api.support101/errors#E500",
             },
         )
@@ -223,7 +231,8 @@ ADR_PATH = os.path.join(os.path.dirname(__file__), "../../docs/ADR.md")
 SOC2_PATH = os.path.join(os.path.dirname(__file__), "../../docs/SOC2_checklist.md")
 
 
-# NOTE: Pinecone encrypts vectors at rest by default (see Pinecone docs). For Vault/API key rotation, see deployment pipeline and ops docs.
+# NOTE: Pinecone encrypts vectors at rest by default (see Pinecone docs).
+# For Vault/API key rotation, see deployment pipeline and ops docs.
 
 
 @app.on_event("startup")
@@ -232,8 +241,9 @@ async def startup_event():
     try:
         await FastAPILimiter.init("redis://localhost:6379")
     except Exception as e:
-        print(f"Warning: Rate limiter not initialized: {e}")
-
+        print(
+            "Warning: Rate limiter not initialized: {}".format(e)
+        )
     except HTTPException as he:
         raise he
     except Exception as e:
@@ -271,9 +281,12 @@ async def generate_reply_endpoint(
         return JSONResponse(
             status_code=500,
             content={
-                "error_type": "internal_error",
-                "message": mask_api_keys(f"Failed to generate reply: {str(e)}"),
-                "retryable": False,
+                "error_type": "generate_reply_exception",
+                "message": mask_api_keys(
+                    f"Failed to generate reply due to an unexpected error: "
+                    f"{str(e)}"
+                ),
+                "retryable": False,  # Usually false for unexpected server errors
                 "documentation": "https://api.support101/errors#E500",
             },
         )

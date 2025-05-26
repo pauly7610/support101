@@ -18,6 +18,7 @@ asyncpg
 SQLAlchemy
 # For PEP-8 formatting
 black
+flake8
 # For PDF parsing
 pdfplumber
 # For file uploads
