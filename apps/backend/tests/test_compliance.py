@@ -1,7 +1,6 @@
 import jwt
-from fastapi.testclient import TestClient
-
 from apps.backend.main import JWT_ALGORITHM, JWT_SECRET, app
+from fastapi.testclient import TestClient
 
 client = TestClient(app)
 

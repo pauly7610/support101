@@ -1,0 +1,11 @@
+node_modules/
+build/
+dist/
+coverage/
+*.js
+*.test.*
+*.spec.*
+*.snap
+.env
+.next/
+public/

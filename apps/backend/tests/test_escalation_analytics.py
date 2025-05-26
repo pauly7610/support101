@@ -1,5 +1,5 @@
-from fastapi.testclient import TestClient
 from apps.backend.main import app
+from fastapi.testclient import TestClient
 
 client = TestClient(app)
 
@@ -20,9 +20,8 @@ def test_escalation_analytics_filter_user():
 
 def test_escalation_analytics_filter_time():
     import time
+
     now = int(time.time())
-    url = (
-        f"/analytics/escalations?start_time={now-10000}&end_time={now}"
-    )
+    url = f"/analytics/escalations?start_time={now-10000}&end_time={now}"
     resp = client.get(url)
     assert resp.status_code == 200
