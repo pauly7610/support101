@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
-from prometheus_client import Histogram, Counter
+from prometheus_client import Histogram, Counter, REGISTRY
 
 from packages.llm_engine.chains.rag_chain import RAGChain
 from packages.llm_engine.embeddings import get_fastembed_model
@@ -61,9 +61,6 @@ async def jwt_auth(credentials: HTTPAuthorizationCredentials = Depends(security)
         return payload
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid or expired JWT token.")
-
-
-from prometheus_client import Histogram, Counter, REGISTRY
 
 try:
     LLM_RESPONSE_TIME = Histogram(
