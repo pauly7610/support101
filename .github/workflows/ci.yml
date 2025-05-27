@@ -30,15 +30,51 @@ jobs:
             .venv
           key: ${{ runner.os }}-python-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
-            ${{ runner.os }}-python-
-      - name: Install backend dependencies
+            venv-${{ runner.os }}-
+
+      - name: Install dependencies
         run: |
+          python -m venv ~/.venv
+          source ~/.venv/bin/activate
           pip install -r apps/backend/requirements.txt
 
-      - name: Lint backend
+      - name: Lint
         run: |
-          pip install flake8
-          flake8 apps/backend
+          black --check .
+          flake8
+          isort --check-only .
+
+      - name: Check for missing LLM engine components
+        run: |
+          if ! grep -q 'rag_chain.py' apps/backend/packages/llm_engine/chains/; then echo "rag_chain.py missing" && exit 1; fi
+
+      - name: Start Postgres
+        uses: harmon758/postgresql-action@v1
+        with:
+          postgresql version: '15'
+          postgresql db: support101_test
+          postgresql user: postgres
+          postgresql password: postgres
+        env:
+          PGUSER: postgres
+          PGPASSWORD: postgres
+
+      - name: Start Redis
+        uses: supercharge/redis-github-action@1.6.0
+        with:
+          redis-version: '7'
+        env:
+          REDIS_URL: redis://localhost:6379/0
+
+      - name: Run Alembic migrations
+        run: |
+          source ~/.venv/bin/activate
+          alembic -c apps/backend/alembic.ini upgrade head
+
+      - name: Run backend tests
+        run: |
+          source ~/.venv/bin/activate
+          pytest --maxfail=1 --disable-warnings --cov=apps/backend
 
       - name: Check backend components
         run: |
@@ -46,9 +82,17 @@ jobs:
           test -f packages/llm_engine/chains/rag_chain.py
       - name: Add project root to PYTHONPATH
         run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
-      - name: Test backend
-        run: |
-          pytest apps/backend/tests
+
+      - name: Cache node_modules
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            node-modules-${{ runner.os }}-
+
+      - name: Run backend tests (pytest)
+        run: pytest apps/backend/tests
 
       # Node.js frontend setup
       - name: Set up Node.js ${{ matrix.node-version }}
@@ -56,15 +100,29 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: Cache node_modules
+      - name: Cache root node_modules
         uses: actions/cache@v4
         with:
-          path: |
-            apps/agent-copilot/node_modules
-            apps/customer-bot/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          path: node_modules
+          key: ${{ runner.os }}-node-root-${{ hashFiles('package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-node-
+            ${{ runner.os }}-node-root-
+
+      - name: Cache agent-copilot node_modules
+        uses: actions/cache@v4
+        with:
+          path: apps/agent-copilot/node_modules
+          key: ${{ runner.os }}-node-agent-copilot-${{ hashFiles('apps/agent-copilot/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-agent-copilot-
+
+      - name: Cache customer-bot node_modules
+        uses: actions/cache@v4
+        with:
+          path: apps/customer-bot/node_modules
+          key: ${{ runner.os }}-node-customer-bot-${{ hashFiles('apps/customer-bot/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-customer-bot-
 
       - name: Install frontend dependencies (root and apps)
         run: |

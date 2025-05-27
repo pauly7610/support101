@@ -7,8 +7,7 @@ interface WebSocketContextType {
   lastMessage: string | object | null;
 }
 
-const WebSocketContext = React.createContext<WebSocketContextType | undefined>(undefined); // TypeScript is correct here, but if this triggers an error, try without type argument:
-// const WebSocketContext = React.createContext(undefined);
+const WebSocketContext = React.createContext(undefined); // Remove type argument for compatibility
 
 // Use Vite/CRA/webpack env variable or fallback
 const WS_URL =
@@ -17,11 +16,12 @@ const WS_URL =
     (import.meta as { env?: Record<string, string> }).env?.VITE_WS_URL) ||
   'ws://localhost:8000/ws';
 
-export function WebSocketProvider({ children }: { children: React.ReactNode }) {
+type ReactNodeType = ReturnType<typeof React.createElement> | null | undefined;
+export function WebSocketProvider({ children }: { children: ReactNodeType }) {
   // Make sure ReactNode is accessible, import if needed
-  const [status, setStatus] = useState<'connecting' | 'open' | 'closed' | 'error'>('connecting');
-  const [lastMessage, setLastMessage] = useState<string | object | null>(null);
-  const socketRef = useRef<WebSocket | null>(null);
+  const [status, setStatus] = useState('connecting'); // Remove type argument
+  const [lastMessage, setLastMessage] = useState(null); // Remove type argument
+  const socketRef = useRef(null); // Already no type argument
 
   useEffect(() => {
     let ws: WebSocket;

@@ -4,7 +4,18 @@ import os
 import uuid
 from typing import List
 
-import jwt
+from app.auth.jwt import create_access_token, get_current_user
+from app.auth.users import get_user_by_username, verify_password, create_user
+from app.core.db import get_db
+from app.core.cache import init_redis
+from fastapi_cache.decorator import cache
+from fastapi import status, Form, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from dotenv import load_dotenv
+
+# Load environment variables from .env if available
+load_dotenv()
+
 import pdfplumber
 from fastapi import Body, Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,8 +54,42 @@ async def lifespan(app):
         raise he
     except Exception as e:
         print("Warning: Rate limiter not initialized: {}".format(e))
+    # Initialize Redis cache for fastapi-cache2
+    try:
+        await init_redis()
+        print("Redis cache initialized.")
+    except Exception as e:
+        print(f"Warning: Redis cache not initialized: {e}")
     yield
 
+
+@app.post("/register", tags=["Auth"], summary="Register a new user", response_description="User created")
+async def register(username: str = Form(...), password: str = Form(...), db: AsyncSession = Depends(get_db)):
+    existing = await get_user_by_username(db, username)
+    if existing:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists")
+    user = await create_user(db, username, password)
+    return {"id": user.id, "username": user.username}
+
+@app.post("/login", tags=["Auth"], summary="Login and get JWT token", response_description="JWT access token")
+async def login(username: str = Form(...), password: str = Form(...), db: AsyncSession = Depends(get_db)):
+    user = await get_user_by_username(db, username)
+    if not user or not verify_password(password, user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    token = create_access_token({"sub": username})
+    return {"access_token": token, "token_type": "bearer"}
+
+
+@app.get("/protected", tags=["Auth"], summary="Example protected endpoint")
+async def protected_route(user=Depends(get_current_user)):
+    return {"message": f"Hello, {user.get('sub', 'user')}! You are authenticated."}
+
+@app.get("/cached-example", tags=["Cache"], summary="Example cached endpoint")
+@cache(expire=60)
+async def cached_example():
+    import time
+    time.sleep(2)  # Simulate expensive computation
+    return {"result": "This response is cached for 60 seconds."}
 
 @app.post(
     "/feedback",
@@ -67,14 +112,8 @@ def mask_api_keys(detail: str) -> str:
     return detail.replace(os.getenv("PINECONE_API_KEY", "***"), "***MASKED***")
 
 
-async def jwt_auth(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    try:
-        payload = jwt.decode(
-            credentials.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM]
-        )
-        return payload
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid or expired JWT token.")
+# Use get_current_user from app.auth.jwt for authentication
+
 
 try:
     LLM_RESPONSE_TIME = Histogram(
@@ -157,7 +196,7 @@ def chunk_page_content(
 async def ingest_documentation_endpoint(
     file: UploadFile = File(...),
     chunk_size: int = Body(1000),
-    auth=Depends(jwt_auth),
+    auth=Depends(get_current_user),
     limiter: None = Depends(RateLimiter(times=5, seconds=60)),
 ):
     allowed_types = {"application/pdf", "text/markdown", "text/plain"}

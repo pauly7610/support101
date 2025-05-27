@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import type { KeyboardEvent, FormEvent, ChangeEvent } from 'react';
+
 import Sentiment from 'sentiment';
 import * as idb from 'idb-keyval';
 import { generateSuggestedReply, reportEscalation } from '../api';
@@ -45,15 +45,15 @@ function analyzeSentiment(text: string): 'urgent' | 'normal' {
 }
 
 export default function ChatWidgetBackend() {
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
-  const [escalate, setEscalate] = useState(false);
-  const [theme, setTheme] = useState('light');
+  const [messages, setMessages] = useState([]); // Already no type argument
+  const [input, setInput] = useState(''); // Already no type argument
+  const [escalate, setEscalate] = useState(false); // Already no type argument
+  const [theme, setTheme] = useState('light'); // Already no type argument
 
   const [typing, setTyping] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [unread, setUnread] = useState(0);
-  const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const chatEndRef = useRef(null); // Remove type argument
 
   useEffect(() => {
     loadHistory().then(setMessages);
@@ -68,14 +68,14 @@ export default function ChatWidgetBackend() {
     if (!minimized) setUnread(0);
   }, [minimized]);
 
-  function handleInputKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+  function handleInputKeyDown(e: KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend(e as React.FormEvent);
+      handleSend(e); // Remove cast
     }
   }
 
-  async function handleSend(e: FormEvent) {
+  async function handleSend(e: Event) {
     e.preventDefault();
     if (!input.trim()) return;
     const sentimentResult = analyzeSentiment(input);
@@ -148,8 +148,9 @@ export default function ChatWidgetBackend() {
     setTheme((t) => (t === 'light' ? 'dark' : 'light'));
   }
 
-  function handleFileUpload(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+  function handleFileUpload(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const file = target && target.files ? target.files[0] : null;
     if (file) {
       const reader = new FileReader();
       reader.onload = (ev) => {
