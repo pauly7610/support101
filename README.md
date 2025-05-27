@@ -39,7 +39,7 @@
 ```text
 support101/
 ├── apps/
-│   ├── backend/           # FastAPI API (RAG, ingestion, LLM)
+│   ├── backend/           # FastAPI API (RAG, ingestion, LLM, Alembic migrations)
 │   ├── agent-copilot/     # React Chrome Extension for agent support
 │   └── customer-bot/      # Next.js Chatbot widget
 ├── packages/
@@ -51,6 +51,32 @@ support101/
 ├── turbo.json
 └── README.md
 ```
+
+---
+
+## Database Migrations & Testing
+
+- **Canonical Alembic migrations directory:**
+  - All migration scripts are located in `apps/backend/migrations/versions/`.
+  - The Alembic config is `apps/backend/alembic.ini`.
+  - Example command to generate a migration (from repo root):
+    ```bash
+    # On Windows PowerShell
+    $env:PYTHONPATH="apps/backend"; alembic -c apps/backend/alembic.ini revision --autogenerate -m "My migration"
+    # On Linux/macOS
+    PYTHONPATH=apps/backend alembic -c apps/backend/alembic.ini revision --autogenerate -m "My migration"
+    ```
+  - To apply migrations:
+    ```bash
+    $env:PYTHONPATH="apps/backend"; alembic -c apps/backend/alembic.ini upgrade head
+    ```
+- **CI/CD:**
+  - The workflow ensures the database exists, runs Alembic migrations, and then runs backend tests.
+  - If you see `relation "users" does not exist`, check that migrations ran and the correct DB is targeted.
+- **Troubleshooting:**
+  - Ensure all relevant directories (`app/`, `app/core/`, `app/auth/`) contain `__init__.py` files.
+  - Only one canonical migrations directory should exist: `apps/backend/migrations`.
+  - If Alembic does not detect models, check imports in `migrations/env.py` and `PYTHONPATH`.
 
 ---
 
