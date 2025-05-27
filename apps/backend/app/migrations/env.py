@@ -3,9 +3,8 @@ import sys
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
-
 from core.db import Base
+from sqlalchemy import engine_from_config, pool
 
 # Ensure parent directory is in sys.path for Alembic to find app modules
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))

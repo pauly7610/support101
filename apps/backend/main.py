@@ -11,17 +11,8 @@ from app.auth.users import create_user, get_user_by_username, verify_password
 from app.core.cache import init_redis
 from app.core.db import get_db
 from dotenv import load_dotenv
-from fastapi import (
-    Body,
-    Depends,
-    FastAPI,
-    File,
-    Form,
-    HTTPException,
-    Request,
-    UploadFile,
-    status,
-)
+from fastapi import (Body, Depends, FastAPI, File, Form, HTTPException,
+                     Request, UploadFile, status)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer
@@ -33,16 +24,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from packages.llm_engine.chains.rag_chain import RAGChain
 from packages.llm_engine.embeddings import get_fastembed_model
-from packages.llm_engine.vector_store import (
-    get_pinecone_index,
-    upsert_documents_to_pinecone,
-)
-from packages.shared.models import (
-    DocumentPayload,
-    IngestResponse,
-    SuggestedResponse,
-    TicketContext,
-)
+from packages.llm_engine.vector_store import (get_pinecone_index,
+                                              upsert_documents_to_pinecone)
+from packages.shared.models import (DocumentPayload, IngestResponse,
+                                    SuggestedResponse, TicketContext)
 
 # Load environment variables from .env if available
 load_dotenv()
