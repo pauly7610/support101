@@ -1,20 +1,28 @@
 {
   "devDependencies": {
+    "@babel/core": "^7.24.7",
+    "@babel/preset-react": "^7.24.7",
     "@typescript-eslint/eslint-plugin": "^5.0.0",
     "@typescript-eslint/parser": "^5.0.0",
+    "autoprefixer": "^10.4.21",
+    "babel-loader": "^8.4.1",
+    "cypress": "^14.4.0",
     "cypress-axe": "^1.6.0",
     "cypress-file-upload": "^5.0.8",
-    "eslint": "^8.57.1",
+    "eslint": "8.57.1",
     "eslint-config-prettier": "^8.0.0",
     "eslint-plugin-prettier": "^4.2.1",
-    "eslint-plugin-react": "^7.0.0",
+    "eslint-plugin-react": "^7.37.5",
     "husky": "^8.0.0",
     "lint-staged": "^15.0.0",
+    "postcss": "^8.5.3",
     "prettier": "^2.8.0",
     "stylelint": "^15.11.0",
     "stylelint-config-standard": "^34.0.0",
     "typescript": "^5.1.6",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "webpack": "^5.76.5",
+    "webpack-cli": "^4.10.0"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
