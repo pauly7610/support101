@@ -1,8 +1,9 @@
 import hashlib
-from sqlalchemy.future import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
+
 from app.auth.models import User
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 
 
 async def get_user_by_username(session: AsyncSession, username: str) -> Optional[User]:

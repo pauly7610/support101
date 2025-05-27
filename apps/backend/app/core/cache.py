@@ -1,7 +1,8 @@
+import os
+
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
 from redis import asyncio as aioredis
-import os
 
 
 async def init_redis():

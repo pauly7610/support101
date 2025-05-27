@@ -2,42 +2,35 @@ import io
 import mimetypes
 import os
 import uuid
+from contextlib import asynccontextmanager
 from typing import List
 
-from app.auth.jwt import create_access_token, get_current_user
-from app.auth.users import get_user_by_username, verify_password, create_user
-from app.core.db import get_db
-from app.core.cache import init_redis
-from fastapi_cache.decorator import cache
-from fastapi import status, Form, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from dotenv import load_dotenv
-
-# Load environment variables from .env if available
-load_dotenv()
-
 import pdfplumber
-from fastapi import Body, FastAPI, File, HTTPException, Request, UploadFile
+from app.auth.jwt import create_access_token, get_current_user
+from app.auth.users import create_user, get_user_by_username, verify_password
+from app.core.cache import init_redis
+from app.core.db import get_db
+from dotenv import load_dotenv
+from fastapi import (Body, Depends, FastAPI, File, Form, HTTPException,
+                     Request, UploadFile, status)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer
+from fastapi_cache.decorator import cache
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
-from prometheus_client import Histogram, Counter, REGISTRY
-from contextlib import asynccontextmanager
+from prometheus_client import REGISTRY, Counter, Histogram
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from packages.llm_engine.chains.rag_chain import RAGChain
 from packages.llm_engine.embeddings import get_fastembed_model
-from packages.llm_engine.vector_store import (
-    get_pinecone_index,
-    upsert_documents_to_pinecone,
-)
-from packages.shared.models import (
-    DocumentPayload,
-    IngestResponse,
-    SuggestedResponse,
-    TicketContext,
-)
+from packages.llm_engine.vector_store import (get_pinecone_index,
+                                              upsert_documents_to_pinecone)
+from packages.shared.models import (DocumentPayload, IngestResponse,
+                                    SuggestedResponse, TicketContext)
+
+# Load environment variables from .env if available
+load_dotenv()
 
 
 app = FastAPI(title="Support Intelligence Core API")
