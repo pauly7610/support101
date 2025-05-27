@@ -100,19 +100,21 @@ def setup_test_db():
 
 
 import hashlib
-from apps.backend.app.auth.models import User
 
 # --- Mock external APIs for test safety ---
 import pytest
 
+from apps.backend.app.auth.models import User
+
+
 @pytest.fixture(autouse=True)
 def mock_externals(mocker):
     try:
-        mocker.patch('pinecone.Index.query', return_value={'matches': []})
+        mocker.patch("pinecone.Index.query", return_value={"matches": []})
     except Exception:
         pass
     try:
-        mocker.patch('firecrawl.FirecrawlApp.scrape')
+        mocker.patch("firecrawl.FirecrawlApp.scrape")
     except Exception:
         pass
 
