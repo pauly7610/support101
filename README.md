@@ -53,6 +53,28 @@ support101/
 ```
 
 ---
+
+## Configuration & Environment Variables
+
+Before running the backend or frontend, you must set up your environment variables. Copy `.env.example` to `.env` and provide your own API keys and database URLs:
+
+```bash
+cp .env.example .env
+```
+
+**Required variables:**
+- `DATABASE_URL`: Your database connection string (e.g., PostgreSQL, MySQL, SQLite)
+- `OPENAI_API_KEY`: Your OpenAI API key (if using OpenAI models)
+- `PINECONE_API_KEY`: Your Pinecone API key (for vector storage)
+- `PINECONE_ENVIRONMENT`: Pinecone environment (e.g., `gcp-starter`)
+- `SECRET_KEY`: (Backend secret for Flask, Django, etc.)
+- `REDIS_URL`: (Optional, for caching, async tasks)
+
+See `.env.example` for all supported variables.
+
+**Note:** Never commit your real API keys or secrets to version control. Use environment variables or a `.env` file that is excluded via `.gitignore`.
+
+---
 ## Key Features
 
 - **Retrieval-Augmented Generation (RAG):**
