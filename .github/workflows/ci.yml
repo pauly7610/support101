@@ -39,6 +39,9 @@ jobs:
           source ~/.venv/bin/activate
           pip install -r apps/backend/requirements.txt
 
+      - name: Add project root to PYTHONPATH
+        run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
+
       - name: Install lint tools
         run: |
           set -e
