@@ -1,6 +1,5 @@
 import asyncio
 import hashlib
-import os
 
 import pytest
 import pytest_asyncio
@@ -13,16 +12,15 @@ from apps.backend.app.core.db import Base
 from apps.backend.main import app as fastapi_app
 from apps.backend.main import get_db
 
-# Force all test code to use the test DB
-TEST_DATABASE_URL = os.getenv(
-    "TEST_DATABASE_URL",
-    "postgresql+asyncpg://postgres:postgres@localhost:5432/support101_test",
-)
-os.environ["DATABASE_URL"] = TEST_DATABASE_URL
-os.environ.setdefault("OPENAI_API_KEY", "dummy")
-
+TEST_DATABASE_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/support101_test"
 engine = create_async_engine(TEST_DATABASE_URL, future=True)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+# If you use FastAPI cache, import and initialize here
+try:
+    from apps.backend.app.core.cache import init_redis
+except ImportError:
+    init_redis = None
 
 
 @pytest.fixture(scope="session")
@@ -32,7 +30,7 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_database():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
@@ -41,12 +39,6 @@ async def setup_database():
         await init_redis()
     yield
     await engine.dispose()
-
-
-@pytest_asyncio.fixture(scope="function")
-async def async_session(setup_database):
-    async with AsyncSessionLocal() as session:
-        yield session
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -62,14 +54,6 @@ async def async_client(async_session):
     fastapi_app.dependency_overrides.clear()
 
 
-# If you use FastAPI cache, import and initialize here
-try:
-    from apps.backend.app.core.cache import init_redis
-except ImportError:
-    init_redis = None
-
-
-# --- Mock external APIs for test safety ---
 @pytest.fixture(autouse=True)
 def mock_externals(mocker):
     try:
