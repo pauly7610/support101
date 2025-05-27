@@ -102,6 +102,20 @@ def setup_test_db():
 import hashlib
 from apps.backend.app.auth.models import User
 
+# --- Mock external APIs for test safety ---
+import pytest
+
+@pytest.fixture(autouse=True)
+def mock_externals(mocker):
+    try:
+        mocker.patch('pinecone.Index.query', return_value={'matches': []})
+    except Exception:
+        pass
+    try:
+        mocker.patch('firecrawl.FirecrawlApp.scrape')
+    except Exception:
+        pass
+
 
 @pytest.fixture(scope="session", autouse=True)
 def create_admin_user(setup_test_db):

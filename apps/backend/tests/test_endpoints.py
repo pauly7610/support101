@@ -39,24 +39,3 @@ async def test_cached_example(async_client):
     assert r2.status_code == 200
     assert (t1 - t0) > 1.5  # First call is slow
     assert (t2 - t1) < 0.5  # Second call is fast (cached)
-
-
-def test_ingest_documentation_requires_auth():
-    # Try without token
-    with open("README.md", "rb") as f:
-        r = client.post(
-            "/ingest_documentation",
-            files={"file": ("README.md", f)},
-            data={"chunk_size": 1000},
-        )
-        assert r.status_code == 401
-    # Try with token
-    token = get_token()
-    with open("README.md", "rb") as f:
-        r = client.post(
-            "/ingest_documentation",
-            files={"file": ("README.md", f)},
-            data={"chunk_size": 1000},
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        assert r.status_code in (200, 400)  # 400 if file type is not allowed

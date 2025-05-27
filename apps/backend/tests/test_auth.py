@@ -43,5 +43,3 @@ async def test_cached_example(async_client):
     # First response should take longer than second (cached)
     assert (t1 - t0) > 1.5
     assert (t2 - t1) < 0.5
-    assert (t1 - t0) > 1.5
-    assert (t2 - t1) < 0.5
