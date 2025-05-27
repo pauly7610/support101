@@ -8,10 +8,21 @@ const colorMap = {
   default: 'bg-gray-200 text-gray-700',
 };
 
+import PropTypes from 'prop-types';
+
 export default function StatusBadge({ status = 'default', children }) {
   return (
-    <span className={`inline-block px-3 py-1 text-xs rounded-full font-semibold ${colorMap[status] || colorMap.default}`}>
+    <span
+      className={`inline-block px-3 py-1 text-xs rounded-full font-semibold ${
+        colorMap[status] || colorMap.default
+      }`}
+    >
       {children}
     </span>
   );
 }
+
+StatusBadge.propTypes = {
+  status: PropTypes.string,
+  children: PropTypes.node,
+};

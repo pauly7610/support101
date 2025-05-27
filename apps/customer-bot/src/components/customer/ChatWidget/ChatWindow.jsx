@@ -1,5 +1,7 @@
 import React from 'react';
 
+import PropTypes from 'prop-types';
+
 export default function ChatWindow({ onClose, onMinimize, children, loading, error }) {
   return (
     <div className="fixed bottom-24 right-6 w-[380px] h-[600px] bg-white rounded-chat shadow-xl flex flex-col z-50 animate-fade-in">
@@ -7,11 +9,24 @@ export default function ChatWindow({ onClose, onMinimize, children, loading, err
       <div className="h-16 bg-primary-blue flex items-center justify-between px-6 rounded-t-chat">
         <span className="text-white text-lg font-semibold">Support Assistant</span>
         <div className="flex gap-2">
-          <button onClick={onMinimize} aria-label="Minimize" className="text-white hover:text-gray-200">
-            <svg width="20" height="20" fill="none" viewBox="0 0 20 20"><rect y="9" width="20" height="2" rx="1" fill="currentColor"/></svg>
+          <button
+            onClick={onMinimize}
+            aria-label="Minimize"
+            className="text-white hover:text-gray-200"
+          >
+            <svg width="20" height="20" fill="none" viewBox="0 0 20 20">
+              <rect y="9" width="20" height="2" rx="1" fill="currentColor" />
+            </svg>
           </button>
           <button onClick={onClose} aria-label="Close" className="text-white hover:text-gray-200">
-            <svg width="20" height="20" fill="none" viewBox="0 0 20 20"><path d="M6 6l8 8M6 14L14 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+            <svg width="20" height="20" fill="none" viewBox="0 0 20 20">
+              <path
+                d="M6 6l8 8M6 14L14 6"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
           </button>
         </div>
       </div>
@@ -26,3 +41,11 @@ export default function ChatWindow({ onClose, onMinimize, children, loading, err
     </div>
   );
 }
+
+ChatWindow.propTypes = {
+  onClose: PropTypes.func.isRequired,
+  onMinimize: PropTypes.func.isRequired,
+  children: PropTypes.node,
+  loading: PropTypes.bool,
+  error: PropTypes.string,
+};

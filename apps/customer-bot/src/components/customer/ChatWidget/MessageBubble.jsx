@@ -1,5 +1,7 @@
 import React from 'react';
 
+import PropTypes from 'prop-types';
+
 export default function MessageBubble({ from, text, timestamp, sources }) {
   const isUser = from === 'user';
   return (
@@ -15,7 +17,13 @@ export default function MessageBubble({ from, text, timestamp, sources }) {
         <div>{text}</div>
         {sources && (
           <div className="text-xs mt-1 text-primary-blue-light">
-            Sources: {sources.map((s, idx) => <span key={idx}>{s}{idx < sources.length-1 ? ', ' : ''}</span>)}
+            Sources:{' '}
+            {sources.map((s, idx) => (
+              <span key={idx}>
+                {s}
+                {idx < sources.length - 1 ? ', ' : ''}
+              </span>
+            ))}
           </div>
         )}
         <div className="text-xs text-gray-500 mt-1 text-right">{timestamp}</div>
@@ -23,3 +31,10 @@ export default function MessageBubble({ from, text, timestamp, sources }) {
     </div>
   );
 }
+
+MessageBubble.propTypes = {
+  from: PropTypes.string.isRequired,
+  text: PropTypes.string.isRequired,
+  timestamp: PropTypes.string.isRequired,
+  sources: PropTypes.arrayOf(PropTypes.string),
+};
