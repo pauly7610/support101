@@ -67,6 +67,13 @@ jobs:
           PGUSER: postgres
           PGPASSWORD: postgres
 
+      - name: Create database for Alembic
+        run: |
+          sudo apt-get install -y postgresql-client
+          psql -h localhost -U postgres -c "CREATE DATABASE support101;"
+        env:
+          PGPASSWORD: postgres
+
       - name: Start Redis
         uses: supercharge/redis-github-action@1.6.0
         with:
