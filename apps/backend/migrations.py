@@ -1,6 +1,6 @@
 import asyncio
 
-from apps.backend.db import Base, engine
+from apps.backend.app.core.db import Base, engine
 
 
 async def run_migrations() -> None:

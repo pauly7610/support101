@@ -1,7 +1,7 @@
 import hashlib
 from typing import Optional
 
-from app.auth.models import User
+from apps.backend.app.auth.models import User
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 

@@ -1,44 +1,29 @@
-import asyncio
-
 import pytest
-from app.core.db import Base, engine
-from fastapi.testclient import TestClient
-from main import app
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 
-client = TestClient(app)
-
-
-@pytest.fixture(scope="session", autouse=True)
-def create_test_db():
-    # Create tables
-    asyncio.run(Base.metadata.create_all(bind=engine))
-    yield
-    # Drop tables after tests
-    asyncio.run(Base.metadata.drop_all(bind=engine))
-
-
-@pytest.fixture(scope="function")
-def db_session():
-    Session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    session = Session()
-    yield session
-    asyncio.run(session.close())
-
-
-def test_register_and_login_success(create_test_db):
+@pytest.mark.asyncio
+async def test_register_and_login_success(async_client):
     username = "testuser"
     password = "testpass"
     # Register
-    r = client.post("/register", data={"username": username, "password": password})
+    r = await async_client.post("/register", data={"username": username, "password": password})
     assert r.status_code == 200
     # Login
-    login_response = client.post("/login", data={"username": username, "password": password})
+    login_response = await async_client.post("/login", data={"username": username, "password": password})
     assert login_response.status_code == 200
     assert "access_token" in login_response.json()
 
+@pytest.mark.asyncio
+async def test_login_wrong_password(async_client):
+    username = "testuser2"
+    password = "testpass2"
+    await async_client.post("/register", data={"username": username, "password": password})
+    r = await async_client.post("/login", data={"username": username, "password": "wrong"})
+    assert r.status_code == 401
 
+@pytest.mark.asyncio
+async def test_login_nonexistent_user(async_client):
+    r = await async_client.post("/login", data={"username": "ghost", "password": "ghostpass"})
+    assert r.status_code == 401
 def test_register_duplicate(create_test_db):
     username = "dupeuser"
     password = "dupepass"

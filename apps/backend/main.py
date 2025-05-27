@@ -6,10 +6,10 @@ from contextlib import asynccontextmanager
 from typing import List
 
 import pdfplumber
-from app.auth.jwt import create_access_token, get_current_user
-from app.auth.users import create_user, get_user_by_username, verify_password
-from app.core.cache import init_redis
-from app.core.db import get_db
+from apps.backend.app.auth.jwt import create_access_token, get_current_user
+from apps.backend.app.auth.users import create_user, get_user_by_username, verify_password
+from apps.backend.app.core.cache import init_redis
+from apps.backend.app.core.db import get_db
 from dotenv import load_dotenv
 from fastapi import (
     Body,
