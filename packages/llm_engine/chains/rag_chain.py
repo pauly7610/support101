@@ -13,11 +13,14 @@ from langchain.schema.runnable import RunnableLambda, RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
-from tenacity import (retry, retry_if_exception_type, stop_after_attempt,
-                      wait_exponential)
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
-from packages.shared.models import (SourceDocument, SuggestedResponse,
-                                    TicketContext)
+from packages.shared.models import SourceDocument, SuggestedResponse, TicketContext
 
 from ..embeddings import get_fastembed_model
 from ..vector_store import query_pinecone

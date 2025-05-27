@@ -7,8 +7,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
-from packages.shared.models import (SourceDocument, SuggestedResponse,
-                                    TicketContext)
+from packages.shared.models import SourceDocument, SuggestedResponse, TicketContext
 
 from .embeddings import get_fastembed_model
 from .vector_store import query_pinecone
