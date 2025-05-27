@@ -48,9 +48,9 @@ jobs:
       - name: Lint
         run: |
           set -e
-          black --check .
-          flake8
-          isort --check-only .
+          ~/.venv/bin/black --check .
+          ~/.venv/bin/flake8
+          ~/.venv/bin/isort --check-only .
 
       - name: Check for missing LLM engine components
         run: |
