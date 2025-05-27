@@ -56,9 +56,7 @@ def get_pinecone_index(
             if "already exists" in str(e).lower():
                 print(f"Index '{index_name}' already exists.")
             else:
-                raise RuntimeError(
-                    f"Failed to create Pinecone index '{index_name}': {e}"
-                )
+                raise RuntimeError(f"Failed to create Pinecone index '{index_name}': {e}")
     _pinecone_index = client.Index(index_name)
     return _pinecone_index
 
@@ -97,12 +95,8 @@ async def upsert_documents_to_pinecone(
     return num_upserted
 
 
-async def query_pinecone(
-    query_text: str, embedding_model: FastEmbedModelType, top_k: int = 3
-) -> List[dict]:
+async def query_pinecone(query_text: str, embedding_model: FastEmbedModelType, top_k: int = 3) -> List[dict]:
     index = get_pinecone_index()
     query_embedding = list(embedding_model.embed([query_text]))[0].tolist()
-    query_response = index.query(
-        vector=query_embedding, top_k=top_k, include_metadata=True
-    )
+    query_response = index.query(vector=query_embedding, top_k=top_k, include_metadata=True)
     return query_response.get("matches", [])

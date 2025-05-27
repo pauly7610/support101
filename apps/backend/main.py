@@ -11,8 +11,17 @@ from app.auth.users import create_user, get_user_by_username, verify_password
 from app.core.cache import init_redis
 from app.core.db import get_db
 from dotenv import load_dotenv
-from fastapi import (Body, Depends, FastAPI, File, Form, HTTPException,
-                     Request, UploadFile, status)
+from fastapi import (
+    Body,
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer
@@ -24,10 +33,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from packages.llm_engine.chains.rag_chain import RAGChain
 from packages.llm_engine.embeddings import get_fastembed_model
-from packages.llm_engine.vector_store import (get_pinecone_index,
-                                              upsert_documents_to_pinecone)
-from packages.shared.models import (DocumentPayload, IngestResponse,
-                                    SuggestedResponse, TicketContext)
+from packages.llm_engine.vector_store import (
+    get_pinecone_index,
+    upsert_documents_to_pinecone,
+)
+from packages.shared.models import (
+    DocumentPayload,
+    IngestResponse,
+    SuggestedResponse,
+    TicketContext,
+)
 
 # Load environment variables from .env if available
 load_dotenv()
@@ -69,9 +84,7 @@ async def register(
 ):
     existing = await get_user_by_username(db, username)
     if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists")
     user = await create_user(db, username, password)
     return {"id": user.id, "username": user.username}
 
@@ -89,9 +102,7 @@ async def login(
 ):
     user = await get_user_by_username(db, username)
     if not user or not verify_password(password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     token = create_access_token({"sub": username})
     return {"access_token": token, "token_type": "bearer"}
 
@@ -144,16 +155,12 @@ except ValueError:
     LLM_RESPONSE_TIME = REGISTRY._names_to_collectors["llm_response_time_seconds"]
 
 try:
-    API_ERROR_COUNT = Counter(
-        "api_error_count", "Count of API errors", ["endpoint", "exception_type"]
-    )
+    API_ERROR_COUNT = Counter("api_error_count", "Count of API errors", ["endpoint", "exception_type"])
 except ValueError:
     API_ERROR_COUNT = REGISTRY._names_to_collectors["api_error_count"]
 
 try:
-    VECTOR_STORE_CACHE_HITS = Counter(
-        "vector_store_cache_hits", "Count of vector store cache hits"
-    )
+    VECTOR_STORE_CACHE_HITS = Counter("vector_store_cache_hits", "Count of vector store cache hits")
 except ValueError:
     VECTOR_STORE_CACHE_HITS = REGISTRY._names_to_collectors["vector_store_cache_hits"]
 
@@ -172,9 +179,7 @@ async def prometheus_error_middleware(request: Request, call_next):
         response = await call_next(request)
         return response
     except Exception as exc:
-        API_ERROR_COUNT.labels(
-            endpoint=request.url.path, exception_type=type(exc).__name__
-        ).inc()
+        API_ERROR_COUNT.labels(endpoint=request.url.path, exception_type=type(exc).__name__).inc()
         raise
 
 
@@ -202,13 +207,8 @@ async def health_check():
     }
 
 
-def chunk_page_content(
-    page_content: str, chunk_size: int = 1000, chunk_overlap: int = 100
-) -> List[str]:
-    return [
-        page_content[i : i + chunk_size]
-        for i in range(0, len(page_content), chunk_size - chunk_overlap)
-    ]
+def chunk_page_content(page_content: str, chunk_size: int = 1000, chunk_overlap: int = 100) -> List[str]:
+    return [page_content[i : i + chunk_size] for i in range(0, len(page_content), chunk_size - chunk_overlap)]
 
 
 @app.post("/ingest_documentation", response_model=IngestResponse)
@@ -283,9 +283,7 @@ async def ingest_documentation_endpoint(
                 chunked_count += 1
         if documents_to_upsert:
             embedding_model = get_fastembed_model()
-            upserted_count = await upsert_documents_to_pinecone(
-                documents_to_upsert, embedding_model
-            )
+            upserted_count = await upsert_documents_to_pinecone(documents_to_upsert, embedding_model)
         return IngestResponse(
             status="success",
             message=(
@@ -333,9 +331,7 @@ async def generate_reply_endpoint(
             return JSONResponse(status_code=504, content=response.error)
         return response
     except Exception as e:
-        API_ERROR_COUNT.labels(
-            endpoint="/generate_reply", exception_type=type(e).__name__
-        ).inc()
+        API_ERROR_COUNT.labels(endpoint="/generate_reply", exception_type=type(e).__name__).inc()
         print(f"Error in /generate_reply: {e}")
         import traceback
 
@@ -344,9 +340,7 @@ async def generate_reply_endpoint(
             status_code=500,
             content={
                 "error_type": "generate_reply_exception",
-                "message": mask_api_keys(
-                    f"Failed to generate reply due to an unexpected error: " f"{str(e)}"
-                ),
+                "message": mask_api_keys(f"Failed to generate reply due to an unexpected error: " f"{str(e)}"),
                 "retryable": False,  # Usually false for unexpected server errors
                 "documentation": "https://api.support101/errors#E500",
             },

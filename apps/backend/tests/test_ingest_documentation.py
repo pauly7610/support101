@@ -6,12 +6,8 @@ from ...backend.main import app
 client = TestClient(app)
 
 
-@pytest.mark.xfail(
-    reason="Ingest endpoint not fully implemented or requires real API key"
-)
-@pytest.mark.xfail(
-    reason="/ingest_documentation returns 403 instead of 400 (likely missing auth or incomplete)"
-)
+@pytest.mark.xfail(reason="Ingest endpoint not fully implemented or requires real API key")
+@pytest.mark.xfail(reason="/ingest_documentation returns 403 instead of 400 (likely missing auth or incomplete)")
 def test_invalid_file_type():
     resp = client.post(
         "/ingest_documentation",
@@ -21,12 +17,8 @@ def test_invalid_file_type():
     assert resp.status_code == 400
 
 
-@pytest.mark.xfail(
-    reason="Ingest endpoint not fully implemented or requires real API key"
-)
-@pytest.mark.xfail(
-    reason="/ingest_documentation returns 403 instead of 400 (likely missing auth or incomplete)"
-)
+@pytest.mark.xfail(reason="Ingest endpoint not fully implemented or requires real API key")
+@pytest.mark.xfail(reason="/ingest_documentation returns 403 instead of 400 (likely missing auth or incomplete)")
 def test_invalid_chunk_size():
     with open(__file__, "rb") as f:
         resp = client.post(

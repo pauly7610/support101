@@ -7,8 +7,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
-from packages.shared.models import (SourceDocument, SuggestedResponse,
-                                    TicketContext)
+from packages.shared.models import SourceDocument, SuggestedResponse, TicketContext
 
 from .embeddings import get_fastembed_model
 from .vector_store import query_pinecone
@@ -43,9 +42,7 @@ class RAGChain:
         self.prompt = ChatPromptTemplate.from_template(RAG_PROMPT_TEMPLATE)
 
         self.chain = (
-            RunnablePassthrough.assign(
-                context_str=RunnableLambda(self._retrieve_and_format_context)
-            )
+            RunnablePassthrough.assign(context_str=RunnableLambda(self._retrieve_and_format_context))
             | self.prompt
             | self.llm
             | StrOutputParser()
@@ -68,9 +65,7 @@ class RAGChain:
             url = payload_data.get("source_url", "Unknown URL")
             title = payload_data.get("title", "")
             if content:
-                context_parts.append(
-                    f"Source URL: {url}\nTitle: {title}\nContent:\n{content}\n---"
-                )
+                context_parts.append(f"Source URL: {url}\nTitle: {title}\nContent:\n{content}\n---")
                 self.retrieved_sources.append(SourceDocument(url=url, title=title))
         if not context_parts:
             return "No relevant documents found with content in the knowledge base."
@@ -80,6 +75,4 @@ class RAGChain:
         self.retrieved_sources = []
         question_to_llm = ticket_context.user_query or ticket_context.content or ""
         response_text = await self.chain.ainvoke({"question": question_to_llm})
-        return SuggestedResponse(
-            reply_text=response_text, sources=self.retrieved_sources
-        )
+        return SuggestedResponse(reply_text=response_text, sources=self.retrieved_sources)

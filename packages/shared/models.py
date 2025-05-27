@@ -16,9 +16,7 @@ class MemoryState(BaseModel):
     memory_id: Optional[str] = None
     user_id: Optional[str] = None
     state: Optional[dict] = None
-    conversation_history: Optional[List[Dict[str, str]]] = (
-        None  # e.g., [{"role": "user", "content": "Hi"}, ...]
-    )
+    conversation_history: Optional[List[Dict[str, str]]] = None  # e.g., [{"role": "user", "content": "Hi"}, ...]
 
 
 class TicketContext(BaseModel):
