@@ -54,7 +54,7 @@ jobs:
 
       - name: Check for missing LLM engine components
         run: |
-          if ! grep -q 'rag_chain.py' apps/backend/packages/llm_engine/chains/; then echo "rag_chain.py missing" && exit 1; fi
+          if [ ! -f packages/llm_engine/chains/rag_chain.py ]; then echo "rag_chain.py missing" && exit 1; fi
 
       - name: Start Postgres
         uses: harmon758/postgresql-action@v1
