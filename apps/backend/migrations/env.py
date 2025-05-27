@@ -1,6 +1,7 @@
 from logging.config import fileConfig
 
 from alembic import context
+from app.core.db import Base
 from sqlalchemy import engine_from_config, pool
 
 # this is the Alembic Config object, which provides
@@ -12,15 +13,10 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-from app.auth.models import User  # Ensure User is imported so Alembic detects it
-
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-from app.core.db import Base
 
-print("DEBUG: Tables found in Base.metadata:", Base.metadata.tables.keys())
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
