@@ -66,8 +66,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      - name: Install frontend dependencies
+      - name: Install frontend dependencies (root and apps)
         run: |
+          npm ci --no-audit --no-fund
           cd apps/agent-copilot && npm ci --no-audit --no-fund
           cd ../customer-bot && npm ci --no-audit --no-fund
 
