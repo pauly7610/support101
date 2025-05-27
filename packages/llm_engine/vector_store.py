@@ -95,7 +95,9 @@ async def upsert_documents_to_pinecone(
     return num_upserted
 
 
-async def query_pinecone(query_text: str, embedding_model: FastEmbedModelType, top_k: int = 3) -> List[dict]:
+async def query_pinecone(
+    query_text: str, embedding_model: FastEmbedModelType, top_k: int = 3
+) -> List[dict]:
     index = get_pinecone_index()
     query_embedding = list(embedding_model.embed([query_text]))[0].tolist()
     query_response = index.query(vector=query_embedding, top_k=top_k, include_metadata=True)

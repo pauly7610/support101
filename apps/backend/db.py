@@ -4,7 +4,9 @@ from sqlalchemy import Column, DateTime, Float, Integer, String, Text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-POSTGRES_URL = os.getenv("POSTGRES_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/support101")
+POSTGRES_URL = os.getenv(
+    "POSTGRES_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/support101"
+)
 
 engine = create_async_engine(POSTGRES_URL, echo=True, future=True)
 SessionLocal = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)

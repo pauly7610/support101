@@ -84,7 +84,9 @@ async def register(
 ):
     existing = await get_user_by_username(db, username)
     if existing:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists"
+        )
     user = await create_user(db, username, password)
     return {"id": user.id, "username": user.username}
 
@@ -155,7 +157,9 @@ except ValueError:
     LLM_RESPONSE_TIME = REGISTRY._names_to_collectors["llm_response_time_seconds"]
 
 try:
-    API_ERROR_COUNT = Counter("api_error_count", "Count of API errors", ["endpoint", "exception_type"])
+    API_ERROR_COUNT = Counter(
+        "api_error_count", "Count of API errors", ["endpoint", "exception_type"]
+    )
 except ValueError:
     API_ERROR_COUNT = REGISTRY._names_to_collectors["api_error_count"]
 
@@ -207,8 +211,13 @@ async def health_check():
     }
 
 
-def chunk_page_content(page_content: str, chunk_size: int = 1000, chunk_overlap: int = 100) -> List[str]:
-    return [page_content[i : i + chunk_size] for i in range(0, len(page_content), chunk_size - chunk_overlap)]
+def chunk_page_content(
+    page_content: str, chunk_size: int = 1000, chunk_overlap: int = 100
+) -> List[str]:
+    return [
+        page_content[i : i + chunk_size]
+        for i in range(0, len(page_content), chunk_size - chunk_overlap)
+    ]
 
 
 @app.post("/ingest_documentation", response_model=IngestResponse)
@@ -283,7 +292,9 @@ async def ingest_documentation_endpoint(
                 chunked_count += 1
         if documents_to_upsert:
             embedding_model = get_fastembed_model()
-            upserted_count = await upsert_documents_to_pinecone(documents_to_upsert, embedding_model)
+            upserted_count = await upsert_documents_to_pinecone(
+                documents_to_upsert, embedding_model
+            )
         return IngestResponse(
             status="success",
             message=(
@@ -340,7 +351,9 @@ async def generate_reply_endpoint(
             status_code=500,
             content={
                 "error_type": "generate_reply_exception",
-                "message": mask_api_keys(f"Failed to generate reply due to an unexpected error: " f"{str(e)}"),
+                "message": mask_api_keys(
+                    f"Failed to generate reply due to an unexpected error: " f"{str(e)}"
+                ),
                 "retryable": False,  # Usually false for unexpected server errors
                 "documentation": "https://api.support101/errors#E500",
             },

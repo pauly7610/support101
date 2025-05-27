@@ -38,7 +38,9 @@ class RAGChain:
         self.llm = ChatOpenAI(model=os.getenv("LLM_MODEL_NAME", "gpt-4o"), temperature=0.3)
         self.prompt = ChatPromptTemplate.from_template(RAG_PROMPT_TEMPLATE)
         self.chain = (
-            RunnablePassthrough.assign(context_str=RunnableLambda(self._retrieve_and_format_context))
+            RunnablePassthrough.assign(
+                context_str=RunnableLambda(self._retrieve_and_format_context)
+            )
             | self.prompt
             | self.llm
             | StrOutputParser()
@@ -51,7 +53,9 @@ class RAGChain:
         retry=retry_if_exception_type(Exception),
     )
     async def _safe_query_pinecone(self, question: str, top_k: int = 3) -> List[dict]:
-        return await query_pinecone(query_text=question, embedding_model=self.embedding_model, top_k=top_k)
+        return await query_pinecone(
+            query_text=question, embedding_model=self.embedding_model, top_k=top_k
+        )
 
     async def _retrieve_and_format_context(self, input_data: Dict[str, Any]) -> str:
         question = input_data["question"]
@@ -83,7 +87,9 @@ class RAGChain:
         self.retrieved_sources = []
         question_to_llm = ticket_context.user_query or ticket_context.content or ""
         try:
-            response_text = await asyncio.wait_for(self.chain.ainvoke({"question": question_to_llm}), timeout=30)
+            response_text = await asyncio.wait_for(
+                self.chain.ainvoke({"question": question_to_llm}), timeout=30
+            )
         except asyncio.TimeoutError:
             return SuggestedResponse(
                 reply_text=None,

@@ -42,7 +42,9 @@ class RAGChain:
         self.prompt = ChatPromptTemplate.from_template(RAG_PROMPT_TEMPLATE)
 
         self.chain = (
-            RunnablePassthrough.assign(context_str=RunnableLambda(self._retrieve_and_format_context))
+            RunnablePassthrough.assign(
+                context_str=RunnableLambda(self._retrieve_and_format_context)
+            )
             | self.prompt
             | self.llm
             | StrOutputParser()

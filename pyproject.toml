@@ -2,4 +2,8 @@
 profile = "black"
 
 [tool.black]
-line-length = 120
+line-length = 100
+
+[flake8]
+max-line-length = 100
+line-length = 100
