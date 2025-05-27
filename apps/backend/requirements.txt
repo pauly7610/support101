@@ -22,6 +22,7 @@ fastapi-cache2==0.2.1
 prometheus_client
 asyncpg
 SQLAlchemy
+alembic
 # For PEP-8 formatting
 black
 flake8
