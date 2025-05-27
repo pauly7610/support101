@@ -6,7 +6,7 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from core.db import Base
-from auth.models import User
+
 
 config = context.config
 fileConfig(config.config_file_name)

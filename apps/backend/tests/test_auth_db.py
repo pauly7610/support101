@@ -5,7 +5,7 @@ from sqlalchemy.orm import sessionmaker
 from main import app
 from app.core.db import engine, Base
 import asyncio
-import sqlalchemy
+
 
 client = TestClient(app)
 
@@ -34,9 +34,11 @@ def test_register_and_login_success(create_test_db):
     r = client.post("/register", data={"username": username, "password": password})
     assert r.status_code == 200
     # Login
-    l = client.post("/login", data={"username": username, "password": password})
-    assert l.status_code == 200
-    assert "access_token" in l.json()
+    login_response = client.post(
+        "/login", data={"username": username, "password": password}
+    )
+    assert login_response.status_code == 200
+    assert "access_token" in login_response.json()
 
 
 def test_register_duplicate(create_test_db):
@@ -52,10 +54,14 @@ def test_login_wrong_password(create_test_db):
     username = "baduser"
     password = "goodpass"
     client.post("/register", data={"username": username, "password": password})
-    l = client.post("/login", data={"username": username, "password": "wrongpass"})
-    assert l.status_code == 401
+    login_response = client.post(
+        "/login", data={"username": username, "password": "wrongpass"}
+    )
+    assert login_response.status_code == 401
 
 
 def test_login_nonexistent_user(create_test_db):
-    l = client.post("/login", data={"username": "nope", "password": "nope"})
-    assert l.status_code == 401
+    login_response = client.post(
+        "/login", data={"username": "nope", "password": "nope"}
+    )
+    assert login_response.status_code == 401
