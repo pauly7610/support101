@@ -1,5 +1,7 @@
-import pytest
 import time
+
+import pytest
+
 
 @pytest.mark.asyncio
 async def test_login_success(async_client):
@@ -7,10 +9,12 @@ async def test_login_success(async_client):
     assert response.status_code == 200
     assert "access_token" in response.json()
 
+
 @pytest.mark.asyncio
 async def test_login_invalid(async_client):
     response = await async_client.post("/login", data={"username": "admin", "password": "wrong"})
     assert response.status_code == 401
+
 
 @pytest.mark.asyncio
 async def test_protected_route(async_client):
@@ -20,10 +24,12 @@ async def test_protected_route(async_client):
     assert response.status_code == 200
     assert "message" in response.json()
 
+
 @pytest.mark.asyncio
 async def test_protected_route_no_token(async_client):
     response = await async_client.get("/protected")
     assert response.status_code == 401
+
 
 @pytest.mark.asyncio
 async def test_cached_example(async_client):

@@ -6,10 +6,6 @@ from contextlib import asynccontextmanager
 from typing import List
 
 import pdfplumber
-from apps.backend.app.auth.jwt import create_access_token, get_current_user
-from apps.backend.app.auth.users import create_user, get_user_by_username, verify_password
-from apps.backend.app.core.cache import init_redis
-from apps.backend.app.core.db import get_db
 from dotenv import load_dotenv
 from fastapi import (
     Body,
@@ -31,6 +27,14 @@ from fastapi_limiter.depends import RateLimiter
 from prometheus_client import REGISTRY, Counter, Histogram
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from apps.backend.app.auth.jwt import create_access_token, get_current_user
+from apps.backend.app.auth.users import (
+    create_user,
+    get_user_by_username,
+    verify_password,
+)
+from apps.backend.app.core.cache import init_redis
+from apps.backend.app.core.db import get_db
 from packages.llm_engine.chains.rag_chain import RAGChain
 from packages.llm_engine.embeddings import get_fastembed_model
 from packages.llm_engine.vector_store import (

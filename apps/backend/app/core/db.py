@@ -12,6 +12,7 @@ Base = declarative_base()
 
 __all__ = ["Base", "engine", "SessionLocal", "AsyncSession"]
 
+
 async def get_db():
     async with SessionLocal() as session:
         yield session

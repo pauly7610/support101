@@ -1,5 +1,7 @@
-import pytest
 import time
+
+import pytest
+
 
 @pytest.mark.asyncio
 async def get_token(async_client):
@@ -11,6 +13,7 @@ async def get_token(async_client):
     r = await async_client.post("/login", data={"username": username, "password": password})
     return r.json()["access_token"]
 
+
 @pytest.mark.asyncio
 async def test_protected_endpoint(async_client):
     token = await get_token(async_client)
@@ -18,10 +21,12 @@ async def test_protected_endpoint(async_client):
     assert r.status_code == 200
     assert "message" in r.json()
 
+
 @pytest.mark.asyncio
 async def test_protected_endpoint_no_token(async_client):
     r = await async_client.get("/protected")
     assert r.status_code == 401
+
 
 @pytest.mark.asyncio
 async def test_cached_example(async_client):
@@ -34,6 +39,7 @@ async def test_cached_example(async_client):
     assert r2.status_code == 200
     assert (t1 - t0) > 1.5  # First call is slow
     assert (t2 - t1) < 0.5  # Second call is fast (cached)
+
 
 def test_ingest_documentation_requires_auth():
     # Try without token
