@@ -38,6 +38,7 @@ schedule
 isort
 #For testing
 pytest>=7.0.0
+pytest-asyncio==0.23.5
 # For rate limiting
 psycopg2-binary
 fastapi-limiter>=0.1.5
