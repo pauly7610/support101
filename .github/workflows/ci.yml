@@ -40,7 +40,7 @@ jobs:
           pip install -r apps/backend/requirements.txt
 
       - name: Add project root to PYTHONPATH
-        run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
+        run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)/apps/backend" >> $GITHUB_ENV
 
       - name: Install lint tools
         run: |
@@ -102,7 +102,7 @@ jobs:
           test -f apps/backend/migrations.py
           test -f packages/llm_engine/chains/rag_chain.py
       - name: Add project root to PYTHONPATH
-        run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
+        run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)/apps/backend" >> $GITHUB_ENV
 
       - name: Cache node_modules
         uses: actions/cache@v3
