@@ -63,19 +63,42 @@ async def lifespan(app):
     yield
 
 
-@app.post("/register", tags=["Auth"], summary="Register a new user", response_description="User created")
-async def register(username: str = Form(...), password: str = Form(...), db: AsyncSession = Depends(get_db)):
+@app.post(
+    "/register",
+    tags=["Auth"],
+    summary="Register a new user",
+    response_description="User created",
+)
+async def register(
+    username: str = Form(...),
+    password: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+):
     existing = await get_user_by_username(db, username)
     if existing:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Username already exists"
+        )
     user = await create_user(db, username, password)
     return {"id": user.id, "username": user.username}
 
-@app.post("/login", tags=["Auth"], summary="Login and get JWT token", response_description="JWT access token")
-async def login(username: str = Form(...), password: str = Form(...), db: AsyncSession = Depends(get_db)):
+
+@app.post(
+    "/login",
+    tags=["Auth"],
+    summary="Login and get JWT token",
+    response_description="JWT access token",
+)
+async def login(
+    username: str = Form(...),
+    password: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+):
     user = await get_user_by_username(db, username)
     if not user or not verify_password(password, user.hashed_password):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
+        )
     token = create_access_token({"sub": username})
     return {"access_token": token, "token_type": "bearer"}
 
@@ -84,12 +107,15 @@ async def login(username: str = Form(...), password: str = Form(...), db: AsyncS
 async def protected_route(user=Depends(get_current_user)):
     return {"message": f"Hello, {user.get('sub', 'user')}! You are authenticated."}
 
+
 @app.get("/cached-example", tags=["Cache"], summary="Example cached endpoint")
 @cache(expire=60)
 async def cached_example():
     import time
+
     time.sleep(2)  # Simulate expensive computation
     return {"result": "This response is cached for 60 seconds."}
+
 
 @app.post(
     "/feedback",
@@ -274,7 +300,7 @@ async def ingest_documentation_endpoint(
                 f"{upserted_count} document(s) added/updated."
             ),
             pages_crawled=len(text_pages),
-            documents_added=upserted_count
+            documents_added=upserted_count,
         )
     except Exception as e:
         return JSONResponse(
@@ -326,8 +352,7 @@ async def generate_reply_endpoint(
             content={
                 "error_type": "generate_reply_exception",
                 "message": mask_api_keys(
-                    f"Failed to generate reply due to an unexpected error: "
-                    f"{str(e)}"
+                    f"Failed to generate reply due to an unexpected error: " f"{str(e)}"
                 ),
                 "retryable": False,  # Usually false for unexpected server errors
                 "documentation": "https://api.support101/errors#E500",

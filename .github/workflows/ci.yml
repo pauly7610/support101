@@ -34,12 +34,20 @@ jobs:
 
       - name: Install dependencies
         run: |
+          set -e
           python -m venv ~/.venv
           source ~/.venv/bin/activate
           pip install -r apps/backend/requirements.txt
 
+      - name: Install lint tools
+        run: |
+          set -e
+          source ~/.venv/bin/activate
+          pip install black flake8 isort
+
       - name: Lint
         run: |
+          set -e
           black --check .
           flake8
           isort --check-only .
@@ -68,16 +76,19 @@ jobs:
 
       - name: Run Alembic migrations
         run: |
+          set -e
           source ~/.venv/bin/activate
           alembic -c apps/backend/alembic.ini upgrade head
 
       - name: Run backend tests
         run: |
+          set -e
           source ~/.venv/bin/activate
           pytest --maxfail=1 --disable-warnings --cov=apps/backend
 
       - name: Check backend components
         run: |
+          set -e
           test -f apps/backend/migrations.py
           test -f packages/llm_engine/chains/rag_chain.py
       - name: Add project root to PYTHONPATH
@@ -90,9 +101,6 @@ jobs:
           key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             node-modules-${{ runner.os }}-
-
-      - name: Run backend tests (pytest)
-        run: pytest apps/backend/tests
 
       # Node.js frontend setup
       - name: Set up Node.js ${{ matrix.node-version }}
@@ -126,17 +134,26 @@ jobs:
 
       - name: Install frontend dependencies (root and apps)
         run: |
+          set -e
           npm ci --no-audit --no-fund
           cd apps/agent-copilot && npm ci --no-audit --no-fund
           cd ../customer-bot && npm ci --no-audit --no-fund
 
-      - name: Install vite
+      - name: Build agent-copilot
         run: |
-          npm install -g vite
+          set -e
+          cd apps/agent-copilot
+          npm run build
 
+      - name: Build customer-bot
+        run: |
+          set -e
+          cd apps/customer-bot
+          npm run build
 
       - name: Lint frontends
         run: |
+          set -e
           cd apps/agent-copilot && npx --no-install eslint .
           cd ../customer-bot && npx eslint .
 
