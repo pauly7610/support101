@@ -1,10 +1,11 @@
-import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")))
+import asyncio
 from logging.config import fileConfig
 
 from alembic import context
-import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from apps.backend.app.core.db import Base
@@ -56,6 +57,7 @@ def run_migrations_offline() -> None:
 
 def get_url():
     return os.getenv("DATABASE_URL", config.get_main_option("sqlalchemy.url"))
+
 
 def run_migrations_online():
     url = get_url()
