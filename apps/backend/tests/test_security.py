@@ -25,7 +25,7 @@ def test_api_key_masking_in_error():
 
 
 @pytest.mark.asyncio
-def test_rate_limiting_on_generate_reply(async_client):
+async def test_rate_limiting_on_generate_reply(async_client):
     # Simulate burst of requests to /generate_reply
     rate_limited = False
     for _ in range(15):
