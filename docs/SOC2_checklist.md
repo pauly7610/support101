@@ -2,6 +2,9 @@
 
 - [ ] Access controls for all backend endpoints
 - [ ] JWT authentication enforced
+- [x] GDPR/CCPA endpoints implemented
+- [x] Audit logging for compliance endpoints
+- [x] Admin-only controls for sensitive actions
 - [ ] Pinecone vectors encrypted at rest
 - [ ] API keys rotated quarterly (Vault integration)
 - [ ] Chat logs anonymized after 30 days

@@ -12,9 +12,9 @@
     "test": "echo \"No tests specified\" && exit 0"
   },
   "dependencies": {
+    "eslint": "8.57.1",
     "idb-keyval": "^6.2.2",
     "next": "^14.0.0",
-    "eslint": "8.57.1",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "sentiment": "^5.0.2",
@@ -24,7 +24,8 @@
     "@types/cypress": "^1.1.6",
     "autoprefixer": "^10.4.21",
     "cypress": "^14.4.0",
-    "postcss": "^8.5.3",
-    "eslint-plugin-react": "^7.33.2"
+    "cypress-real-events": "^1.14.0",
+    "eslint-plugin-react": "^7.33.2",
+    "postcss": "^8.5.3"
   }
 }

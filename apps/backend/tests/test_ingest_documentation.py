@@ -1,16 +1,59 @@
 import pytest
 from fastapi.testclient import TestClient
-
 from ...backend.main import app
 
 client = TestClient(app)
 
 
-@pytest.mark.xfail(reason="Ingest endpoint not fully implemented or requires real API key")
-@pytest.mark.xfail(
-    reason="/ingest_documentation returns 403 instead of 400 (likely missing auth or incomplete)"
-)
+
+
+
+
+from fastapi.testclient import TestClient
+
+
+
+
+
+
+
+
+
+
+
+
+
+from ...backend.main import app
+
+
+
+
+
+
+
+
+
+
+
+
+
+client = TestClient(app)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def test_invalid_file_type():
+    """Test that ingestion rejects an invalid file type (e.g., .exe)."""
     resp = client.post(
         "/ingest_documentation",
         files={"file": ("test.exe", b"fake", "application/octet-stream")},
@@ -19,11 +62,8 @@ def test_invalid_file_type():
     assert resp.status_code == 400
 
 
-@pytest.mark.xfail(reason="Ingest endpoint not fully implemented or requires real API key")
-@pytest.mark.xfail(
-    reason="/ingest_documentation returns 403 instead of 400 (likely missing auth or incomplete)"
-)
 def test_invalid_chunk_size():
+    """Test that ingestion rejects an invalid chunk size."""
     with open(__file__, "rb") as f:
         resp = client.post(
             "/ingest_documentation",
@@ -31,3 +71,4 @@ def test_invalid_chunk_size():
             data={"chunk_size": 999999},
         )
     assert resp.status_code == 400
+

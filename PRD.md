@@ -163,6 +163,13 @@ Successful document ingestion rate
 
 Chatbot usage on test site
 
+🧪 Testing & Quality
+- Manual E2E tests for Copilot/Chatbot flows
+- Linting: Black, Flake8, ESLint, Prettier
+- CI: GitHub Actions, required checks
+- Async DB mocking for all backend tests (pytest-asyncio)
+- 100% coverage for compliance and analytics endpoints
+
 🧪 Non-Functional Requirements (NFRs)
 Performance: <5s agent reply, <3s chatbot
 

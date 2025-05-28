@@ -31,6 +31,7 @@ jobs:
           key: ${{ runner.os }}-python-${{ hashFiles('**/requirements.txt') }}
           restore-keys: |
             venv-${{ runner.os }}-
+        # Caches Python virtual environment and pip cache for faster builds
 
       - name: Install dependencies
         run: |
@@ -54,9 +55,11 @@ jobs:
           ~/.venv/bin/black --check .
           ~/.venv/bin/flake8
           ~/.venv/bin/isort --check-only .
+        # 'set -e' ensures the job fails on lint error; removed all '|| true' for strict compliance
 
       - name: Check for missing LLM engine components
         run: |
+          # Fail CI if core LLM engine file is missing
           if [ ! -f packages/llm_engine/chains/rag_chain.py ]; then echo "rag_chain.py missing" && exit 1; fi
 
       - name: Start Postgres
@@ -112,6 +115,7 @@ jobs:
           key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             node-modules-${{ runner.os }}-
+        # Caches node_modules for faster frontend builds
 
       # Node.js frontend setup
       - name: Set up Node.js ${{ matrix.node-version }}

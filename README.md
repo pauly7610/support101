@@ -26,11 +26,21 @@
 
 ## Features
 
+- **GDPR/CCPA Compliance:** Endpoints `/gdpr_delete` and `/ccpa_optout` with JWT auth for secure data deletion and opt-out, supporting regulatory compliance.
+- **Analytics & Reporting:** Escalation tracking, 30-day reporting, and agent/category breakdowns.
 - **FastAPI Backend:** LangChain RAG, ingestion pipeline, Pinecone, HuggingFace/OpenAI support
 - **Agent Copilot:** Chrome extension for Zendesk/Intercom
 - **Customer Chatbot:** Embeddable widget (Next.js + Tailwind)
 - **Shared Models & Design System:** Unified contracts, telemetry, and UI
 - **Built for:** Speed, reusability, and modularity
+
+## 🚦 New in This Release
+
+- **GDPR/CCPA Compliance:** Endpoints `/gdpr_delete` and `/ccpa_optout` with JWT auth for secure data deletion and opt-out, supporting regulatory compliance.
+- **Analytics & Reporting:** Escalation tracking, 30-day reporting, and agent/category breakdowns.
+- **Compliance UI:** Customer-facing settings and admin dashboard for data/privacy management.
+- **Async Test Infrastructure:** Refactored backend tests with async DB mocking, pytest-asyncio, and improved isolation.
+- **SQLAlchemy Utilities:** Enhanced DB layer for robust migrations and testability.
 
 ---
 

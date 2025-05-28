@@ -1,5 +1,9 @@
 # Agent Copilot (Chrome Extension)
 
+## Compliance UI
+- Customer-facing privacy/compliance settings
+- Admin dashboard for data management
+
 A React-based Chrome extension providing an AI-powered copilot sidebar for support agents.
 
 ## Features

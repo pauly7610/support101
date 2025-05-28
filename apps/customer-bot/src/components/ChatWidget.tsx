@@ -1,25 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-// Remove problematic type imports, use 'any' as fallback for event handlers if needed.
-
-// Simple IndexedDB wrapper using idb-keyval
+import CitationPopup from './CitationPopup';
 import Sentiment from 'sentiment';
 import * as idb from 'idb-keyval';
 
 const CHAT_HISTORY_KEY = 'chat_history';
 const sentiment = new Sentiment();
 
-type ChatMessage = {
-  sender: string;
-  text: string;
-  timestamp: number;
-  sentiment: string;
-  error?: boolean;
-};
+// Chat message structure; no explicit types per coding standards
+// Each agent message may include a citations array
 
-function saveHistory(history: ChatMessage[]) {
+function saveHistory(history) {
   idb.set(CHAT_HISTORY_KEY, history);
 }
-async function loadHistory(): Promise<ChatMessage[]> {
+async function loadHistory() {
   return (await idb.get(CHAT_HISTORY_KEY)) || [];
 }
 
@@ -60,12 +53,12 @@ export default function ChatWidget() {
     }, 2000);
   }
 
-  const [messages, setMessages] = useState([]); // Remove type argument
-  const [input, setInput] = useState(''); // Remove type argument
-  const [escalate, setEscalate] = useState(false); // Remove type argument
-  const [theme, setTheme] = useState('light'); // Remove type argument
-
-  const chatEndRef = useRef(null); // Remove type argument
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [escalate, setEscalate] = useState(false);
+  const [theme, setTheme] = useState('light');
+  const [citationPopup, setCitationPopup] = useState({ open: false, citation: null });
+  const chatEndRef = useRef(null);
 
   // Load chat history from IndexedDB
   useEffect(() => {
@@ -91,7 +84,7 @@ export default function ChatWidget() {
     }
   }
 
-  function handleSend(e: Event) {
+  async function handleSend(e) {
     e.preventDefault();
     if (!input.trim()) return;
     const sentimentResult = analyzeSentiment(input);
@@ -104,50 +97,37 @@ export default function ChatWidget() {
     };
     setMessages((prev) => [...prev, newMsg]);
     setInput('');
-    setTimeout(() => {
-      // 10% chance of agent error for demo
-      if (Math.random() < 0.1) {
-        setMessages((msgs) => [
-          ...msgs,
-          {
-            sender: 'agent',
-            text: 'Sorry, there was an error processing your request. [Retry]',
-            timestamp: Date.now() + 1000,
-            sentiment: 'normal',
-            error: true,
-          },
-        ]);
-      } else {
-        const agentReply = {
-          sender: 'agent',
-          // eslint-disable-next-line operator-linebreak
-          text: `Thank you for your message${
-            sentimentResult === 'urgent' ? ', we are escalating this to support.' : '!'
-          }`,
-
-          timestamp: Date.now() + 1000,
-          sentiment: 'normal',
-        };
-        setMessages((msgs) => [...msgs, agentReply]);
-      }
-    }, 700);
-  }
-
-  function handleRetry(idx: number) {
-    setMessages((msgs) => msgs.filter((_, i) => i !== idx));
-    setTimeout(() => {
+    try {
+      const response = await fetch('/generate_reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: input }),
+      });
+      if (!response.ok) throw new Error('Failed to get agent reply');
+      const data = await response.json();
+      const agentReply = {
+        sender: 'agent',
+        text: data.reply_text || 'Sorry, no response.',
+        timestamp: Date.now(),
+        sentiment: 'normal',
+        citations: data.citations || [],
+      };
+      setMessages((msgs) => [...msgs, agentReply]);
+    } catch (err) {
       setMessages((msgs) => [
         ...msgs,
         {
           sender: 'agent',
-          text: 'Thank you for your message! (Retried)',
+          text: 'Sorry, there was an error processing your request. [Retry]',
           timestamp: Date.now(),
           sentiment: 'normal',
+          error: true,
         },
       ]);
-    }, 700);
+    }
   }
 
+  
   function handleClear() {
     setMessages([]);
     setEscalate(false);
@@ -226,61 +206,6 @@ export default function ChatWidget() {
                     lineHeight: '28px',
                     color: '#1e40af',
                   }}
-                >
-                  🤖
-                </span>
-              )}
-              <span
-                className={`inline-block px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 ${
-                  msg.sender === 'user'
-                    ? theme === 'dark'
-                      ? 'bg-blue-900 text-blue-100'
-                      : 'bg-blue-100 text-blue-900'
-                    : theme === 'dark'
-                    ? 'bg-gray-800 text-gray-100'
-                    : 'bg-gray-100 text-gray-800'
-                }`}
-                style={{
-                  color: theme === 'dark' ? '#fff' : '#1a1a1a',
-                  background:
-                    msg.sender === 'user'
-                      ? theme === 'dark'
-                        ? '#1e40af'
-                        : '#e6f0ff'
-                      : theme === 'dark'
-                      ? '#222'
-                      : '#f4f4f4',
-                  minWidth: 40,
-                  maxWidth: 240,
-                  wordBreak: 'break-word',
-                  border: msg.sentiment === 'urgent' ? '2px solid #ff4d4f' : undefined,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                }}
-                tabIndex={0}
-              >
-                {msg.text}
-                <div
-                  className="text-xs text-gray-400 mt-1"
-                  aria-label="Timestamp"
-                  style={{ color: theme === 'dark' ? '#e0e7ef' : '#888' }}
-                >
-                  {new Date(msg.timestamp).toLocaleTimeString()}
-                </div>
-                {msg.error && (
-                  <button
-                    onClick={() => handleRetry(i)}
-                    aria-label="Retry message"
-                    className="ml-2 text-xs underline text-blue-600 focus:ring-2 focus:ring-blue-400"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-                  >
-                    Retry
-                  </button>
-                )}
-              </span>
-              {msg.sender === 'user' && (
-                <span
-                  aria-hidden
-                  className="rounded-full bg-blue-600"
                   style={{
                     width: 28,
                     height: 28,
@@ -294,6 +219,41 @@ export default function ChatWidget() {
                   }}
                 >
                   🧑
+                </span>
+              )}
+              <div data-cy="agent-message" className="break-all">
+                {msg.text}
+              </div>
+              {/* Render citation markers if agent and citations exist */}
+              {msg.sender === 'agent' && msg.citations && (
+                <span className="ml-1 align-top" aria-label="Citations">
+                  {msg.citations.map((c, idx) => (
+                    <button
+                      key={idx}
+                      data-cy={`citation-marker-${idx}`}
+                      aria-label={`Show citation ${idx + 1}`}
+                      tabIndex={0}
+                      className="inline text-blue-700 underline px-1 focus:ring-2 focus:ring-blue-400"
+                      style={{
+                        color: '#1e40af',
+                        background: 'none',
+                        border: 'none',
+                        fontWeight: 700,
+                        fontSize: '1em',
+                        cursor: 'pointer',
+                      }}
+                      onClick={() =>
+                        setCitationPopup({ open: true, citation: { ...c, idx: idx + 1 } })
+                      }
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          setCitationPopup({ open: true, citation: { ...c, idx: idx + 1 } });
+                        }
+                      }}
+                    >
+                      [{idx + 1}]
+                    </button>
+                  ))}
                 </span>
               )}
             </div>
@@ -342,6 +302,16 @@ export default function ChatWidget() {
           .focus-visible:focus { outline: 2px solid #2563eb; }
         `}</style>
       </div>
+      {/* Citation Popup */}
+      {citationPopup.open && citationPopup.citation && (
+        <CitationPopup
+          excerpt={citationPopup.citation.excerpt}
+          confidence={citationPopup.citation.confidence}
+          lastUpdated={citationPopup.citation.lastUpdated}
+          sourceUrl={citationPopup.citation.sourceUrl}
+          onClose={() => setCitationPopup({ open: false, citation: null })}
+        />
+      )}
       {/* Floating Feedback Button */}
       <button
         className="fixed bottom-8 left-8 z-50 bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg hover:bg-blue-700 focus:outline-none focus:ring"

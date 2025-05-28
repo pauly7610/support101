@@ -2,6 +2,17 @@
 
 This is the FastAPI backend for the Support Intelligence Core.
 
+## Compliance & Privacy
+- `/gdpr_delete` — GDPR-compliant data deletion (JWT required)
+- `/ccpa_optout` — CCPA opt-out support (JWT required)
+- Admin dashboard and customer compliance UI
+
+## Analytics
+- Escalation metrics, reporting by agent/category, 30-day stats
+
+## Testing
+- Async DB mocking, pytest-asyncio, SQLAlchemy utils
+
 ## Features
 - Healthcheck endpoint (`/health`)
 - `/generate_reply` endpoint for RAG-powered agent/customer replies (async, with sources)

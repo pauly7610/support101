@@ -1,6 +1,12 @@
-# Customer Bot (Next.js Widget)
+# Customer Bot
 
-A Next.js + Tailwind CSS chatbot widget for customer-facing support.
+## Compliance UI
+- Customer-facing privacy/compliance settings
+- Admin dashboard for data management
+
+## Admin Dashboard
+- Manage customer data and settings
+- View analytics and insights
 
 ## Features
 - Floating chat button and window for customer interaction
