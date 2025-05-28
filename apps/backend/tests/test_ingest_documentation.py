@@ -1,55 +1,16 @@
 import pytest
 from fastapi.testclient import TestClient
+
 from ...backend.main import app
 
 client = TestClient(app)
-
-
-
-
 
 
 from fastapi.testclient import TestClient
 
-
-
-
-
-
-
-
-
-
-
-
-
 from ...backend.main import app
 
-
-
-
-
-
-
-
-
-
-
-
-
 client = TestClient(app)
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 def test_invalid_file_type():
@@ -71,4 +32,3 @@ def test_invalid_chunk_size():
             data={"chunk_size": 999999},
         )
     assert resp.status_code == 400
-

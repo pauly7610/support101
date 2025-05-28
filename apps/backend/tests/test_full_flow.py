@@ -1,23 +1,27 @@
-import os
-import pytest
 import asyncio
-from httpx import AsyncClient
+import os
+import sys
 from unittest.mock import patch
 
-import sys
-sys.modules['langchain_openai'] = __import__('types')  # Patch for CI if needed
+import pytest
+from httpx import AsyncClient
+
+sys.modules["langchain_openai"] = __import__("types")  # Patch for CI if needed
 
 import app.main as backend_app
 
 pytestmark = pytest.mark.asyncio
 
+
 @pytest.fixture(scope="module")
 def anyio_backend():
-    return 'asyncio'
+    return "asyncio"
+
 
 @pytest.fixture(scope="module")
 def client():
     return AsyncClient(app=backend_app.app, base_url="http://testserver")
+
 
 async def test_document_ingestion_and_rag_flow(client):
     # 1. Ingest a sample document
@@ -35,7 +39,10 @@ async def test_document_ingestion_and_rag_flow(client):
     body = resp.json()
     assert "reply" in body
     # Should cite the ingested document
-    assert body.get("citations") and any("refunds.txt" in c.get("excerpt", "") for c in body["citations"])
+    assert body.get("citations") and any(
+        "refunds.txt" in c.get("excerpt", "") for c in body["citations"]
+    )
+
 
 async def test_rag_flow_no_citations(client):
     payload = {"user_query": "What is the meaning of life?"}
@@ -46,9 +53,13 @@ async def test_rag_flow_no_citations(client):
     # Should not have citations for unrelated question
     assert body.get("citations") == []
 
+
 async def test_rag_flow_error_handling(client):
     # Simulate LLM timeout or error
-    with patch("packages.llm_engine.chains.rag_chain.ChatOpenAI.ainvoke", side_effect=asyncio.TimeoutError()):
+    with patch(
+        "packages.llm_engine.chains.rag_chain.ChatOpenAI.ainvoke",
+        side_effect=asyncio.TimeoutError(),
+    ):
         payload = {"user_query": "Trigger timeout"}
         resp = await client.post("/generate_reply", json=payload)
         assert resp.status_code == 200
@@ -57,6 +68,7 @@ async def test_rag_flow_error_handling(client):
         assert body.get("retryable") is True
         assert body.get("documentation", "").endswith("E429")
 
+
 async def test_rag_flow_load(client):
     # Simulate 100 concurrent requests
     async def make_query():
@@ -64,5 +76,6 @@ async def test_rag_flow_load(client):
         r = await client.post("/generate_reply", json=payload)
         assert r.status_code == 200
         return r.json()
+
     results = await asyncio.gather(*[make_query() for _ in range(100)])
     assert all("reply" in r for r in results)

@@ -1,12 +1,18 @@
-import pytest
 from unittest.mock import patch
+
+import pytest
 from fastapi.testclient import TestClient
+
 from ...backend.main import app
+
 
 def test_api_key_masking_in_error():
     client = TestClient(app)
     # Simulate Pinecone error with API key in message
-    with patch("packages.llm_engine.vector_store.get_pinecone_index", side_effect=Exception("PINECONE_API_KEY=secret-key")):
+    with patch(
+        "packages.llm_engine.vector_store.get_pinecone_index",
+        side_effect=Exception("PINECONE_API_KEY=secret-key"),
+    ):
         resp = client.post(
             "/generate_reply",
             json={"user_query": "trigger error"},
@@ -16,6 +22,7 @@ def test_api_key_masking_in_error():
         assert "***" in str(data), "API key should be masked in error response"
         assert data.get("retryable") is True
         assert data.get("documentation", "").endswith("E500")
+
 
 @pytest.mark.asyncio
 def test_rate_limiting_on_generate_reply(async_client):

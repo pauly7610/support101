@@ -37,6 +37,7 @@ class RAGChain:
     Retrieval-Augmented Generation (RAG) chain for customer support using LangChain, FastEmbed, and Pinecone.
     Handles context retrieval, LLM calls, source citation, and robust error handling.
     """
+
     def __init__(self) -> None:
         self.embedding_model = get_fastembed_model()
         self.llm = ChatOpenAI(model=os.getenv("LLM_MODEL_NAME", "gpt-4o"), temperature=0.3)
@@ -71,7 +72,7 @@ class RAGChain:
                 error_type="vector_store_error",
                 message=f"Vector store error: {msg}",
                 retryable=True,
-                doc_url="https://api.support101/errors#E500"
+                doc_url="https://api.support101/errors#E500",
             )
 
     async def _retrieve_and_format_context(self, input_data: Dict[str, Any]) -> str:
@@ -86,7 +87,7 @@ class RAGChain:
                 error_type="vector_store_error",
                 message=f"Failed to retrieve context: {e}",
                 retryable=True,
-                doc_url="https://api.support101/errors#E500"
+                doc_url="https://api.support101/errors#E500",
             )
         context_chunks = []
         self.retrieved_sources.clear()
@@ -132,7 +133,7 @@ class RAGChain:
                 error_type="llm_timeout",
                 message="LLM response exceeded 30s threshold",
                 retryable=True,
-                doc_url="https://api.support101/errors#E429"
+                doc_url="https://api.support101/errors#E429",
             )
         except Exception as e:
             msg = str(e).replace(os.getenv("OPENAI_API_KEY", "***"), "***")
@@ -140,10 +141,12 @@ class RAGChain:
                 error_type="llm_engine_error",
                 message=f"LLM engine error: {msg}",
                 retryable=True,
-                doc_url="https://api.support101/errors#E500"
+                doc_url="https://api.support101/errors#E500",
             )
 
-    def _unified_error(self, error_type: str, message: str, retryable: bool, doc_url: str) -> Dict[str, Any]:
+    def _unified_error(
+        self, error_type: str, message: str, retryable: bool, doc_url: str
+    ) -> Dict[str, Any]:
         """
         Return a unified error response per API spec, masking any sensitive data.
         """

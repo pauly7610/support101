@@ -1,8 +1,10 @@
 import pytest
 from fastapi.testclient import TestClient
+
 from ...backend.main import app
 
 client = TestClient(app)
+
 
 def test_malformed_pdf_ingestion():
     """Test ingestion of a malformed/corrupt PDF file."""

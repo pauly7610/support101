@@ -1,12 +1,14 @@
 import pytest
 from fastapi.testclient import TestClient
+
 from ...backend.main import app
 
 client = TestClient(app)
 
+
 def test_large_pdf_ingestion():
     """Test ingestion of a large (300MB) PDF file."""
-    large_pdf = b'%PDF-1.4' + b'0' * (300 * 1024 * 1024)  # 300MB
+    large_pdf = b"%PDF-1.4" + b"0" * (300 * 1024 * 1024)  # 300MB
     resp = client.post(
         "/ingest_documentation",
         files={"file": ("large.pdf", large_pdf, "application/pdf")},

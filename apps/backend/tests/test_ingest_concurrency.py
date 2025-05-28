@@ -1,13 +1,17 @@
-import pytest
-from fastapi.testclient import TestClient
-from ...backend.main import app
 import threading
 
+import pytest
+from fastapi.testclient import TestClient
+
+from ...backend.main import app
+
 client = TestClient(app)
+
 
 def test_concurrent_ingestion():
     """Test concurrent ingestion requests for rate limiting and thread safety."""
     results = []
+
     def upload():
         resp = client.post(
             "/ingest_documentation",
@@ -15,6 +19,7 @@ def test_concurrent_ingestion():
             data={"chunk_size": 1024},
         )
         results.append(resp.status_code)
+
     threads = [threading.Thread(target=upload) for _ in range(5)]
     for t in threads:
         t.start()
