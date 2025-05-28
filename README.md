@@ -26,6 +26,22 @@
 
 ## Features
 
+### Async Database & Migrations
+- Uses SQLAlchemy async engine with asyncpg driver for PostgreSQL.
+- Alembic is configured for async migrations. Always use `postgresql+asyncpg://` in connection URLs.
+- To run migrations, set `PYTHONPATH` to the repo root and run:
+  ```sh
+  export PYTHONPATH=$PWD  # or set PYTHONPATH=%CD% on Windows
+  alembic -c apps/backend/alembic.ini upgrade head
+  ```
+- If you see `InvalidPasswordError`, reset your Postgres password:
+  ```sql
+  ALTER USER postgres WITH PASSWORD 'yourpassword';
+  ```
+- See backend/README.md for more details.
+
+---
+
 - **GDPR/CCPA Compliance:** Endpoints `/gdpr_delete` and `/ccpa_optout` with JWT auth for secure data deletion and opt-out, supporting regulatory compliance.
 - **Analytics & Reporting:** Escalation tracking, 30-day reporting, and agent/category breakdowns.
 - **FastAPI Backend:** LangChain RAG, ingestion pipeline, Pinecone, HuggingFace/OpenAI support

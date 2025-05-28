@@ -26,6 +26,28 @@ This is the FastAPI backend for the Support Intelligence Core.
 - Returns structured ticket, user, and reply data for design system-driven UIs
 
 ## Setup & Usage
+
+### Async Database & Alembic Migrations
+- Backend uses SQLAlchemy async engine with asyncpg driver.
+- Alembic is configured for async migrations (see `migrations/env.py`).
+- Ensure your `.env` and `alembic.ini` use:
+  ```
+  postgresql+asyncpg://postgres:<yourpassword>@localhost:5433/support101
+  ```
+- To run migrations:
+  ```sh
+  export PYTHONPATH=$PWD  # or set PYTHONPATH=%CD% on Windows
+  alembic -c apps/backend/alembic.ini upgrade head
+  ```
+- If you get `InvalidPasswordError`, reset your password in psql:
+  ```sql
+  ALTER USER postgres WITH PASSWORD 'yourpassword';
+  ```
+
+### Common Issues
+- **ModuleNotFoundError: No module named 'apps'**: Make sure PYTHONPATH is set to the repo root or use the sys.path patch in `migrations/env.py`.
+- **InvalidPasswordError**: Password in `.env` and `alembic.ini` must match your actual Postgres password.
+
 1. Copy `.env.template` to `.env` and fill in API keys (including `POSTGRES_URL`)
 2. `pip install -r requirements.txt`
 3. Run DB migrations: `python migrations.py`

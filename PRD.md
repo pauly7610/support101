@@ -41,7 +41,12 @@ Pain: Outdated docs, no analytics, retraining headaches.
 
 SIC Value: (MVP) Simple ingestion pipeline; future: analytics, tuning UI.
 
-🧩 Key Features & User Stories (MVP Scope)
+🛠️ Key Features & User Stories (MVP Scope)
+
+- **Async Backend & Database:** Uses SQLAlchemy async engine with asyncpg for PostgreSQL. Alembic is configured for async migrations.
+- **Operational Best Practices:** Always set PYTHONPATH to repo root before running Alembic. Use sys.path patch in env.py for reliability.
+- **Troubleshooting:** Document password reset and InvalidPasswordError for database setup.
+
 🧠 Core Backend & LLM Engine
 F-BE-001 — Documentation Ingestion & Processing
 Crawl specified URLs
