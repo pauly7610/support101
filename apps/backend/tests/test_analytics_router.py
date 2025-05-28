@@ -1,3 +1,4 @@
+import uuid
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -5,6 +6,7 @@ from fastapi import FastAPI, status
 from fastapi.testclient import TestClient
 
 from apps.backend.app.analytics.router import router
+from apps.backend.app.auth.jwt import get_current_user
 
 app = FastAPI()
 app.include_router(router)
@@ -13,6 +15,7 @@ app.include_router(router)
 class DummyUser:
     def __init__(self, is_admin=True):
         self.is_admin = is_admin
+        self.id = str(uuid.uuid4())
 
 
 @pytest.fixture
@@ -33,17 +36,18 @@ def non_admin_user():
 
 @pytest.mark.parametrize(
     "endpoint,params",
-    [("/escalations", {}), ("/escalations/agent", {}), ("/escalations/category", {})],
+    [("/escalations", {}), ("/escalations/by-agent", {}), ("/escalations/by-category", {})],
 )
 def test_permission_denied(client, non_admin_user, endpoint, params):
-    with patch("apps.backend.app.analytics.router.get_current_user", return_value=non_admin_user):
-        response = client.get(endpoint, params=params)
-        assert response.status_code == status.HTTP_403_FORBIDDEN
-        assert response.json()["detail"] == "Insufficient permissions"
+    app.dependency_overrides = {}
+    app.dependency_overrides[get_current_user] = lambda: non_admin_user
+    response = client.get(endpoint, params=params)
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    assert response.json()["detail"] == "Insufficient permissions"
 
 
 @pytest.mark.parametrize(
-    "endpoint", ["/escalations", "/escalations/agent", "/escalations/category"]
+    "endpoint", ["/escalations", "/escalations/by-agent", "/escalations/by-category"]
 )
 def test_admin_access_success(client, admin_user, endpoint):
     dummy_result = [(10, 5.0, "2024-01-01")]
@@ -55,9 +59,9 @@ def test_admin_access_success(client, admin_user, endpoint):
 
         return Dummy()
 
-    with patch(
-        "apps.backend.app.analytics.router.get_current_user", return_value=admin_user
-    ), patch("apps.backend.app.analytics.router.get_db", new_callable=AsyncMock) as db_mock:
+    app.dependency_overrides = {}
+    app.dependency_overrides[get_current_user] = lambda: admin_user
+    with patch("apps.backend.app.analytics.router.get_db", new_callable=AsyncMock) as db_mock:
         db_mock.return_value.execute = AsyncMock(side_effect=dummy_execute)
         response = client.get(endpoint)
         assert response.status_code == 200

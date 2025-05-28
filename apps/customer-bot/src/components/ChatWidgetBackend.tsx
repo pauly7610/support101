@@ -6,7 +6,7 @@ import { generateSuggestedReply, reportEscalation } from '../api';
 
 const CHAT_HISTORY_KEY = 'chat_history';
 const ESCALATION_LOG_KEY = 'escalation_log';
-const sentiment = new Sentiment();
+const sentiment = new Sentiment(undefined);
 
 function saveHistory(history: unknown[]) {
   idb.set(CHAT_HISTORY_KEY, history);
@@ -39,21 +39,21 @@ function analyzeSentiment(text: string): 'urgent' | 'normal' {
     'cancel',
     'refund',
   ];
-  const result = sentiment.analyze(text);
+  const result = sentiment.analyze(text, undefined, undefined);
   if (result.score < 0 || urgentWords.some((w) => text.toLowerCase().includes(w))) return 'urgent';
   return 'normal';
 }
 
 export default function ChatWidgetBackend() {
-  const [messages, setMessages] = useState([]); // Already no type argument
-  const [input, setInput] = useState(''); // Already no type argument
-  const [escalate, setEscalate] = useState(false); // Already no type argument
-  const [theme, setTheme] = useState('light'); // Already no type argument
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [escalate, setEscalate] = useState(false);
+  const [theme, setTheme] = useState('light');
 
   const [typing, setTyping] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [unread, setUnread] = useState(0);
-  const chatEndRef = useRef(null); // Remove type argument
+  const chatEndRef = useRef(null);
 
   useEffect(() => {
     loadHistory().then(setMessages);
@@ -71,12 +71,16 @@ export default function ChatWidgetBackend() {
   function handleInputKeyDown(e: KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend(e); // Remove cast
+      sendMessage();
     }
   }
 
-  async function handleSend(e: Event) {
+  async function handleSend(e: SubmitEvent) {
     e.preventDefault();
+    sendMessage();
+  }
+
+  async function sendMessage() {
     if (!input.trim()) return;
     const sentimentResult = analyzeSentiment(input);
     if (sentimentResult === 'urgent') {
@@ -92,7 +96,6 @@ export default function ChatWidgetBackend() {
     setMessages((prev) => [...prev, newMsg]);
     setInput('');
     setTyping(true);
-    // setLoading(true);
     try {
       const ticketContext = { ticket_id: 'customer-chat', user_id: 'customer-1', content: input };
       const result = await generateSuggestedReply(ticketContext);
@@ -114,12 +117,10 @@ export default function ChatWidgetBackend() {
           text: 'Sorry, there was an error processing your request. [Retry]',
           timestamp: Date.now(),
           sentiment: 'normal',
-          error: true,
         },
       ]);
     } finally {
       setTyping(false);
-      // setLoading(false);
       if (minimized) setUnread((u) => u + 1);
     }
   }

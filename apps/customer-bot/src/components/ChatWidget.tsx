@@ -4,7 +4,7 @@ import Sentiment from 'sentiment';
 import * as idb from 'idb-keyval';
 
 const CHAT_HISTORY_KEY = 'chat_history';
-const sentiment = new Sentiment();
+const sentiment = new Sentiment(undefined);
 
 // Chat message structure; no explicit types per coding standards
 // Each agent message may include a citations array
@@ -28,7 +28,7 @@ function analyzeSentiment(text: string): 'urgent' | 'normal' {
     'cancel',
     'refund',
   ];
-  const result = sentiment.analyze(text);
+  const result = sentiment.analyze(text, undefined, undefined);
   if (result.score < 0 || urgentWords.some((w) => text.toLowerCase().includes(w))) return 'urgent';
   return 'normal';
 }
@@ -38,7 +38,7 @@ export default function ChatWidget() {
   const [feedback, setFeedback] = useState('');
   const [feedbackSent, setFeedbackSent] = useState(false);
 
-  async function handleFeedbackSubmit(event: Event) {
+  async function handleFeedbackSubmit(event: SubmitEvent) {
     event.preventDefault();
     await fetch('/feedback', {
       method: 'POST',
@@ -77,15 +77,19 @@ export default function ChatWidget() {
   }, [messages]);
 
   // Keyboard accessibility for input: Enter to send, Shift+Enter for newline
-  function handleInputKeyDown(e: KeyboardEvent) {
+  async function handleInputKeyDown(e: KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend(e); // Remove cast
+      await sendMessage();
     }
   }
 
-  async function handleSend(e) {
+  async function handleSend(e: SubmitEvent) {
     e.preventDefault();
+    await sendMessage();
+  }
+
+  async function sendMessage() {
     if (!input.trim()) return;
     const sentimentResult = analyzeSentiment(input);
     if (sentimentResult === 'urgent') setEscalate(true);
@@ -112,10 +116,10 @@ export default function ChatWidget() {
         sentiment: 'normal',
         citations: data.citations || [],
       };
-      setMessages((msgs) => [...msgs, agentReply]);
+      setMessages((prev) => [...prev, agentReply]);
     } catch (err) {
-      setMessages((msgs) => [
-        ...msgs,
+      setMessages((prev) => [
+        ...prev,
         {
           sender: 'agent',
           text: 'Sorry, there was an error processing your request. [Retry]',
@@ -127,7 +131,6 @@ export default function ChatWidget() {
     }
   }
 
-  
   function handleClear() {
     setMessages([]);
     setEscalate(false);
@@ -199,17 +202,6 @@ export default function ChatWidget() {
                     width: 28,
                     height: 28,
                     display: 'inline-block',
-                    background: '#dbeafe',
-                    textAlign: 'center',
-                    fontWeight: 700,
-                    fontSize: 18,
-                    lineHeight: '28px',
-                    color: '#1e40af',
-                  }}
-                  style={{
-                    width: 28,
-                    height: 28,
-                    display: 'inline-block',
                     background: '#2563eb',
                     textAlign: 'center',
                     fontWeight: 700,
@@ -245,7 +237,7 @@ export default function ChatWidget() {
                       onClick={() =>
                         setCitationPopup({ open: true, citation: { ...c, idx: idx + 1 } })
                       }
-                      onKeyDown={e => {
+                      onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           setCitationPopup({ open: true, citation: { ...c, idx: idx + 1 } });
                         }

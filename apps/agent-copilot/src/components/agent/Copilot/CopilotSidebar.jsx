@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { generateSuggestedReply } from '../../api';
+import { generateSuggestedReply } from '../../../api';
 import { useWebSocket } from '../../WebSocketProvider';
-import CitationPopup from '../../components/CitationPopup';
+import CitationPopup from '../../CitationPopup';
 
 function Toast({ message, type, onClose }) {
   useEffect(() => {

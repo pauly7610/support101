@@ -18,7 +18,7 @@ export default function ComplianceSettings({ userId }: { userId?: string }) {
     try {
       const res = await requestGdprDelete(userId);
       setGdprStatus(res.status || 'Request submitted');
-    } catch (e: any) {
+    } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(null);
@@ -35,7 +35,7 @@ export default function ComplianceSettings({ userId }: { userId?: string }) {
     try {
       const res = await requestCcpaOptout(userId);
       setCcpaStatus(res.status || 'Opt-out submitted');
-    } catch (e: any) {
+    } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(null);

@@ -1,5 +1,6 @@
 import asyncio
 import hashlib
+import os
 
 import pytest
 import pytest_asyncio
@@ -14,8 +15,8 @@ from apps.backend.app.core.db import Base
 from apps.backend.main import app as fastapi_app
 from apps.backend.main import get_db
 
-TEST_DATABASE_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/support101_test"
-engine = create_async_engine(TEST_DATABASE_URL, future=True)
+os.environ["DATABASE_URL"] = "postgresql+asyncpg://postgres:postgres@localhost:5432/support101_test"
+engine = create_async_engine(os.getenv("DATABASE_URL"), future=True)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 

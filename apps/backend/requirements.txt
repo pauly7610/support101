@@ -38,10 +38,13 @@ PyJWT
 schedule
 # For impact sorting
 isort
-#For testing
+# For testing
+pytest
+pytest-cov
+pytest-asyncio
+pendulum
 pytest<8.0.0
 pytest-asyncio==0.21.0
 # For rate limiting
-psycopg2-binary
 fastapi-limiter>=0.1.5
 pytest-cov

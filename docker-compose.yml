@@ -1,28 +1,25 @@
-version: '3.8'
 services:
   backend:
     build: ./apps/backend
     ports:
       - "8000:8000"
     env_file:
-      - ../.env
+      - .env
     volumes:
       - ./apps/backend:/app
     depends_on:
-      - pinecone
+      - mock-vector-db
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-  pinecone:
-    image: pinecone/local
+  mock-vector-db:
+    image: nginxdemos/hello
     ports:
       - "8100:8100"
-    environment:
-      - PINECONE_API_KEY=${PINECONE_API_KEY}
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "8100"]
+      test: ["CMD", "curl", "-f", "http://localhost:8100"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -31,7 +28,7 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - ../.env
+      - .env
     volumes:
       - ./apps/customer-bot:/app
     healthcheck:
@@ -44,7 +41,7 @@ services:
     ports:
       - "3001:3001"
     env_file:
-      - ../.env
+      - .env
     volumes:
       - ./apps/agent-copilot:/app
     healthcheck:
