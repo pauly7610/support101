@@ -7,7 +7,7 @@ Async RAG chain using LangChain, FastEmbed, and Pinecone.
 
 import asyncio
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from langchain.schema.runnable import RunnableLambda, RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
@@ -29,13 +29,26 @@ PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "support101")
 PINECONE_ENVIRONMENT = os.getenv("PINECONE_ENVIRONMENT", "gcp-starter")
 SIMILARITY_THRESHOLD = 0.75
 
-RAG_PROMPT_TEMPLATE = """You are a helpful customer support documentation assistant.\nYour task is to answer the user's question clearly and concisely based *only* on the provided documentation context.\nIf the context does not contain the answer, state that you cannot answer based on the provided documents.\nInclude relevant examples from the context if available.\nWhen referencing specific content, cite the source URLs.\nKeep responses natural, conversational, and formatted for easy readability.\n\nProvided Documentation Context:\n{context_str}\n\nUser Question: {question}\n\nAnswer:"""
+RAG_PROMPT_TEMPLATE = (
+    "You are a helpful customer support documentation assistant.\n"
+    "Your task is to answer the user's question clearly and concisely based *only* on the provided "
+    "documentation context.\n"
+    "If the context does not contain the answer, state that you cannot answer based on the "
+    "provided documents.\n"
+    # Line break for flake8 E501 compliance
+    "Include relevant examples from the context if available.\n"
+    "When referencing specific content, cite the source URLs.\n"
+    "Keep responses natural, conversational, and formatted for easy readability.\n\n"
+    "Provided Documentation Context:\n{context_str}\n\nUser Question: {question}\n\nAnswer:"
+)
 
 
 class RAGChain:
     """
-    Retrieval-Augmented Generation (RAG) chain for customer support using LangChain, FastEmbed, and Pinecone.
-    Handles context retrieval, LLM calls, source citation, and robust error handling.
+    Retrieval-Augmented Generation (RAG) chain for customer support using LangChain,
+    FastEmbed, and Pinecone.
+    Handles context retrieval, LLM calls, source citation,
+    and robust error handling.
     """
 
     def __init__(self) -> None:
@@ -63,7 +76,9 @@ class RAGChain:
         """
         try:
             return await query_pinecone(
-                query_text=question, embedding_model=self.embedding_model, top_k=top_k
+                query_text=question,
+                embedding_model=self.embedding_model,
+                top_k=top_k,
             )
         except Exception as e:
             # Mask API key if present in error
@@ -77,7 +92,8 @@ class RAGChain:
 
     async def _retrieve_and_format_context(self, input_data: Dict[str, Any]) -> str:
         """
-        Retrieve relevant context from Pinecone and format for prompt. Applies cosine similarity threshold and records citations.
+        Retrieve relevant context from Pinecone and format for prompt.
+        Applies cosine similarity threshold and records citations.
         """
         question: str = input_data["question"]
         try:
@@ -109,7 +125,8 @@ class RAGChain:
 
     async def generate(self, question: str, **kwargs) -> Dict[str, Any]:
         """
-        Generate a support response using RAG. Returns answer and citations, or unified error on failure.
+        Generate a support response using RAG.
+        Returns answer and citations, or unified error on failure.
         """
         try:
             result = await asyncio.wait_for(
@@ -156,24 +173,6 @@ class RAGChain:
             "retryable": retryable,
             "documentation": doc_url,
         }
-        top_k = input_data.get("top_k", 3)
-        search_results_raw = await self._safe_query_pinecone(question, top_k)
-        self.retrieved_sources = []
-        context_parts = []
-        if not search_results_raw:
-            return "No relevant documents found in the knowledge base."
-        for result_raw in search_results_raw:
-            payload_data = result_raw.get("metadata", {})
-            content = payload_data.get("text", "")
-            url = payload_data.get("source_url", "Unknown URL")
-            title = payload_data.get("title", "")
-            score = result_raw.get("score", 0.0)
-            if content and score >= SIMILARITY_THRESHOLD:
-                context_parts.append(f"Source URL: {url}\nTitle: {title}\nContent:\n{content}\n---")
-                self.retrieved_sources.append(SourceDocument(url=url, title=title, score=score))
-        if not context_parts:
-            return "No relevant documents found with content in the knowledge base above similarity threshold."
-        return "\n\n".join(context_parts)
 
     @retry(
         stop=stop_after_attempt(3),

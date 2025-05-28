@@ -1,13 +1,12 @@
 import asyncio
-import os
 import sys
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
-sys.modules["langchain_openai"] = __import__("types")  # Patch if not installed for CI
-
 from packages.llm_engine.chains.rag_chain import SIMILARITY_THRESHOLD, RAGChain
+
+sys.modules["langchain_openai"] = __import__("types")  # Patch if not installed for CI
 
 
 @pytest.mark.asyncio

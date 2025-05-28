@@ -1,14 +1,12 @@
 import asyncio
-import os
 import sys
 from unittest.mock import patch
 
+import app.main as backend_app
 import pytest
 from httpx import AsyncClient
 
 sys.modules["langchain_openai"] = __import__("types")  # Patch for CI if needed
-
-import app.main as backend_app
 
 pytestmark = pytest.mark.asyncio
 
