@@ -19,6 +19,13 @@ engine = create_async_engine(TEST_DATABASE_URL, future=True)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
+@pytest.fixture(scope="session")
+def event_loop():
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
+
+
 @pytest_asyncio.fixture(autouse=True)
 async def clear_redis_cache():
     redis = redis_asyncio.from_url("redis://localhost:6379/0", decode_responses=True)

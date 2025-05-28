@@ -1,4 +1,5 @@
 import threading
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -26,3 +27,43 @@ def test_concurrent_ingestion():
         t.join()
     # Accept 200, 400, or 429 (rate limit) for concurrency
     assert all(code in {200, 400, 429} for code in results)
+
+
+def test_rate_limit_exceeded():
+    results = []
+    for _ in range(12):
+        resp = client.post(
+            "/ingest_documentation",
+            files={"file": ("small.pdf", b"%PDF-1.4 ...", "application/pdf")},
+            data={"chunk_size": 1024},
+        )
+        results.append(resp.status_code)
+    assert any(code == 429 for code in results)
+
+
+def test_invalid_file_type():
+    resp = client.post(
+        "/ingest_documentation",
+        files={"file": ("bad.exe", b"MZ...", "application/octet-stream")},
+        data={"chunk_size": 1024},
+    )
+    assert resp.status_code in (400, 415)
+
+
+def test_invalid_chunk_size():
+    resp = client.post(
+        "/ingest_documentation",
+        files={"file": ("ok.pdf", b"%PDF-1.4 ...", "application/pdf")},
+        data={"chunk_size": 9999},
+    )
+    assert resp.status_code in (400, 422)
+
+
+def test_ingest_db_error():
+    with patch("apps.backend.main.get_db", side_effect=Exception("db fail")):
+        resp = client.post(
+            "/ingest_documentation",
+            files={"file": ("small.pdf", b"%PDF-1.4 ...", "application/pdf")},
+            data={"chunk_size": 1024},
+        )
+        assert resp.status_code in (500, 503)

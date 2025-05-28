@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from datetime import datetime, timedelta
 
@@ -60,9 +61,7 @@ async def test_escalation_analytics_admin(async_client, async_session):
     assert "escalations" in resp.json()
 
     # Test with start_time/end_time filter (should not error, even if no data)
-    import time
-
-    now = int(time.time())
+    now = int(datetime.utcnow().timestamp())
     resp = await async_client.get(
         f"/v1/analytics/escalations?start_time={now-10000}&end_time={now}",
         headers={"Authorization": f"Bearer {token}"},
@@ -74,10 +73,6 @@ async def test_escalation_analytics_admin(async_client, async_session):
 @pytest.mark.asyncio
 async def test_escalation_analytics_permission_denied(async_client, async_session):
     # Insert non-admin user
-    import uuid
-
-    from apps.backend.app.auth.models import User
-
     user_id = "123e4567-e89b-12d3-a456-426614174002"
     await async_session.execute(User.__table__.delete().where(User.id == uuid.UUID(user_id)))
     await async_session.commit()
@@ -108,11 +103,6 @@ async def test_escalation_analytics_permission_denied(async_client, async_sessio
 @pytest.mark.asyncio
 async def test_escalations_by_agent_and_category_admin(async_client, async_session):
     # Ensure admin user exists
-    import uuid
-
-    from apps.backend.app.auth.models import User
-
-    TEST_ADMIN_ID = "123e4567-e89b-12d3-a456-426614174001"
     await async_session.execute(
         User.__table__.delete().where(
             (User.id == uuid.UUID(TEST_ADMIN_ID)) | (User.username == "admin")
@@ -162,12 +152,49 @@ async def test_escalations_by_agent_and_category_admin(async_client, async_sessi
     assert "by_category" in resp.json()
 
 
-@pytest.mark.xfail(reason="Analytics endpoint not implemented or requires real API key")
-@pytest.mark.xfail(reason="/analytics/escalations endpoint not implemented (404)")
-def test_escalation_analytics_filter_user():
-    # resp = client.get("/analytics/escalations?user_id=testuser")
-    # assert resp.status_code == 200
-    pass
+def test_escalation_analytics_invalid_user_id(async_client, admin_user_token):
+    resp = async_client.get(
+        "/v1/analytics/escalations?user_id=not-a-uuid",
+        headers={"Authorization": f"Bearer {admin_user_token}"},
+    )
+    assert resp.status_code in (400, 422)
+
+
+def test_escalation_analytics_invalid_time(async_client, admin_user_token):
+    resp = async_client.get(
+        "/v1/analytics/escalations?start_time=abc&end_time=xyz",
+        headers={"Authorization": f"Bearer {admin_user_token}"},
+    )
+    assert resp.status_code in (400, 422)
+
+
+@pytest.mark.asyncio
+async def test_escalation_analytics_db_exception(async_client, monkeypatch, admin_user_token):
+    async def raise_exc(*args, **kwargs):
+        raise Exception("DB error")
+
+    monkeypatch.setattr(
+        "apps.backend.app.analytics.router.get_db",
+        lambda: type("Dummy", (), {"execute": raise_exc})(),
+    )
+    resp = await async_client.get(
+        "/v1/analytics/escalations",
+        headers={"Authorization": f"Bearer {admin_user_token}"},
+    )
+    assert resp.status_code in (500, 503)
+
+
+@pytest.mark.asyncio
+async def test_escalation_analytics_concurrent_requests(async_client, admin_user_token):
+    async def fetch():
+        return await async_client.get(
+            "/v1/analytics/escalations",
+            headers={"Authorization": f"Bearer {admin_user_token}"},
+        )
+
+    responses = await asyncio.gather(*[fetch() for _ in range(5)])
+    for resp in responses:
+        assert resp.status_code == 200
 
 
 @pytest.mark.xfail(reason="Analytics endpoint not implemented or requires real API key")
