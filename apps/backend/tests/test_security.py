@@ -3,11 +3,11 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-from ...backend.main import app
+from apps.backend.main import app as backend_app
 
 
 def test_api_key_masking_in_error():
-    client = TestClient(app)
+    client = TestClient(backend_app)
     # Simulate Pinecone error with API key in message
     with patch(
         "packages.llm_engine.vector_store.get_pinecone_index",

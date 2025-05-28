@@ -1,9 +1,9 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from ...backend.main import app
+from apps.backend.main import app as backend_app
 
-client = TestClient(app)
+client = TestClient(backend_app)
 
 
 @pytest.mark.xfail(reason="LLM API key not set or endpoint not mocked")
