@@ -35,6 +35,8 @@ from apps.backend.app.auth.users import (
 )
 from apps.backend.app.core.cache import init_redis
 from apps.backend.app.core.db import get_db
+from apps.backend.app.compliance.router import router as compliance_router
+from apps.backend.app.analytics.router import router as analytics_router
 from packages.llm_engine.chains.rag_chain import RAGChain
 from packages.llm_engine.embeddings import get_fastembed_model
 from packages.llm_engine.vector_store import (
@@ -50,11 +52,6 @@ from packages.shared.models import (
 
 # Load environment variables from .env if available
 load_dotenv()
-
-
-app = FastAPI(title="Support Intelligence Core API")
-
-security = HTTPBearer()
 
 
 @asynccontextmanager
@@ -73,6 +70,13 @@ async def lifespan(app):
     except Exception as e:
         print(f"Warning: Redis cache not initialized: {e}")
     yield
+
+app = FastAPI(title="Support Intelligence Core API", lifespan=lifespan)
+
+app.include_router(compliance_router, prefix="/v1/compliance")
+app.include_router(analytics_router, prefix="/v1/analytics")
+
+security = HTTPBearer()
 
 
 @app.post(
@@ -121,9 +125,8 @@ async def protected_route(user=Depends(get_current_user)):
 @app.get("/cached-example", tags=["Cache"], summary="Example cached endpoint")
 @cache(expire=60)
 async def cached_example():
-    import time
-
-    time.sleep(2)  # Simulate expensive computation
+    import asyncio
+    await asyncio.sleep(2)  # Simulate expensive computation
     return {"result": "This response is cached for 60 seconds."}
 
 

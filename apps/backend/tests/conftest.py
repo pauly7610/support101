@@ -1,11 +1,22 @@
 import asyncio
 import hashlib
 
+import pytest_asyncio
+
+@pytest_asyncio.fixture(scope="session")
+def event_loop():
+    """Create an instance of the default event loop for the session."""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
+
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+
+from redis import asyncio as redis_asyncio
 
 from apps.backend.app.auth.models import User
 from apps.backend.app.core.db import Base
@@ -23,12 +34,14 @@ except ImportError:
     init_redis = None
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
 
+
+@pytest_asyncio.fixture(autouse=True)
+async def clear_redis_cache():
+    redis = redis_asyncio.from_url("redis://localhost:6379/0", decode_responses=True)
+    await redis.flushdb()
+    yield
+    await redis.close()
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_database():
@@ -40,6 +53,11 @@ async def setup_database():
     yield
     await engine.dispose()
 
+
+@pytest_asyncio.fixture(scope="function")
+async def async_session():
+    async with AsyncSessionLocal() as session:
+        yield session
 
 @pytest_asyncio.fixture(scope="function")
 async def async_client(async_session):
@@ -55,13 +73,13 @@ async def async_client(async_session):
 
 
 @pytest.fixture(autouse=True)
-def mock_externals(mocker):
+def mock_externals(monkeypatch):
     try:
-        mocker.patch("pinecone.Index.query", return_value={"matches": []})
+        monkeypatch.setattr("pinecone.Index.query", lambda *args, **kwargs: {"matches": []})
     except Exception:
         pass
     try:
-        mocker.patch("firecrawl.FirecrawlApp.scrape")
+        monkeypatch.setattr("firecrawl.FirecrawlApp.scrape", lambda *args, **kwargs: None)
     except Exception:
         pass
 
