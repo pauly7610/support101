@@ -29,3 +29,39 @@ export async function reportEscalation(escalation) {
   });
   if (!res.ok) throw new Error('Failed to report escalation');
 }
+
+/**
+ * Request GDPR-compliant data deletion for the current user.
+ * @param {string} user_id
+ * @returns {Promise<{status: string}>}
+ */
+export async function requestGdprDelete(user_id) {
+  const res = await fetch(`${BACKEND_URL}/gdpr_delete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to request GDPR deletion');
+  }
+  return res.json();
+}
+
+/**
+ * Request CCPA opt-out for the current user.
+ * @param {string} user_id
+ * @returns {Promise<{status: string}>}
+ */
+export async function requestCcpaOptout(user_id) {
+  const res = await fetch(`${BACKEND_URL}/ccpa_optout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to request CCPA opt-out');
+  }
+  return res.json();
+}

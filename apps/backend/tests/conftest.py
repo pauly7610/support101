@@ -1,24 +1,15 @@
 import asyncio
 import hashlib
 
-import pytest_asyncio
-
-@pytest_asyncio.fixture(scope="session")
-def event_loop():
-    """Create an instance of the default event loop for the session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
-
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from redis import asyncio as redis_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from redis import asyncio as redis_asyncio
-
 from apps.backend.app.auth.models import User
+from apps.backend.app.core.cache import init_redis
 from apps.backend.app.core.db import Base
 from apps.backend.main import app as fastapi_app
 from apps.backend.main import get_db
@@ -27,14 +18,6 @@ TEST_DATABASE_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/suppo
 engine = create_async_engine(TEST_DATABASE_URL, future=True)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-# If you use FastAPI cache, import and initialize here
-try:
-    from apps.backend.app.core.cache import init_redis
-except ImportError:
-    init_redis = None
-
-
-
 
 @pytest_asyncio.fixture(autouse=True)
 async def clear_redis_cache():
@@ -42,6 +25,7 @@ async def clear_redis_cache():
     await redis.flushdb()
     yield
     await redis.close()
+
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_database():
@@ -58,6 +42,7 @@ async def setup_database():
 async def async_session():
     async with AsyncSessionLocal() as session:
         yield session
+
 
 @pytest_asyncio.fixture(scope="function")
 async def async_client(async_session):

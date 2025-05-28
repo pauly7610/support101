@@ -27,16 +27,16 @@ from fastapi_limiter.depends import RateLimiter
 from prometheus_client import REGISTRY, Counter, Histogram
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from apps.backend.app.analytics.router import router as analytics_router
 from apps.backend.app.auth.jwt import create_access_token, get_current_user
 from apps.backend.app.auth.users import (
     create_user,
     get_user_by_username,
     verify_password,
 )
+from apps.backend.app.compliance.router import router as compliance_router
 from apps.backend.app.core.cache import init_redis
 from apps.backend.app.core.db import get_db
-from apps.backend.app.compliance.router import router as compliance_router
-from apps.backend.app.analytics.router import router as analytics_router
 from packages.llm_engine.chains.rag_chain import RAGChain
 from packages.llm_engine.embeddings import get_fastembed_model
 from packages.llm_engine.vector_store import (
@@ -70,6 +70,7 @@ async def lifespan(app):
     except Exception as e:
         print(f"Warning: Redis cache not initialized: {e}")
     yield
+
 
 app = FastAPI(title="Support Intelligence Core API", lifespan=lifespan)
 
@@ -126,6 +127,7 @@ async def protected_route(user=Depends(get_current_user)):
 @cache(expire=60)
 async def cached_example():
     import asyncio
+
     await asyncio.sleep(2)  # Simulate expensive computation
     return {"result": "This response is cached for 60 seconds."}
 

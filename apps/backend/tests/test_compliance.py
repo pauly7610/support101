@@ -1,42 +1,64 @@
-import jwt
+import uuid
+from datetime import datetime, timedelta
+
 import pytest
-from fastapi.testclient import TestClient
+from jose import jwt
 
-from ...backend.main import JWT_ALGORITHM, JWT_SECRET, app
+from apps.backend.app.auth.jwt import ALGORITHM as JWT_ALGORITHM
+from apps.backend.app.auth.jwt import SECRET_KEY as JWT_SECRET
+from apps.backend.app.auth.models import User
 
-client = TestClient(app)
-
-
-def make_jwt(user_id="testuser", is_admin=False):
-    return jwt.encode({"sub": user_id, "is_admin": is_admin}, JWT_SECRET, algorithm=JWT_ALGORITHM)
+TEST_USER_ID = "123e4567-e89b-12d3-a456-426614174000"
 
 
-def test_gdpr_delete_requires_jwt():
+def create_test_token(is_admin=False):
+    payload = {
+        "sub": TEST_USER_ID,
+        "is_admin": is_admin,
+        "exp": datetime.utcnow() + timedelta(minutes=15),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+@pytest.mark.asyncio
+async def test_gdpr_delete_requires_jwt(async_client, async_session):
+    # Clean up any existing user with this id or username
+    await async_session.execute(
+        User.__table__.delete().where(
+            (User.id == uuid.UUID(TEST_USER_ID)) | (User.username == "admin")
+        )
+    )
+    await async_session.commit()
+
+    # Insert admin user into DB
+    admin_user = User(
+        id=uuid.UUID(TEST_USER_ID),
+        email="admin@example.com",
+        username="admin",
+        hashed_password="irrelevant",
+        is_admin=True,
+        data_sale_optout=False,
+    )
+    async_session.add(admin_user)
+    await async_session.commit()
+
     # No JWT
-    resp = client.post("/v1/compliance/gdpr_delete?user_id=testuser")
-    assert resp.status_code in (401, 403)
-    # Non-admin JWT
-    token = make_jwt()
-    resp = client.post(
-        "/v1/compliance/gdpr_delete?user_id=testuser",
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert resp.status_code in (401, 403)
+    resp = await async_client.post(f"/v1/compliance/gdpr_delete?user_id={TEST_USER_ID}")
+    assert resp.status_code == 401
     # Admin JWT
-    token = make_jwt(is_admin=True)
-    resp = client.post(
-        "/v1/compliance/gdpr_delete?user_id=testuser",
+    token = create_test_token(is_admin=True)
+    resp = await async_client.post(
+        f"/v1/compliance/gdpr_delete?user_id={TEST_USER_ID}",
         headers={"Authorization": f"Bearer {token}"},
     )
-    assert resp.status_code in (200, 404, 403)  # 404 if user doesn't exist
+    assert resp.status_code in (200, 404)
 
 
-def test_ccpa_optout_requires_jwt():
-    resp = client.post("/v1/compliance/ccpa_optout?user_id=testuser")
-    assert resp.status_code in (401, 403)
-    token = make_jwt()
-    resp = client.post(
-        "/v1/compliance/ccpa_optout?user_id=testuser",
+@pytest.mark.asyncio
+async def test_ccpa_optout_requires_jwt(async_client):
+    token = create_test_token()
+    resp = await async_client.post(
+        f"/v1/compliance/ccpa_optout?user_id={TEST_USER_ID}",
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code in (200, 404)
