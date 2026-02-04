@@ -9,9 +9,9 @@ import asyncio
 import os
 from typing import Any, Dict, List
 
-from langchain.schema.runnable import RunnableLambda, RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from langchain_openai import ChatOpenAI
 from tenacity import (
     retry,
