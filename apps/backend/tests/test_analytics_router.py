@@ -65,7 +65,9 @@ def test_admin_access_success(client, admin_user, endpoint):
         db_mock.return_value.execute = AsyncMock(side_effect=dummy_execute)
         response = client.get(endpoint)
         assert response.status_code == 200
-        assert isinstance(response.json(), list)
+        data = response.json()
+        assert isinstance(data, dict)
+        assert "escalations" in data or "agents" in data or "categories" in data
 
 
 @pytest.mark.parametrize(
@@ -93,4 +95,5 @@ def test_query_params(client, admin_user, endpoint, params):
         db_mock.return_value.execute = AsyncMock(side_effect=dummy_execute)
         response = client.get(endpoint, params=params)
         assert response.status_code == 200
-        assert isinstance(response.json(), list)
+        data = response.json()
+        assert isinstance(data, dict)
