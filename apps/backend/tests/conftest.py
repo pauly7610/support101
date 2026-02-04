@@ -17,8 +17,7 @@ from apps.backend.main import get_db
 
 # Use environment variable or default to test database
 DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+asyncpg://postgres:postgres@localhost:5432/support101_test"
+    "DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/support101_test"
 )
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
