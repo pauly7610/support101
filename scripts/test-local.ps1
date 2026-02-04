@@ -6,10 +6,8 @@ param(
     [string]$TestPath = "apps/backend/tests"
 )
 
-$ErrorActionPreference = "Stop"
-
 Write-Host "Starting test services..." -ForegroundColor Cyan
-docker-compose -f docker-compose.test.yml up -d
+docker-compose -f docker-compose.test.yml up -d 2>&1 | Out-Null
 
 Write-Host "Waiting for services to be healthy..." -ForegroundColor Cyan
 $maxRetries = 30
@@ -17,11 +15,13 @@ $retryCount = 0
 
 # Wait for PostgreSQL
 while ($retryCount -lt $maxRetries) {
-    $pgReady = docker-compose -f docker-compose.test.yml exec -T postgres pg_isready -U postgres 2>$null
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "PostgreSQL is ready!" -ForegroundColor Green
-        break
-    }
+    try {
+        $result = docker exec support101-postgres-1 pg_isready -U postgres 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "PostgreSQL is ready!" -ForegroundColor Green
+            break
+        }
+    } catch {}
     $retryCount++
     Start-Sleep -Seconds 1
 }
@@ -35,11 +35,13 @@ if ($retryCount -eq $maxRetries) {
 # Wait for Redis
 $retryCount = 0
 while ($retryCount -lt $maxRetries) {
-    $redisReady = docker-compose -f docker-compose.test.yml exec -T redis redis-cli ping 2>$null
-    if ($redisReady -eq "PONG") {
-        Write-Host "Redis is ready!" -ForegroundColor Green
-        break
-    }
+    try {
+        $result = docker exec support101-redis-1 redis-cli ping 2>&1
+        if ($result -match "PONG") {
+            Write-Host "Redis is ready!" -ForegroundColor Green
+            break
+        }
+    } catch {}
     $retryCount++
     Start-Sleep -Seconds 1
 }
@@ -58,7 +60,7 @@ $testExitCode = $LASTEXITCODE
 
 if (-not $KeepRunning) {
     Write-Host "`nStopping test services..." -ForegroundColor Cyan
-    docker-compose -f docker-compose.test.yml down
+    docker-compose -f docker-compose.test.yml down 2>&1 | Out-Null
 }
 else {
     Write-Host "`nServices still running. Stop with: docker-compose -f docker-compose.test.yml down" -ForegroundColor Yellow
