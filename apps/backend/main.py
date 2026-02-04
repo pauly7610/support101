@@ -130,7 +130,7 @@ async def login(
 
 @app.get("/protected", tags=["Auth"], summary="Example protected endpoint")
 async def protected_route(user=Depends(get_current_user)):
-    return {"message": f"Hello, {user.get('sub', 'user')}! You are authenticated."}
+    return {"message": f"Hello, {user.username}! You are authenticated."}
 
 
 @app.get("/cached-example", tags=["Cache"], summary="Example cached endpoint")
