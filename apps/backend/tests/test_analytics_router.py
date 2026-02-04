@@ -32,6 +32,12 @@ class MockDBSession:
             def all(self):
                 return self._data
 
+            def fetchall(self):
+                return self._data
+
+            def fetchone(self):
+                return self._data[0] if self._data else None
+
         return DummyResult(self.dummy_result)
 
 
