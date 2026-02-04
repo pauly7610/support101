@@ -8,7 +8,6 @@ Tests:
 - AuditLogger event tracking
 """
 
-
 import pytest
 
 from packages.agent_framework.core.agent_registry import (
