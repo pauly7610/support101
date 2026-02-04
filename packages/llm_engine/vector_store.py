@@ -1,8 +1,7 @@
 import os
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from fastembed import TextEmbedding as FastEmbedModelType
-from pinecone import Index
 from pinecone import Pinecone as PineconeClient
 from pinecone import ServerlessSpec
 
@@ -17,7 +16,7 @@ PINECONE_CLOUD_PROVIDER = os.getenv("PINECONE_CLOUD_PROVIDER", "aws")
 PINECONE_REGION = os.getenv("PINECONE_REGION", "us-west-2")
 
 _pinecone_client: Optional[PineconeClient] = None
-_pinecone_index: Optional[Index] = None
+_pinecone_index: Optional[Any] = None  # Index type from client.Index()
 
 
 def get_pinecone_client() -> PineconeClient:
@@ -35,7 +34,7 @@ def get_pinecone_index(
     metric: str = "cosine",
     cloud: str = PINECONE_CLOUD_PROVIDER,
     region: str = PINECONE_REGION,
-) -> Index:
+) -> Any:
     global _pinecone_index
     client = get_pinecone_client()
     if index_name not in client.list_indexes().names:
