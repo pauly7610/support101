@@ -18,11 +18,25 @@ class DummyUser:
         self.id = str(uuid.uuid4())
 
 
+class MockRow:
+    """Mock SQLAlchemy row that supports dict() conversion."""
+
+    def __init__(self, data: dict):
+        self._mapping = data
+
+    def __iter__(self):
+        return iter(self._mapping.items())
+
+    def keys(self):
+        return self._mapping.keys()
+
+
 class MockDBSession:
     """Mock database session that returns dummy results."""
 
     def __init__(self, dummy_result):
-        self.dummy_result = dummy_result
+        # Convert list of dicts to list of MockRow objects
+        self.dummy_result = [MockRow(r) if isinstance(r, dict) else r for r in dummy_result]
 
     async def execute(self, sql, params=None):
         class DummyResult:
@@ -60,7 +74,9 @@ def non_admin_user():
 @pytest.fixture
 def mock_db():
     """Create a mock database session."""
-    dummy_result = [(10, 5.0, "2024-01-01")]
+    dummy_result = [
+        {"total_escalations": 10, "avg_response_time": 5.0, "date": "2024-01-01"},
+    ]
     return MockDBSession(dummy_result)
 
 
