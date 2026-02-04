@@ -23,6 +23,7 @@ mutmut
 
 prometheus_client
 asyncpg
+psycopg2-binary
 SQLAlchemy
 alembic
 # For PEP-8 formatting
