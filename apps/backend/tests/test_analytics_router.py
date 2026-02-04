@@ -27,6 +27,9 @@ class MockRow:
     def __iter__(self):
         return iter(self._mapping.items())
 
+    def __getitem__(self, key):
+        return self._mapping[key]
+
     def keys(self):
         return self._mapping.keys()
 
