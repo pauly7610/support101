@@ -121,8 +121,8 @@ def test_admin_access_success(client, admin_user, mock_db, endpoint):
     "endpoint,params",
     [
         ("/escalations", {"user_id": "u1", "start_time": 1700000000, "end_time": 1700001000}),
-        ("/escalations/agent", {"agent_id": "a1"}),
-        ("/escalations/category", {"category": "compliance"}),
+        ("/escalations/by-agent", {"agent_id": "a1"}),
+        ("/escalations/by-category", {"category": "compliance"}),
     ],
 )
 def test_query_params(client, admin_user, mock_db, endpoint, params):
@@ -131,10 +131,9 @@ def test_query_params(client, admin_user, mock_db, endpoint, params):
     app.dependency_overrides[get_db] = lambda: mock_db
     try:
         response = client.get(endpoint, params=params)
-        # Some endpoints may return 404 if they don't exist
-        assert response.status_code in [200, 404]
-        if response.status_code == 200:
-            data = response.json()
-            assert isinstance(data, dict)
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, dict)
+        assert "escalations" in data or "by_agent" in data or "by_category" in data
     finally:
         app.dependency_overrides = {}
