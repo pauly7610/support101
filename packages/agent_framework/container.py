@@ -150,7 +150,6 @@ def set_container(container: Container) -> None:
 
 def reset_container() -> None:
     """Reset the default container."""
-    global _default_container
     if _default_container:
         _default_container.reset()
 
