@@ -8,18 +8,16 @@ Provides REST API for:
 - State management
 """
 
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from ..core.agent_registry import AgentBlueprint, AgentRegistry
 from ..core.agent_executor import AgentExecutor
-from ..core.base_agent import AgentConfig, AgentStatus
+from ..core.agent_registry import AgentRegistry
+from ..core.base_agent import AgentStatus
 from ..governance.audit import AuditEventType, AuditLogger
 from ..multitenancy.tenant_manager import TenantManager
-
 
 router = APIRouter(prefix="/agents", tags=["Agents"])
 
@@ -60,6 +58,7 @@ def get_audit_logger() -> AuditLogger:
 
 class CreateAgentRequest(BaseModel):
     """Request to create a new agent."""
+
     blueprint_name: str
     tenant_id: str
     name: str
@@ -69,12 +68,14 @@ class CreateAgentRequest(BaseModel):
 
 class ExecuteAgentRequest(BaseModel):
     """Request to execute an agent."""
+
     input_data: Dict[str, Any]
     timeout: Optional[int] = None
 
 
 class AgentResponse(BaseModel):
     """Agent response model."""
+
     agent_id: str
     tenant_id: str
     name: str
@@ -86,6 +87,7 @@ class AgentResponse(BaseModel):
 
 class ExecutionResponse(BaseModel):
     """Execution result response."""
+
     agent_id: str
     execution_id: str
     status: str
@@ -97,6 +99,7 @@ class ExecutionResponse(BaseModel):
 
 class BlueprintResponse(BaseModel):
     """Blueprint response model."""
+
     name: str
     description: str
     version: str
@@ -141,19 +144,19 @@ async def create_agent(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Tenant '{request.tenant_id}' not found",
         )
-    
+
     if not tenant.is_active():
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Tenant is not active",
         )
-    
+
     if not tenant.can_create_agent():
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Agent limit reached for tenant",
         )
-    
+
     try:
         agent = registry.create_agent(
             blueprint_name=request.blueprint_name,
@@ -161,9 +164,9 @@ async def create_agent(
             agent_name=request.name,
             config_overrides=request.config_overrides,
         )
-        
+
         tenant.increment_usage("agents")
-        
+
         await audit_logger.log_agent_event(
             event_type=AuditEventType.AGENT_CREATED,
             agent_id=agent.agent_id,
@@ -173,7 +176,7 @@ async def create_agent(
                 "blueprint": request.blueprint_name,
             },
         )
-        
+
         return {
             "agent_id": agent.agent_id,
             "tenant_id": agent.tenant_id,
@@ -183,7 +186,7 @@ async def create_agent(
             "created_at": agent.config.created_at.isoformat(),
             "config": agent.config.model_dump(),
         }
-        
+
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -207,14 +210,14 @@ async def list_agents(
             agent_status = AgentStatus(status_filter)
         except ValueError:
             pass
-    
+
     agents = registry.list_agents(
         tenant_id=tenant_id,
         status=agent_status,
         blueprint_name=blueprint_name,
     )
-    
-    return agents[offset:offset + limit]
+
+    return agents[offset : offset + limit]
 
 
 @router.get("/{agent_id}", response_model=AgentResponse)
@@ -229,7 +232,7 @@ async def get_agent(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Agent '{agent_id}' not found",
         )
-    
+
     return {
         "agent_id": agent.agent_id,
         "tenant_id": agent.tenant_id,
@@ -255,19 +258,19 @@ async def delete_agent(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Agent '{agent_id}' not found",
         )
-    
+
     tenant_id = agent.tenant_id
-    
+
     if not registry.remove_agent(agent_id):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delete agent",
         )
-    
+
     tenant = tenant_manager.get_tenant(tenant_id)
     if tenant:
         tenant.decrement_usage("agents")
-    
+
     await audit_logger.log_agent_event(
         event_type=AuditEventType.AGENT_DELETED,
         agent_id=agent_id,
@@ -291,7 +294,7 @@ async def execute_agent(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Agent '{agent_id}' not found",
         )
-    
+
     tenant = tenant_manager.get_tenant(agent.tenant_id)
     if tenant:
         if not tenant.is_active():
@@ -299,31 +302,31 @@ async def execute_agent(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Tenant is not active",
             )
-        
+
         if not tenant.can_execute():
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Concurrent execution limit reached",
             )
-        
+
         if not tenant.check_rate_limit():
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Rate limit exceeded",
             )
-        
+
         tenant.increment_usage("concurrent_executions")
         tenant.increment_usage("requests_this_minute")
-    
+
     try:
         result = await executor.execute(
             agent=agent,
             input_data=request.input_data,
             timeout=request.timeout,
         )
-        
+
         return result.to_dict()
-        
+
     finally:
         if tenant:
             tenant.decrement_usage("concurrent_executions")
@@ -341,10 +344,10 @@ async def get_agent_state(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Agent '{agent_id}' not found",
         )
-    
+
     if not agent.state:
         return {"status": "not_started", "state": None}
-    
+
     return {
         "status": agent.state.status.value,
         "state": agent.state.model_dump(),
@@ -358,9 +361,9 @@ async def get_agent_stats(
 ) -> Dict[str, Any]:
     """Get agent statistics."""
     stats = registry.get_stats()
-    
+
     if tenant_id:
         agents = registry.list_agents(tenant_id=tenant_id)
         stats["tenant_agents"] = len(agents)
-    
+
     return stats

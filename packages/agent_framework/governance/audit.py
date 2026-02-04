@@ -19,35 +19,36 @@ from uuid import uuid4
 
 class AuditEventType(str, Enum):
     """Types of audit events."""
+
     AGENT_CREATED = "agent_created"
     AGENT_DELETED = "agent_deleted"
     AGENT_UPDATED = "agent_updated"
-    
+
     EXECUTION_STARTED = "execution_started"
     EXECUTION_COMPLETED = "execution_completed"
     EXECUTION_FAILED = "execution_failed"
     EXECUTION_TIMEOUT = "execution_timeout"
     EXECUTION_CANCELLED = "execution_cancelled"
-    
+
     STEP_EXECUTED = "step_executed"
     TOOL_INVOKED = "tool_invoked"
-    
+
     HUMAN_FEEDBACK_REQUESTED = "human_feedback_requested"
     HUMAN_FEEDBACK_PROVIDED = "human_feedback_provided"
     HUMAN_APPROVAL_GRANTED = "human_approval_granted"
     HUMAN_APPROVAL_DENIED = "human_approval_denied"
-    
+
     PERMISSION_GRANTED = "permission_granted"
     PERMISSION_REVOKED = "permission_revoked"
     ROLE_ASSIGNED = "role_assigned"
     ROLE_REVOKED = "role_revoked"
-    
+
     ESCALATION_TRIGGERED = "escalation_triggered"
     ESCALATION_RESOLVED = "escalation_resolved"
-    
+
     DATA_ACCESSED = "data_accessed"
     DATA_MODIFIED = "data_modified"
-    
+
     SECURITY_VIOLATION = "security_violation"
     RATE_LIMIT_EXCEEDED = "rate_limit_exceeded"
 
@@ -55,25 +56,26 @@ class AuditEventType(str, Enum):
 @dataclass
 class AuditEvent:
     """A single audit event."""
+
     event_id: str = field(default_factory=lambda: str(uuid4()))
     event_type: AuditEventType = AuditEventType.AGENT_CREATED
     timestamp: datetime = field(default_factory=datetime.utcnow)
-    
+
     agent_id: Optional[str] = None
     tenant_id: Optional[str] = None
     user_id: Optional[str] = None
     execution_id: Optional[str] = None
-    
+
     resource: Optional[str] = None
     action: Optional[str] = None
     outcome: Optional[str] = None
-    
+
     details: Dict[str, Any] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
-    
+
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Serialize event for storage."""
         return {
@@ -97,7 +99,7 @@ class AuditEvent:
 class AuditLogger:
     """
     Centralized audit logging for the agent framework.
-    
+
     Features:
     - Async event logging
     - Multiple storage backends (in-memory, database, external)
@@ -105,31 +107,31 @@ class AuditLogger:
     - Retention policies
     - Export capabilities
     """
-    
+
     _instance: Optional["AuditLogger"] = None
-    
+
     def __new__(cls) -> "AuditLogger":
         """Singleton pattern."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._initialized = False
         return cls._instance
-    
+
     def __init__(self) -> None:
         if self._initialized:
             return
-        
+
         self._events: List[AuditEvent] = []
         self._max_events: int = 10000
         self._storage_backends: List[Callable[[AuditEvent], Any]] = []
         self._event_handlers: Dict[AuditEventType, List[Callable]] = {}
         self._retention_days: int = 90
         self._initialized = True
-    
+
     def add_storage_backend(self, backend: Callable[[AuditEvent], Any]) -> None:
         """Add a storage backend for audit events."""
         self._storage_backends.append(backend)
-    
+
     def register_handler(
         self,
         event_type: AuditEventType,
@@ -139,22 +141,22 @@ class AuditLogger:
         if event_type not in self._event_handlers:
             self._event_handlers[event_type] = []
         self._event_handlers[event_type].append(handler)
-    
+
     async def log(self, event: AuditEvent) -> str:
         """
         Log an audit event.
-        
+
         Args:
             event: The audit event to log
-            
+
         Returns:
             Event ID
         """
         self._events.append(event)
-        
+
         if len(self._events) > self._max_events:
-            self._events = self._events[-self._max_events:]
-        
+            self._events = self._events[-self._max_events :]
+
         for backend in self._storage_backends:
             try:
                 result = backend(event)
@@ -162,7 +164,7 @@ class AuditLogger:
                     await result
             except Exception as e:
                 print(f"Audit storage backend error: {e}")
-        
+
         handlers = self._event_handlers.get(event.event_type, [])
         for handler in handlers:
             try:
@@ -171,9 +173,9 @@ class AuditLogger:
                     await result
             except Exception as e:
                 print(f"Audit handler error: {e}")
-        
+
         return event.event_id
-    
+
     async def log_agent_event(
         self,
         event_type: AuditEventType,
@@ -191,7 +193,7 @@ class AuditLogger:
             details=details or {},
         )
         return await self.log(event)
-    
+
     async def log_execution_event(
         self,
         event_type: AuditEventType,
@@ -209,7 +211,7 @@ class AuditLogger:
             details=details or {},
         )
         return await self.log(event)
-    
+
     async def log_human_interaction(
         self,
         event_type: AuditEventType,
@@ -233,7 +235,7 @@ class AuditLogger:
             details=details or {},
         )
         return await self.log(event)
-    
+
     async def log_security_event(
         self,
         event_type: AuditEventType,
@@ -257,7 +259,7 @@ class AuditLogger:
             details=details or {},
         )
         return await self.log(event)
-    
+
     def query(
         self,
         tenant_id: Optional[str] = None,
@@ -271,7 +273,7 @@ class AuditLogger:
     ) -> List[AuditEvent]:
         """
         Query audit events with filters.
-        
+
         Args:
             tenant_id: Filter by tenant
             agent_id: Filter by agent
@@ -281,34 +283,34 @@ class AuditLogger:
             user_id: Filter by user
             limit: Maximum results
             offset: Pagination offset
-            
+
         Returns:
             List of matching audit events
         """
         results = self._events
-        
+
         if tenant_id:
             results = [e for e in results if e.tenant_id == tenant_id]
-        
+
         if agent_id:
             results = [e for e in results if e.agent_id == agent_id]
-        
+
         if event_type:
             results = [e for e in results if e.event_type == event_type]
-        
+
         if start_time:
             results = [e for e in results if e.timestamp >= start_time]
-        
+
         if end_time:
             results = [e for e in results if e.timestamp <= end_time]
-        
+
         if user_id:
             results = [e for e in results if e.user_id == user_id]
-        
+
         results = sorted(results, key=lambda e: e.timestamp, reverse=True)
-        
-        return results[offset:offset + limit]
-    
+
+        return results[offset : offset + limit]
+
     def get_agent_history(
         self,
         agent_id: str,
@@ -317,7 +319,7 @@ class AuditLogger:
         """Get complete history for an agent."""
         events = self.query(agent_id=agent_id, limit=limit)
         return [e.to_dict() for e in events]
-    
+
     def get_execution_trail(
         self,
         execution_id: str,
@@ -326,7 +328,7 @@ class AuditLogger:
         events = [e for e in self._events if e.execution_id == execution_id]
         events = sorted(events, key=lambda e: e.timestamp)
         return [e.to_dict() for e in events]
-    
+
     def get_human_interactions(
         self,
         tenant_id: Optional[str] = None,
@@ -340,20 +342,20 @@ class AuditLogger:
             AuditEventType.HUMAN_APPROVAL_GRANTED,
             AuditEventType.HUMAN_APPROVAL_DENIED,
         }
-        
+
         results = [e for e in self._events if e.event_type in human_event_types]
-        
+
         if tenant_id:
             results = [e for e in results if e.tenant_id == tenant_id]
-        
+
         if start_time:
             results = [e for e in results if e.timestamp >= start_time]
-        
+
         if end_time:
             results = [e for e in results if e.timestamp <= end_time]
-        
+
         return [e.to_dict() for e in sorted(results, key=lambda e: e.timestamp, reverse=True)]
-    
+
     def get_security_events(
         self,
         tenant_id: Optional[str] = None,
@@ -366,15 +368,15 @@ class AuditLogger:
             AuditEventType.PERMISSION_GRANTED,
             AuditEventType.PERMISSION_REVOKED,
         }
-        
+
         results = [e for e in self._events if e.event_type in security_types]
-        
+
         if tenant_id:
             results = [e for e in results if e.tenant_id == tenant_id]
-        
+
         results = sorted(results, key=lambda e: e.timestamp, reverse=True)
         return [e.to_dict() for e in results[:limit]]
-    
+
     def get_stats(
         self,
         tenant_id: Optional[str] = None,
@@ -383,19 +385,19 @@ class AuditLogger:
         events = self._events
         if tenant_id:
             events = [e for e in events if e.tenant_id == tenant_id]
-        
+
         event_counts: Dict[str, int] = {}
         for event in events:
             event_type = event.event_type.value
             event_counts[event_type] = event_counts.get(event_type, 0) + 1
-        
+
         return {
             "total_events": len(events),
             "events_by_type": event_counts,
             "unique_agents": len(set(e.agent_id for e in events if e.agent_id)),
             "unique_users": len(set(e.user_id for e in events if e.user_id)),
         }
-    
+
     def export(
         self,
         format: str = "json",
@@ -405,12 +407,13 @@ class AuditLogger:
         events = self._events
         if tenant_id:
             events = [e for e in events if e.tenant_id == tenant_id]
-        
+
         if format == "json":
             return [e.to_dict() for e in events]
         elif format == "csv":
             import csv
             import io
+
             output = io.StringIO()
             if events:
                 writer = csv.DictWriter(output, fieldnames=events[0].to_dict().keys())
@@ -420,7 +423,7 @@ class AuditLogger:
             return output.getvalue()
         else:
             raise ValueError(f"Unsupported export format: {format}")
-    
+
     def clear(self, tenant_id: Optional[str] = None) -> int:
         """Clear audit events (for testing or retention)."""
         if tenant_id:

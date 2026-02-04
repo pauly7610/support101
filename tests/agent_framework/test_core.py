@@ -8,28 +8,26 @@ Tests:
 - AuditLogger event tracking
 """
 
-import pytest
-from datetime import datetime
 
+import pytest
+
+from packages.agent_framework.core.agent_registry import (
+    AgentRegistry,
+)
 from packages.agent_framework.core.base_agent import (
     AgentConfig,
     AgentState,
     AgentStatus,
-    Tool,
 )
-from packages.agent_framework.core.agent_registry import (
-    AgentBlueprint,
-    AgentRegistry,
+from packages.agent_framework.governance.audit import (
+    AuditEvent,
+    AuditEventType,
+    AuditLogger,
 )
 from packages.agent_framework.governance.permissions import (
     AgentPermissions,
     Permission,
     PermissionLevel,
-)
-from packages.agent_framework.governance.audit import (
-    AuditLogger,
-    AuditEvent,
-    AuditEventType,
 )
 
 
@@ -172,24 +170,28 @@ class TestAuditLogger:
             tenant_id="t1",
         )
         await self.logger.log(event)
-        
+
         events = self.logger.query(tenant_id="t1")
         assert len(events) == 1
         assert events[0].agent_id == "a1"
 
     @pytest.mark.asyncio
     async def test_query_by_event_type(self):
-        await self.logger.log(AuditEvent(
-            event_type=AuditEventType.AGENT_CREATED,
-            agent_id="a1",
-            tenant_id="t1",
-        ))
-        await self.logger.log(AuditEvent(
-            event_type=AuditEventType.EXECUTION_STARTED,
-            agent_id="a1",
-            tenant_id="t1",
-        ))
-        
+        await self.logger.log(
+            AuditEvent(
+                event_type=AuditEventType.AGENT_CREATED,
+                agent_id="a1",
+                tenant_id="t1",
+            )
+        )
+        await self.logger.log(
+            AuditEvent(
+                event_type=AuditEventType.EXECUTION_STARTED,
+                agent_id="a1",
+                tenant_id="t1",
+            )
+        )
+
         events = self.logger.query(event_type=AuditEventType.AGENT_CREATED)
         assert len(events) == 1
         assert events[0].event_type == AuditEventType.AGENT_CREATED

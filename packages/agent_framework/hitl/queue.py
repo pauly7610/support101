@@ -15,6 +15,7 @@ from uuid import uuid4
 
 class HITLRequestType(str, Enum):
     """Types of HITL requests."""
+
     APPROVAL = "approval"
     REVIEW = "review"
     FEEDBACK = "feedback"
@@ -25,6 +26,7 @@ class HITLRequestType(str, Enum):
 
 class HITLRequestStatus(str, Enum):
     """Status of HITL requests."""
+
     PENDING = "pending"
     ASSIGNED = "assigned"
     IN_PROGRESS = "in_progress"
@@ -35,6 +37,7 @@ class HITLRequestStatus(str, Enum):
 
 class HITLPriority(str, Enum):
     """Priority levels for HITL requests."""
+
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -44,53 +47,54 @@ class HITLPriority(str, Enum):
 @dataclass
 class HITLRequest:
     """A request for human intervention."""
+
     request_id: str = field(default_factory=lambda: str(uuid4()))
     request_type: HITLRequestType = HITLRequestType.REVIEW
     priority: HITLPriority = HITLPriority.MEDIUM
     status: HITLRequestStatus = HITLRequestStatus.PENDING
-    
+
     agent_id: str = ""
     tenant_id: str = ""
     execution_id: str = ""
-    
+
     title: str = ""
     description: str = ""
     question: Optional[str] = None
     options: List[str] = field(default_factory=list)
-    
+
     context: Dict[str, Any] = field(default_factory=dict)
     agent_state_snapshot: Dict[str, Any] = field(default_factory=dict)
-    
+
     assigned_to: Optional[str] = None
     assigned_at: Optional[datetime] = None
-    
+
     response: Optional[Dict[str, Any]] = None
     responded_by: Optional[str] = None
     responded_at: Optional[datetime] = None
-    
+
     created_at: datetime = field(default_factory=datetime.utcnow)
     expires_at: Optional[datetime] = None
     sla_deadline: Optional[datetime] = None
-    
+
     metadata: Dict[str, Any] = field(default_factory=dict)
-    
+
     def is_expired(self) -> bool:
         """Check if request has expired."""
         if self.expires_at and datetime.utcnow() > self.expires_at:
             return True
         return False
-    
+
     def is_sla_breached(self) -> bool:
         """Check if SLA has been breached."""
         if self.sla_deadline and datetime.utcnow() > self.sla_deadline:
             return True
         return False
-    
+
     def time_in_queue(self) -> timedelta:
         """Get time spent in queue."""
         end_time = self.responded_at or datetime.utcnow()
         return end_time - self.created_at
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Serialize request."""
         return {
@@ -123,7 +127,7 @@ class HITLRequest:
 class HITLQueue:
     """
     Priority queue for human-in-the-loop requests.
-    
+
     Features:
     - Priority-based ordering
     - SLA tracking and alerts
@@ -131,14 +135,14 @@ class HITLQueue:
     - Tenant isolation
     - Expiration handling
     """
-    
+
     SLA_DEFAULTS = {
         HITLPriority.CRITICAL: timedelta(minutes=5),
         HITLPriority.HIGH: timedelta(minutes=15),
         HITLPriority.MEDIUM: timedelta(hours=1),
         HITLPriority.LOW: timedelta(hours=4),
     }
-    
+
     def __init__(self) -> None:
         self._requests: Dict[str, HITLRequest] = {}
         self._tenant_queues: Dict[str, List[str]] = {}
@@ -146,15 +150,15 @@ class HITLQueue:
         self._on_request_callbacks: List[Callable] = []
         self._on_sla_breach_callbacks: List[Callable] = []
         self._sla_check_task: Optional[asyncio.Task] = None
-    
+
     def on_request(self, callback: Callable) -> None:
         """Register callback for new requests."""
         self._on_request_callbacks.append(callback)
-    
+
     def on_sla_breach(self, callback: Callable) -> None:
         """Register callback for SLA breaches."""
         self._on_sla_breach_callbacks.append(callback)
-    
+
     async def _notify_new_request(self, request: HITLRequest) -> None:
         """Notify callbacks of new request."""
         for callback in self._on_request_callbacks:
@@ -164,7 +168,7 @@ class HITLQueue:
                     await result
             except Exception as e:
                 print(f"HITL callback error: {e}")
-    
+
     async def _notify_sla_breach(self, request: HITLRequest) -> None:
         """Notify callbacks of SLA breach."""
         for callback in self._on_sla_breach_callbacks:
@@ -174,7 +178,7 @@ class HITLQueue:
                     await result
             except Exception as e:
                 print(f"SLA breach callback error: {e}")
-    
+
     async def enqueue(
         self,
         request_type: HITLRequestType,
@@ -193,7 +197,7 @@ class HITLQueue:
     ) -> HITLRequest:
         """
         Add a new request to the queue.
-        
+
         Args:
             request_type: Type of HITL request
             agent_id: ID of the requesting agent
@@ -208,18 +212,18 @@ class HITLQueue:
             agent_state: Snapshot of agent state
             expires_in: Optional expiration duration
             metadata: Additional metadata
-            
+
         Returns:
             Created HITLRequest
         """
         now = datetime.utcnow()
-        
+
         sla_deadline = now + self.SLA_DEFAULTS.get(priority, timedelta(hours=1))
-        
+
         expires_at = None
         if expires_in:
             expires_at = now + expires_in
-        
+
         request = HITLRequest(
             request_type=request_type,
             priority=priority,
@@ -236,21 +240,21 @@ class HITLQueue:
             expires_at=expires_at,
             metadata=metadata or {},
         )
-        
+
         self._requests[request.request_id] = request
-        
+
         if tenant_id not in self._tenant_queues:
             self._tenant_queues[tenant_id] = []
         self._tenant_queues[tenant_id].append(request.request_id)
-        
+
         await self._notify_new_request(request)
-        
+
         return request
-    
+
     def get_request(self, request_id: str) -> Optional[HITLRequest]:
         """Get a request by ID."""
         return self._requests.get(request_id)
-    
+
     def get_pending(
         self,
         tenant_id: Optional[str] = None,
@@ -260,34 +264,35 @@ class HITLQueue:
     ) -> List[HITLRequest]:
         """
         Get pending requests with optional filters.
-        
+
         Returns requests sorted by priority and creation time.
         """
         requests = [
-            r for r in self._requests.values()
+            r
+            for r in self._requests.values()
             if r.status == HITLRequestStatus.PENDING and not r.is_expired()
         ]
-        
+
         if tenant_id:
             requests = [r for r in requests if r.tenant_id == tenant_id]
-        
+
         if priority:
             requests = [r for r in requests if r.priority == priority]
-        
+
         if request_type:
             requests = [r for r in requests if r.request_type == request_type]
-        
+
         priority_order = {
             HITLPriority.CRITICAL: 0,
             HITLPriority.HIGH: 1,
             HITLPriority.MEDIUM: 2,
             HITLPriority.LOW: 3,
         }
-        
+
         requests.sort(key=lambda r: (priority_order[r.priority], r.created_at))
-        
+
         return requests[:limit]
-    
+
     def assign(
         self,
         request_id: str,
@@ -297,37 +302,37 @@ class HITLQueue:
         request = self._requests.get(request_id)
         if not request:
             return False
-        
+
         if request.status != HITLRequestStatus.PENDING:
             return False
-        
+
         request.assigned_to = user_id
         request.assigned_at = datetime.utcnow()
         request.status = HITLRequestStatus.ASSIGNED
-        
+
         if user_id not in self._user_assignments:
             self._user_assignments[user_id] = []
         self._user_assignments[user_id].append(request_id)
-        
+
         return True
-    
+
     def unassign(self, request_id: str) -> bool:
         """Unassign a request."""
         request = self._requests.get(request_id)
         if not request:
             return False
-        
+
         if request.assigned_to:
             user_assignments = self._user_assignments.get(request.assigned_to, [])
             if request_id in user_assignments:
                 user_assignments.remove(request_id)
-        
+
         request.assigned_to = None
         request.assigned_at = None
         request.status = HITLRequestStatus.PENDING
-        
+
         return True
-    
+
     async def respond(
         self,
         request_id: str,
@@ -336,40 +341,40 @@ class HITLQueue:
     ) -> bool:
         """
         Provide a response to a request.
-        
+
         Args:
             request_id: ID of the request
             response: Response data
             user_id: ID of the responding user
-            
+
         Returns:
             True if successful
         """
         request = self._requests.get(request_id)
         if not request:
             return False
-        
+
         if request.status not in [HITLRequestStatus.PENDING, HITLRequestStatus.ASSIGNED]:
             return False
-        
+
         request.response = response
         request.responded_by = user_id
         request.responded_at = datetime.utcnow()
         request.status = HITLRequestStatus.COMPLETED
-        
+
         return True
-    
+
     def cancel(self, request_id: str, reason: str = "") -> bool:
         """Cancel a request."""
         request = self._requests.get(request_id)
         if not request:
             return False
-        
+
         request.status = HITLRequestStatus.CANCELLED
         request.metadata["cancellation_reason"] = reason
-        
+
         return True
-    
+
     def get_user_assignments(self, user_id: str) -> List[HITLRequest]:
         """Get all requests assigned to a user."""
         request_ids = self._user_assignments.get(user_id, [])
@@ -378,27 +383,27 @@ class HITLQueue:
             for rid in request_ids
             if rid in self._requests and self._requests[rid].status == HITLRequestStatus.ASSIGNED
         ]
-    
+
     def get_queue_stats(self, tenant_id: Optional[str] = None) -> Dict[str, Any]:
         """Get queue statistics."""
         requests = list(self._requests.values())
         if tenant_id:
             requests = [r for r in requests if r.tenant_id == tenant_id]
-        
+
         pending = [r for r in requests if r.status == HITLRequestStatus.PENDING]
         assigned = [r for r in requests if r.status == HITLRequestStatus.ASSIGNED]
         completed = [r for r in requests if r.status == HITLRequestStatus.COMPLETED]
         sla_breached = [r for r in pending + assigned if r.is_sla_breached()]
-        
+
         avg_response_time = None
         if completed:
             total_time = sum(r.time_in_queue().total_seconds() for r in completed)
             avg_response_time = total_time / len(completed)
-        
+
         priority_counts = {}
         for p in HITLPriority:
             priority_counts[p.value] = len([r for r in pending if r.priority == p])
-        
+
         return {
             "total_requests": len(requests),
             "pending": len(pending),
@@ -408,7 +413,7 @@ class HITLQueue:
             "by_priority": priority_counts,
             "avg_response_time_seconds": avg_response_time,
         }
-    
+
     async def check_expirations(self) -> List[HITLRequest]:
         """Check and update expired requests."""
         expired = []
@@ -418,7 +423,7 @@ class HITLQueue:
                     request.status = HITLRequestStatus.EXPIRED
                     expired.append(request)
         return expired
-    
+
     async def check_sla_breaches(self) -> List[HITLRequest]:
         """Check for SLA breaches and notify."""
         breached = []
@@ -429,17 +434,18 @@ class HITLQueue:
                     breached.append(request)
                     await self._notify_sla_breach(request)
         return breached
-    
+
     async def start_monitoring(self, interval_seconds: int = 60) -> None:
         """Start background monitoring for expirations and SLA breaches."""
+
         async def monitor_loop():
             while True:
                 await asyncio.sleep(interval_seconds)
                 await self.check_expirations()
                 await self.check_sla_breaches()
-        
+
         self._sla_check_task = asyncio.create_task(monitor_loop())
-    
+
     def stop_monitoring(self) -> None:
         """Stop background monitoring."""
         if self._sla_check_task:

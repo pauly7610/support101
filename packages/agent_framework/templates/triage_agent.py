@@ -6,26 +6,26 @@ based on content, urgency, and available resources.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
-from ..core.base_agent import AgentConfig, AgentState, AgentStatus, BaseAgent, Tool
 from ..core.agent_registry import AgentBlueprint
+from ..core.base_agent import AgentConfig, AgentState, AgentStatus, BaseAgent, Tool
 
 
 class TriageAgent(BaseAgent):
     """
     Intelligent ticket triage agent.
-    
+
     Workflow:
     1. Analyze ticket content and metadata
     2. Classify priority and category
     3. Identify required skills/expertise
     4. Route to appropriate queue or agent
     """
-    
+
     TRIAGE_PROMPT = ChatPromptTemplate.from_template(
         "You are a ticket triage specialist. Analyze the following support ticket.\n\n"
         "Ticket Content: {content}\n"
@@ -43,43 +43,51 @@ class TriageAgent(BaseAgent):
         '  "reasoning": "brief explanation"\n'
         "}}"
     )
-    
+
     ROUTING_RULES = {
         "critical": {"max_wait_minutes": 5, "escalate_after": 15},
         "high": {"max_wait_minutes": 15, "escalate_after": 60},
         "medium": {"max_wait_minutes": 60, "escalate_after": 240},
         "low": {"max_wait_minutes": 240, "escalate_after": 1440},
     }
-    
+
     def __init__(self, config: AgentConfig) -> None:
         super().__init__(config)
         self.llm = ChatOpenAI(temperature=0.1)
         self._register_default_tools()
-    
+
     def _register_default_tools(self) -> None:
         """Register triage-specific tools."""
-        self.register_tool(Tool(
-            name="analyze_ticket",
-            description="Analyze ticket content for triage",
-            func=self._analyze_ticket,
-        ))
-        self.register_tool(Tool(
-            name="check_customer_history",
-            description="Check customer's ticket history",
-            func=self._check_customer_history,
-        ))
-        self.register_tool(Tool(
-            name="assign_to_queue",
-            description="Assign ticket to a queue",
-            func=self._assign_to_queue,
-        ))
-        self.register_tool(Tool(
-            name="assign_to_agent",
-            description="Assign ticket to a specific agent",
-            func=self._assign_to_agent,
-            requires_approval=True,
-        ))
-    
+        self.register_tool(
+            Tool(
+                name="analyze_ticket",
+                description="Analyze ticket content for triage",
+                func=self._analyze_ticket,
+            )
+        )
+        self.register_tool(
+            Tool(
+                name="check_customer_history",
+                description="Check customer's ticket history",
+                func=self._check_customer_history,
+            )
+        )
+        self.register_tool(
+            Tool(
+                name="assign_to_queue",
+                description="Assign ticket to a queue",
+                func=self._assign_to_queue,
+            )
+        )
+        self.register_tool(
+            Tool(
+                name="assign_to_agent",
+                description="Assign ticket to a specific agent",
+                func=self._assign_to_agent,
+                requires_approval=True,
+            )
+        )
+
     async def _analyze_ticket(
         self,
         content: str,
@@ -88,13 +96,16 @@ class TriageAgent(BaseAgent):
     ) -> Dict[str, Any]:
         """Analyze ticket using LLM."""
         chain = self.TRIAGE_PROMPT | self.llm
-        result = await chain.ainvoke({
-            "content": content,
-            "customer_tier": customer_tier,
-            "ticket_history": ticket_history,
-        })
-        
+        result = await chain.ainvoke(
+            {
+                "content": content,
+                "customer_tier": customer_tier,
+                "ticket_history": ticket_history,
+            }
+        )
+
         import json
+
         try:
             analysis = json.loads(result.content)
         except json.JSONDecodeError:
@@ -108,12 +119,10 @@ class TriageAgent(BaseAgent):
                 "auto_resolvable": False,
                 "reasoning": "Failed to parse LLM response",
             }
-        
+
         return analysis
-    
-    async def _check_customer_history(
-        self, customer_id: str
-    ) -> Dict[str, Any]:
+
+    async def _check_customer_history(self, customer_id: str) -> Dict[str, Any]:
         """Check customer's ticket history (stub - integrate with your DB)."""
         return {
             "customer_id": customer_id,
@@ -123,7 +132,7 @@ class TriageAgent(BaseAgent):
             "is_vip": False,
             "notes": [],
         }
-    
+
     async def _assign_to_queue(
         self,
         ticket_id: str,
@@ -133,7 +142,7 @@ class TriageAgent(BaseAgent):
     ) -> Dict[str, Any]:
         """Assign ticket to a queue."""
         routing_rules = self.ROUTING_RULES.get(priority, self.ROUTING_RULES["medium"])
-        
+
         return {
             "assigned": True,
             "ticket_id": ticket_id,
@@ -144,7 +153,7 @@ class TriageAgent(BaseAgent):
             "assigned_at": datetime.utcnow().isoformat(),
             "metadata": metadata or {},
         }
-    
+
     async def _assign_to_agent(
         self,
         ticket_id: str,
@@ -159,11 +168,11 @@ class TriageAgent(BaseAgent):
             "reason": reason,
             "assigned_at": datetime.utcnow().isoformat(),
         }
-    
+
     async def plan(self, state: AgentState) -> Dict[str, Any]:
         """Determine next triage action."""
         step = state.current_step
-        
+
         if step == 0:
             return {
                 "action": "check_customer_history",
@@ -178,12 +187,13 @@ class TriageAgent(BaseAgent):
                 "action_input": {
                     "content": state.input_data.get("content", ""),
                     "customer_tier": "vip" if customer_history.get("is_vip") else "standard",
-                    "ticket_history": str(customer_history.get("total_tickets", 0)) + " previous tickets",
+                    "ticket_history": str(customer_history.get("total_tickets", 0))
+                    + " previous tickets",
                 },
             }
         elif step == 2:
             analysis = state.intermediate_steps[-1] if state.intermediate_steps else {}
-            
+
             if analysis.get("priority") == "critical" or analysis.get("sentiment") == "angry":
                 return {
                     "action": "request_human_review",
@@ -193,7 +203,7 @@ class TriageAgent(BaseAgent):
                     },
                     "requires_approval": True,
                 }
-            
+
             return {
                 "action": "assign_to_queue",
                 "action_input": {
@@ -207,20 +217,18 @@ class TriageAgent(BaseAgent):
                     },
                 },
             }
-        
+
         return {"action": "complete", "action_input": {}}
-    
-    async def execute_step(
-        self, state: AgentState, action: Dict[str, Any]
-    ) -> Dict[str, Any]:
+
+    async def execute_step(self, state: AgentState, action: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a triage step."""
         action_name = action.get("action")
         action_input = action.get("action_input", {})
-        
+
         if action_name == "check_customer_history":
             result = await self._check_customer_history(action_input["customer_id"])
             return {"action": action_name, **result}
-        
+
         elif action_name == "analyze_ticket":
             result = await self._analyze_ticket(
                 action_input["content"],
@@ -228,7 +236,7 @@ class TriageAgent(BaseAgent):
                 action_input.get("ticket_history", "None"),
             )
             return {"action": action_name, **result}
-        
+
         elif action_name == "assign_to_queue":
             result = await self._assign_to_queue(
                 action_input["ticket_id"],
@@ -238,7 +246,7 @@ class TriageAgent(BaseAgent):
             )
             state.output_data["assignment"] = result
             return {"action": action_name, **result}
-        
+
         elif action_name == "request_human_review":
             await self.request_human_feedback(
                 question="Review critical ticket triage decision",
@@ -246,12 +254,12 @@ class TriageAgent(BaseAgent):
                 options=["approve_routing", "escalate_immediately", "reassign"],
             )
             return {"action": action_name, "awaiting_human": True}
-        
+
         elif action_name == "complete":
             return {"action": "complete", "completed": True}
-        
+
         return {"action": action_name, "error": "Unknown action"}
-    
+
     def should_continue(self, state: AgentState) -> bool:
         """Check if triage should continue."""
         if state.current_step >= self.config.max_iterations:

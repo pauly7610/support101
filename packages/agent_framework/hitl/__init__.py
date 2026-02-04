@@ -1,8 +1,8 @@
 """Human-in-the-Loop (HITL) components for agent framework."""
 
-from .queue import HITLQueue, HITLRequest, HITLRequestStatus, HITLRequestType
+from .escalation import EscalationManager, EscalationPolicy, EscalationRule
 from .manager import HITLManager
-from .escalation import EscalationPolicy, EscalationRule, EscalationManager
+from .queue import HITLQueue, HITLRequest, HITLRequestStatus, HITLRequestType
 
 __all__ = [
     "HITLQueue",

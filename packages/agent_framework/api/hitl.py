@@ -8,18 +8,15 @@ Provides REST API for:
 - Reviewer dashboard
 """
 
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
 from ..core.agent_registry import AgentRegistry
-from ..hitl.queue import HITLPriority, HITLQueue, HITLRequestStatus, HITLRequestType
-from ..hitl.escalation import EscalationLevel, EscalationManager
+from ..hitl.escalation import EscalationLevel
 from ..hitl.manager import HITLManager
-from ..governance.audit import AuditLogger
-
+from ..hitl.queue import HITLPriority, HITLRequestType
 
 router = APIRouter(prefix="/hitl", tags=["Human-in-the-Loop"])
 
@@ -46,6 +43,7 @@ def get_registry() -> AgentRegistry:
 
 class RegisterReviewerRequest(BaseModel):
     """Request to register a reviewer."""
+
     reviewer_id: str
     tenant_id: str
     name: str
@@ -54,12 +52,14 @@ class RegisterReviewerRequest(BaseModel):
 
 class RespondToRequestRequest(BaseModel):
     """Request to respond to a HITL request."""
+
     response: Dict[str, Any]
     reviewer_id: str
 
 
 class ManualEscalationRequest(BaseModel):
     """Request to manually escalate."""
+
     agent_id: str
     reason: str
     level: Optional[str] = "l2"
@@ -68,6 +68,7 @@ class ManualEscalationRequest(BaseModel):
 
 class CreateEscalationPolicyRequest(BaseModel):
     """Request to create an escalation policy."""
+
     tenant_id: str
     name: str
     description: Optional[str] = ""
@@ -89,21 +90,21 @@ async def get_queue(
             hitl_priority = HITLPriority(priority)
         except ValueError:
             pass
-    
+
     hitl_type = None
     if request_type:
         try:
             hitl_type = HITLRequestType(request_type)
         except ValueError:
             pass
-    
+
     requests = hitl_manager.queue.get_pending(
         tenant_id=tenant_id,
         priority=hitl_priority,
         request_type=hitl_type,
         limit=limit,
     )
-    
+
     return {
         "total": len(requests),
         "requests": [r.to_dict() for r in requests],
@@ -122,7 +123,7 @@ async def get_request(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Request '{request_id}' not found",
         )
-    
+
     return request.to_dict()
 
 
@@ -139,7 +140,7 @@ async def assign_request(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Failed to assign request (may already be assigned or completed)",
         )
-    
+
     return {"request_id": request_id, "assigned_to": reviewer_id, "success": True}
 
 
@@ -150,7 +151,7 @@ async def unassign_request(
 ) -> Dict[str, Any]:
     """Unassign a request."""
     success = hitl_manager.queue.unassign(request_id)
-    
+
     return {"request_id": request_id, "unassigned": success}
 
 
@@ -166,13 +167,13 @@ async def respond_to_request(
         response=request.response,
         reviewer_id=request.reviewer_id,
     )
-    
+
     if not success:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Failed to respond to request",
         )
-    
+
     return {
         "request_id": request_id,
         "responded": True,
@@ -188,7 +189,7 @@ async def cancel_request(
 ) -> Dict[str, Any]:
     """Cancel a HITL request."""
     success = hitl_manager.queue.cancel(request_id, reason)
-    
+
     return {"request_id": request_id, "cancelled": success}
 
 
@@ -204,7 +205,7 @@ async def register_reviewer(
         name=request.name,
         skills=request.skills,
     )
-    
+
     return {
         "reviewer_id": request.reviewer_id,
         "registered": True,
@@ -219,7 +220,7 @@ async def set_reviewer_availability(
 ) -> Dict[str, Any]:
     """Set reviewer availability."""
     success = hitl_manager.set_reviewer_availability(reviewer_id, available)
-    
+
     return {
         "reviewer_id": reviewer_id,
         "available": available,
@@ -234,13 +235,13 @@ async def get_reviewer_dashboard(
 ) -> Dict[str, Any]:
     """Get dashboard data for a reviewer."""
     dashboard = hitl_manager.get_reviewer_dashboard(reviewer_id)
-    
+
     if "error" in dashboard:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=dashboard["error"],
         )
-    
+
     return dashboard
 
 
@@ -251,7 +252,7 @@ async def get_reviewer_assignments(
 ) -> Dict[str, Any]:
     """Get all assignments for a reviewer."""
     assignments = hitl_manager.queue.get_user_assignments(reviewer_id)
-    
+
     return {
         "reviewer_id": reviewer_id,
         "total": len(assignments),
@@ -272,19 +273,19 @@ async def manual_escalate(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Agent '{request.agent_id}' not found",
         )
-    
+
     try:
         level = EscalationLevel(request.level) if request.level else EscalationLevel.L2
     except ValueError:
         level = EscalationLevel.L2
-    
+
     escalation = await hitl_manager.escalate(
         agent=agent,
         reason=request.reason,
         level=level,
         context=request.context,
     )
-    
+
     return escalation
 
 
@@ -300,7 +301,7 @@ async def create_escalation_policy(
         description=request.description or "",
         include_default_rules=request.include_default_rules,
     )
-    
+
     return policy.to_dict()
 
 
@@ -316,7 +317,7 @@ async def get_escalation_policy(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No escalation policy found for tenant '{tenant_id}'",
         )
-    
+
     return policy.to_dict()
 
 

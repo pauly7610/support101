@@ -19,7 +19,6 @@ from ..governance.audit import AuditEventType, AuditLogger
 from ..governance.permissions import AgentPermissions, Permission, PermissionLevel, Role
 from ..multitenancy.tenant_manager import TenantManager
 
-
 router = APIRouter(prefix="/governance", tags=["Governance"])
 
 
@@ -59,12 +58,14 @@ def get_tenant_manager() -> TenantManager:
 
 class AssignRoleRequest(BaseModel):
     """Request to assign a role to an agent."""
+
     agent_id: str
     role_name: str
 
 
 class GrantPermissionRequest(BaseModel):
     """Request to grant a permission."""
+
     agent_id: str
     resource: str
     level: str
@@ -75,6 +76,7 @@ class GrantPermissionRequest(BaseModel):
 
 class CreateRoleRequest(BaseModel):
     """Request to create a custom role."""
+
     name: str
     description: str
     permissions: List[Dict[str, Any]]
@@ -83,6 +85,7 @@ class CreateRoleRequest(BaseModel):
 
 class AuditQueryParams(BaseModel):
     """Parameters for audit log queries."""
+
     tenant_id: Optional[str] = None
     agent_id: Optional[str] = None
     event_type: Optional[str] = None
@@ -102,29 +105,29 @@ async def get_governance_dashboard(
 ) -> Dict[str, Any]:
     """
     Get comprehensive governance dashboard data.
-    
+
     Returns real-time view of all agents, permissions, and recent activity.
     """
     agents = registry.list_agents(tenant_id=tenant_id)
-    
+
     active_agents = [a for a in agents if a.get("status") == "running"]
     idle_agents = [a for a in agents if a.get("status") in ["idle", "not_started"]]
     awaiting_human = [a for a in agents if a.get("status") == "awaiting_human"]
     failed_agents = [a for a in agents if a.get("status") == "failed"]
-    
+
     recent_events = audit_logger.query(
         tenant_id=tenant_id,
         limit=20,
     )
-    
+
     audit_stats = audit_logger.get_stats(tenant_id=tenant_id)
-    
+
     tenant_stats = None
     if tenant_id:
         tenant = tenant_manager.get_tenant(tenant_id)
         if tenant:
             tenant_stats = tenant.get_usage()
-    
+
     return {
         "timestamp": datetime.utcnow().isoformat(),
         "agents": {
@@ -166,24 +169,28 @@ async def get_active_agents(
 ) -> List[Dict[str, Any]]:
     """Get all currently active agents with their states."""
     agents = registry.list_agents(tenant_id=tenant_id)
-    
+
     active = []
     for agent_summary in agents:
         if agent_summary.get("status") in ["running", "awaiting_human"]:
             agent = registry.get_agent(agent_summary["agent_id"])
             if agent and agent.state:
-                active.append({
-                    "agent_id": agent.agent_id,
-                    "name": agent.config.name,
-                    "tenant_id": agent.tenant_id,
-                    "blueprint": agent.config.blueprint_name,
-                    "status": agent.state.status.value,
-                    "current_step": agent.state.current_step,
-                    "started_at": agent.state.started_at.isoformat() if agent.state.started_at else None,
-                    "execution_id": agent.state.execution_id,
-                    "has_human_request": agent.state.human_feedback_request is not None,
-                })
-    
+                active.append(
+                    {
+                        "agent_id": agent.agent_id,
+                        "name": agent.config.name,
+                        "tenant_id": agent.tenant_id,
+                        "blueprint": agent.config.blueprint_name,
+                        "status": agent.state.status.value,
+                        "current_step": agent.state.current_step,
+                        "started_at": (
+                            agent.state.started_at.isoformat() if agent.state.started_at else None
+                        ),
+                        "execution_id": agent.state.execution_id,
+                        "has_human_request": agent.state.human_feedback_request is not None,
+                    }
+                )
+
     return active
 
 
@@ -204,19 +211,21 @@ async def create_role(
     """Create a custom role."""
     role_permissions = []
     for p in request.permissions:
-        role_permissions.append(Permission(
-            resource=p["resource"],
-            level=PermissionLevel(p["level"]),
-            conditions=p.get("conditions", {}),
-        ))
-    
+        role_permissions.append(
+            Permission(
+                resource=p["resource"],
+                level=PermissionLevel(p["level"]),
+                conditions=p.get("conditions", {}),
+            )
+        )
+
     role = Role(
         name=request.name,
         description=request.description,
         permissions=role_permissions,
         inherits_from=request.inherits_from or [],
     )
-    
+
     try:
         permissions_mgr.create_role(role)
     except ValueError as e:
@@ -224,7 +233,7 @@ async def create_role(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
-    
+
     await audit_logger.log(
         audit_logger.query.__self__.__class__(
             event_type=AuditEventType.PERMISSION_GRANTED,
@@ -234,7 +243,7 @@ async def create_role(
             details={"role_name": request.name},
         )
     )
-    
+
     return {
         "name": role.name,
         "description": role.description,
@@ -257,7 +266,7 @@ async def assign_role(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Agent '{request.agent_id}' not found",
         )
-    
+
     try:
         permissions_mgr.assign_role(request.agent_id, request.role_name)
     except ValueError as e:
@@ -265,14 +274,14 @@ async def assign_role(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
-    
+
     await audit_logger.log_agent_event(
         event_type=AuditEventType.ROLE_ASSIGNED,
         agent_id=request.agent_id,
         tenant_id=agent.tenant_id,
         details={"role": request.role_name},
     )
-    
+
     return {
         "agent_id": request.agent_id,
         "role": request.role_name,
@@ -290,9 +299,9 @@ async def revoke_role(
 ) -> Dict[str, Any]:
     """Revoke a role from an agent."""
     agent = registry.get_agent(agent_id)
-    
+
     success = permissions_mgr.revoke_role(agent_id, role_name)
-    
+
     if agent:
         await audit_logger.log_agent_event(
             event_type=AuditEventType.ROLE_REVOKED,
@@ -300,7 +309,7 @@ async def revoke_role(
             tenant_id=agent.tenant_id,
             details={"role": role_name},
         )
-    
+
     return {"agent_id": agent_id, "role": role_name, "revoked": success}
 
 
@@ -313,7 +322,7 @@ async def get_agent_permissions(
     """Get all permissions for an agent."""
     perms = permissions_mgr.get_agent_permissions(agent_id, tenant_id)
     roles = permissions_mgr.get_agent_roles(agent_id)
-    
+
     return {
         "agent_id": agent_id,
         "roles": roles,
@@ -344,24 +353,24 @@ async def grant_permission(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid permission level: {request.level}",
         )
-    
+
     expires_at = None
     if request.expires_in_hours:
         expires_at = datetime.utcnow() + timedelta(hours=request.expires_in_hours)
-    
+
     permission = Permission(
         resource=request.resource,
         level=level,
         conditions=request.conditions or {},
         expires_at=expires_at,
     )
-    
+
     permissions_mgr.grant_permission(
         request.agent_id,
         permission,
         request.tenant_id,
     )
-    
+
     agent = registry.get_agent(request.agent_id)
     if agent:
         await audit_logger.log_agent_event(
@@ -373,7 +382,7 @@ async def grant_permission(
                 "level": request.level,
             },
         )
-    
+
     return {
         "agent_id": request.agent_id,
         "resource": request.resource,
@@ -393,7 +402,7 @@ async def revoke_permission(
 ) -> Dict[str, Any]:
     """Revoke a permission from an agent."""
     success = permissions_mgr.revoke_permission(agent_id, resource, tenant_id)
-    
+
     agent = registry.get_agent(agent_id)
     if agent:
         await audit_logger.log_agent_event(
@@ -402,7 +411,7 @@ async def revoke_permission(
             tenant_id=agent.tenant_id,
             details={"resource": resource},
         )
-    
+
     return {"agent_id": agent_id, "resource": resource, "revoked": success}
 
 
@@ -422,14 +431,14 @@ async def check_permission(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid permission level: {level}",
         )
-    
+
     has_permission = permissions_mgr.check_permission(
         agent_id=agent_id,
         resource=resource,
         required_level=perm_level,
         tenant_id=tenant_id,
     )
-    
+
     return {
         "agent_id": agent_id,
         "resource": resource,
@@ -457,7 +466,7 @@ async def query_audit_logs(
             audit_event_type = AuditEventType(event_type)
         except ValueError:
             pass
-    
+
     events = audit_logger.query(
         tenant_id=tenant_id,
         agent_id=agent_id,
@@ -468,7 +477,7 @@ async def query_audit_logs(
         limit=limit,
         offset=offset,
     )
-    
+
     return {
         "total": len(events),
         "offset": offset,
@@ -485,7 +494,7 @@ async def get_agent_audit_history(
 ) -> Dict[str, Any]:
     """Get complete audit history for an agent."""
     history = audit_logger.get_agent_history(agent_id, limit)
-    
+
     return {
         "agent_id": agent_id,
         "total_events": len(history),
@@ -500,7 +509,7 @@ async def get_execution_audit_trail(
 ) -> Dict[str, Any]:
     """Get complete audit trail for an execution."""
     trail = audit_logger.get_execution_trail(execution_id)
-    
+
     return {
         "execution_id": execution_id,
         "total_events": len(trail),
@@ -521,7 +530,7 @@ async def get_human_interactions(
         start_time=start_time,
         end_time=end_time,
     )
-    
+
     return {
         "total": len(interactions),
         "interactions": interactions,
@@ -536,7 +545,7 @@ async def get_security_events(
 ) -> Dict[str, Any]:
     """Get security-related audit events."""
     events = audit_logger.get_security_events(tenant_id, limit)
-    
+
     return {
         "total": len(events),
         "events": events,
@@ -562,7 +571,7 @@ async def get_governance_stats(
     """Get comprehensive governance statistics."""
     audit_stats = audit_logger.get_stats(tenant_id)
     registry_stats = registry.get_stats()
-    
+
     return {
         "timestamp": datetime.utcnow().isoformat(),
         "audit": audit_stats,

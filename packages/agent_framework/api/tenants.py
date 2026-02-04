@@ -13,10 +13,9 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
-from ..multitenancy.tenant import Tenant, TenantConfig, TenantLimits, TenantStatus, TenantTier
-from ..multitenancy.tenant_manager import TenantManager
 from ..governance.audit import AuditLogger
-
+from ..multitenancy.tenant import TenantLimits, TenantStatus, TenantTier
+from ..multitenancy.tenant_manager import TenantManager
 
 router = APIRouter(prefix="/tenants", tags=["Tenants"])
 
@@ -41,6 +40,7 @@ def get_audit_logger() -> AuditLogger:
 
 class CreateTenantRequest(BaseModel):
     """Request to create a tenant."""
+
     name: str
     tier: str = "starter"
     owner_id: Optional[str] = None
@@ -51,6 +51,7 @@ class CreateTenantRequest(BaseModel):
 
 class UpdateTenantRequest(BaseModel):
     """Request to update a tenant."""
+
     name: Optional[str] = None
     tier: Optional[str] = None
     allowed_blueprints: Optional[List[str]] = None
@@ -59,6 +60,7 @@ class UpdateTenantRequest(BaseModel):
 
 class CustomLimitsRequest(BaseModel):
     """Request to set custom limits."""
+
     max_agents: Optional[int] = None
     max_concurrent_executions: Optional[int] = None
     max_requests_per_minute: Optional[int] = None
@@ -69,6 +71,7 @@ class CustomLimitsRequest(BaseModel):
 
 class TenantResponse(BaseModel):
     """Tenant response model."""
+
     tenant_id: str
     name: str
     tier: str
@@ -92,7 +95,7 @@ async def create_tenant(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid tier: {request.tier}. Valid options: {[t.value for t in TenantTier]}",
         )
-    
+
     tenant = await tenant_manager.create_tenant(
         name=request.name,
         tier=tier,
@@ -101,7 +104,7 @@ async def create_tenant(
         settings=request.settings,
         auto_activate=request.auto_activate,
     )
-    
+
     return tenant.to_dict()
 
 
@@ -120,21 +123,21 @@ async def list_tenants(
             tenant_status = TenantStatus(status_filter)
         except ValueError:
             pass
-    
+
     tenant_tier = None
     if tier:
         try:
             tenant_tier = TenantTier(tier)
         except ValueError:
             pass
-    
+
     tenants = tenant_manager.list_tenants(
         status=tenant_status,
         tier=tenant_tier,
         limit=limit,
         offset=offset,
     )
-    
+
     return [t.to_dict() for t in tenants]
 
 
@@ -150,7 +153,7 @@ async def get_tenant(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Tenant '{tenant_id}' not found",
         )
-    
+
     return tenant.to_dict()
 
 
@@ -170,7 +173,7 @@ async def update_tenant(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid tier: {request.tier}",
             )
-    
+
     tenant = await tenant_manager.update_tenant(
         tenant_id=tenant_id,
         name=request.name,
@@ -178,13 +181,13 @@ async def update_tenant(
         allowed_blueprints=request.allowed_blueprints,
         settings=request.settings,
     )
-    
+
     if not tenant:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Tenant '{tenant_id}' not found",
         )
-    
+
     return tenant.to_dict()
 
 
@@ -221,7 +224,7 @@ async def activate_tenant(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Tenant '{tenant_id}' not found",
         )
-    
+
     return {"tenant_id": tenant_id, "status": "active", "activated": True}
 
 
@@ -238,7 +241,7 @@ async def suspend_tenant(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Tenant '{tenant_id}' not found",
         )
-    
+
     return {"tenant_id": tenant_id, "status": "suspended", "reason": reason}
 
 
@@ -254,7 +257,7 @@ async def get_tenant_usage(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Tenant '{tenant_id}' not found",
         )
-    
+
     return {
         "tenant_id": tenant_id,
         "usage": usage,
@@ -275,23 +278,25 @@ async def set_custom_limits(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Tenant '{tenant_id}' not found",
         )
-    
+
     current_limits = tenant.limits
-    
+
     custom_limits = TenantLimits(
         max_agents=request.max_agents or current_limits.max_agents,
-        max_concurrent_executions=request.max_concurrent_executions or current_limits.max_concurrent_executions,
-        max_requests_per_minute=request.max_requests_per_minute or current_limits.max_requests_per_minute,
+        max_concurrent_executions=request.max_concurrent_executions
+        or current_limits.max_concurrent_executions,
+        max_requests_per_minute=request.max_requests_per_minute
+        or current_limits.max_requests_per_minute,
         max_storage_mb=request.max_storage_mb or current_limits.max_storage_mb,
         max_vector_documents=request.max_vector_documents or current_limits.max_vector_documents,
         max_hitl_queue_size=request.max_hitl_queue_size or current_limits.max_hitl_queue_size,
     )
-    
+
     await tenant_manager.update_tenant(
         tenant_id=tenant_id,
         custom_limits=custom_limits,
     )
-    
+
     return {
         "tenant_id": tenant_id,
         "limits": custom_limits.to_dict(),
@@ -311,7 +316,7 @@ async def set_api_key(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Tenant '{tenant_id}' not found",
         )
-    
+
     return {"tenant_id": tenant_id, "api_key_set": True}
 
 

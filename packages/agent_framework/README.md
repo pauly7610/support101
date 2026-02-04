@@ -192,11 +192,28 @@ packages/agent_framework/
 │   ├── agent_registry.py   # Blueprint & instance registry
 │   └── agent_executor.py   # Execution with lifecycle management
 ├── templates/               # Agent blueprints
-│   ├── support_agent.py    # RAG-powered support agent
+│   ├── support_agent.py    # RAG-powered support agent (DI-enabled)
 │   └── triage_agent.py     # Ticket routing agent
 ├── governance/              # Permissions & audit
 │   ├── permissions.py      # RBAC system
 │   └── audit.py            # Audit logging
+├── persistence/             # State storage backends
+│   ├── base.py             # StateStore interface
+│   ├── memory.py           # In-memory (dev/test)
+│   ├── redis_store.py      # Redis (distributed)
+│   └── database.py         # SQLAlchemy (PostgreSQL/MySQL)
+├── resilience/              # Fault tolerance
+│   ├── retry.py            # Retry with exponential backoff
+│   └── circuit_breaker.py  # Circuit breaker pattern
+├── observability/           # Monitoring & tracing
+│   ├── metrics.py          # Prometheus metrics
+│   └── tracing.py          # OpenTelemetry spans
+├── realtime/                # Real-time updates
+│   ├── websocket.py        # WebSocket manager
+│   └── events.py           # Event bus (pub/sub)
+├── validation/              # Config validation
+│   ├── blueprint.py        # Blueprint validator
+│   └── config.py           # Pydantic schemas
 ├── hitl/                    # Human-in-the-loop
 │   ├── queue.py            # HITL request queue
 │   ├── escalation.py       # Escalation policies

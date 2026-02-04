@@ -8,15 +8,16 @@ Tests:
 - Request lifecycle
 """
 
-import pytest
 from datetime import datetime, timedelta
 
+import pytest
+
 from packages.agent_framework.hitl.queue import (
+    HITLPriority,
     HITLQueue,
     HITLRequest,
     HITLRequestStatus,
     HITLRequestType,
-    HITLPriority,
 )
 
 
@@ -37,7 +38,7 @@ class TestHITLQueue:
             description="Test description",
             priority=HITLPriority.MEDIUM,
         )
-        
+
         assert request.request_id is not None
         assert request.status == HITLRequestStatus.PENDING
         assert request.priority == HITLPriority.MEDIUM
@@ -52,7 +53,7 @@ class TestHITLQueue:
             title="Approval Request",
             description="Need approval",
         )
-        
+
         retrieved = self.queue.get_request(request.request_id)
         assert retrieved is not None
         assert retrieved.request_id == request.request_id
@@ -86,7 +87,7 @@ class TestHITLQueue:
             description="",
             priority=HITLPriority.HIGH,
         )
-        
+
         pending = self.queue.get_pending()
         assert pending[0].priority == HITLPriority.CRITICAL
         assert pending[1].priority == HITLPriority.HIGH
@@ -102,10 +103,10 @@ class TestHITLQueue:
             title="Test",
             description="",
         )
-        
+
         success = self.queue.assign(request.request_id, "reviewer_1")
         assert success is True
-        
+
         updated = self.queue.get_request(request.request_id)
         assert updated.status == HITLRequestStatus.ASSIGNED
         assert updated.assigned_to == "reviewer_1"
@@ -120,14 +121,14 @@ class TestHITLQueue:
             title="Approval",
             description="",
         )
-        
+
         success = await self.queue.respond(
             request.request_id,
             {"decision": "approve", "comment": "Looks good"},
             "reviewer_1",
         )
         assert success is True
-        
+
         updated = self.queue.get_request(request.request_id)
         assert updated.status == HITLRequestStatus.COMPLETED
         assert updated.response["decision"] == "approve"
@@ -142,10 +143,10 @@ class TestHITLQueue:
             title="Test",
             description="",
         )
-        
+
         success = self.queue.cancel(request.request_id, "No longer needed")
         assert success is True
-        
+
         updated = self.queue.get_request(request.request_id)
         assert updated.status == HITLRequestStatus.CANCELLED
 
@@ -169,7 +170,7 @@ class TestHITLQueue:
             description="",
             priority=HITLPriority.MEDIUM,
         )
-        
+
         stats = self.queue.get_queue_stats()
         assert stats["total_requests"] == 2
         assert stats["pending"] == 2
@@ -188,7 +189,7 @@ class TestHITLRequest:
             title="Test",
             description="",
         )
-        
+
         time_in_queue = request.time_in_queue()
         assert time_in_queue.total_seconds() >= 0
 
@@ -201,7 +202,7 @@ class TestHITLRequest:
             description="",
             sla_deadline=datetime.utcnow() + timedelta(hours=1),
         )
-        
+
         assert request.is_sla_breached() is False
 
     def test_sla_breached(self):
@@ -213,7 +214,7 @@ class TestHITLRequest:
             description="",
             sla_deadline=datetime.utcnow() - timedelta(hours=1),
         )
-        
+
         assert request.is_sla_breached() is True
 
     def test_to_dict(self):
@@ -225,7 +226,7 @@ class TestHITLRequest:
             description="Test desc",
             priority=HITLPriority.HIGH,
         )
-        
+
         data = request.to_dict()
         assert data["agent_id"] == "a1"
         assert data["title"] == "Test"
