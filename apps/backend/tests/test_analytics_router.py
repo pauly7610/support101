@@ -111,7 +111,12 @@ def test_admin_access_success(client, admin_user, mock_db, endpoint):
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, dict)
-        assert "escalations" in data or "agents" in data or "categories" in data
+        # Check for actual response keys from each endpoint
+        assert (
+            "escalations" in data
+            or "by_agent" in data
+            or "by_category" in data
+        )
     finally:
         app.dependency_overrides = {}
 
