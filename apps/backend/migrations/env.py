@@ -56,7 +56,11 @@ def run_migrations_offline() -> None:
 
 
 def get_url():
-    return os.getenv("DATABASE_URL", config.get_main_option("sqlalchemy.url"))
+    url = os.getenv("DATABASE_URL", config.get_main_option("sqlalchemy.url"))
+    # Convert sync URL to async URL for asyncpg driver
+    if url and url.startswith("postgresql://"):
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    return url
 
 
 def run_migrations_online():
