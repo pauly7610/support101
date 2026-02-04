@@ -67,18 +67,18 @@ def run_migrations_online():
     url = get_url()
     connectable = create_async_engine(url, future=True)
 
-    async def do_run_migrations(connection):
+    def do_run_migrations(connection):
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
             compare_type=True,
         )
-        async with connection.begin():
-            await connection.run_sync(context.run_migrations)
+        with context.begin_transaction():
+            context.run_migrations()
 
     async def run():
         async with connectable.connect() as connection:
-            await do_run_migrations(connection)
+            await connection.run_sync(do_run_migrations)
         await connectable.dispose()
 
     asyncio.run(run())
