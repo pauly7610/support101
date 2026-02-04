@@ -15,8 +15,14 @@ from apps.backend.app.core.db import Base
 from apps.backend.main import app as fastapi_app
 from apps.backend.main import get_db
 
-os.environ["DATABASE_URL"] = "postgresql+asyncpg://postgres:postgres@localhost:5432/support101_test"
-engine = create_async_engine(os.getenv("DATABASE_URL"), future=True)
+# Use environment variable or default to test database
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql+asyncpg://postgres:postgres@localhost:5432/support101_test"
+)
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+
+engine = create_async_engine(DATABASE_URL, future=True)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
@@ -29,10 +35,14 @@ def event_loop():
 
 @pytest_asyncio.fixture(autouse=True)
 async def clear_redis_cache():
-    redis = redis_asyncio.from_url("redis://localhost:6379/0", decode_responses=True)
-    await redis.flushdb()
-    yield
-    await redis.close()
+    try:
+        redis = redis_asyncio.from_url(REDIS_URL, decode_responses=True)
+        await redis.flushdb()
+        yield
+        await redis.close()
+    except Exception:
+        # Redis not available, skip cache clearing
+        yield
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
