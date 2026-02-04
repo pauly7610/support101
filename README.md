@@ -52,6 +52,7 @@
 
 ## 🚦 New in This Release
 
+- **🤖 Enterprise Agent Framework:** A reusable agent SDK with swappable blueprints, human-in-the-loop queues, multi-tenant deployment, and governance dashboards. See [Agent Framework README](packages/agent_framework/README.md).
 - **GDPR/CCPA Compliance:** Endpoints `/gdpr_delete` and `/ccpa_optout` with JWT auth for secure data deletion and opt-out, supporting regulatory compliance.
 - **Analytics & Reporting:** Escalation tracking, 30-day reporting, and agent/category breakdowns.
 - **Compliance UI:** Customer-facing settings and admin dashboard for data/privacy management.
@@ -70,7 +71,8 @@ support101/
 │   └── customer-bot/      # Next.js Chatbot widget
 ├── packages/
 │   ├── shared/            # Pydantic models, constants, utils
-│   ├── llm-engine/        # LangChain chains, vector store, prompts
+│   ├── llm_engine/        # LangChain chains, vector store, prompts
+│   ├── agent_framework/   # Enterprise Agent SDK (blueprints, HITL, multi-tenant)
 │   └── observability/     # LangSmith, PromptLayer, OpenTelemetry hooks
 ├── .env.template
 ├── docker-compose.yml
@@ -240,11 +242,26 @@ npm run dev
 ---
 
 ## API Endpoints
+
+### Core Endpoints
 | Method | Route                  | Description                         |
 |--------|------------------------|-------------------------------------|
 | GET    | `/health`              | Simple health check                 |
 | POST   | `/generate_reply`      | Main endpoint for LLM reply         |
 | POST   | `/ingest_documentation`| Crawl & embed new documentation     |
+
+### Agent Framework Endpoints (`/v1`)
+| Method | Route                          | Description                              |
+|--------|--------------------------------|------------------------------------------|
+| GET    | `/v1/agents/blueprints`        | List available agent blueprints          |
+| POST   | `/v1/agents`                   | Create an agent from a blueprint         |
+| POST   | `/v1/agents/{id}/execute`      | Execute an agent                         |
+| GET    | `/v1/governance/dashboard`     | Real-time agent monitoring dashboard     |
+| GET    | `/v1/governance/audit`         | Query audit logs                         |
+| GET    | `/v1/hitl/queue`               | Get pending human-in-the-loop requests   |
+| POST   | `/v1/hitl/queue/{id}/respond`  | Respond to a HITL request                |
+| POST   | `/v1/tenants`                  | Create a new tenant                      |
+| GET    | `/v1/tenants/{id}/usage`       | Get tenant usage statistics              |
 
 ---
 

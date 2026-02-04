@@ -37,6 +37,12 @@ from apps.backend.app.auth.users import (
 from apps.backend.app.compliance.router import router as compliance_router
 from apps.backend.app.core.cache import init_redis
 from apps.backend.app.core.db import get_db
+from packages.agent_framework.api import (
+    agents_router,
+    governance_router,
+    hitl_router,
+    tenants_router,
+)
 from packages.llm_engine.chains.rag_chain import RAGChain
 from packages.llm_engine.embeddings import get_fastembed_model
 from packages.llm_engine.vector_store import (
@@ -76,6 +82,10 @@ app = FastAPI(title="Support Intelligence Core API", lifespan=lifespan)
 
 app.include_router(compliance_router, prefix="/v1/compliance")
 app.include_router(analytics_router, prefix="/v1/analytics")
+app.include_router(agents_router, prefix="/v1")
+app.include_router(governance_router, prefix="/v1")
+app.include_router(hitl_router, prefix="/v1")
+app.include_router(tenants_router, prefix="/v1")
 
 security = HTTPBearer()
 
