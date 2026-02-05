@@ -11,9 +11,16 @@ from apps.backend.app.auth.models import User
 async def test_get_user_by_username_found():
     dummy_user = User(username="alice", hashed_password="hash")
     session = AsyncMock()
-    result = AsyncMock()
-    result.scalars.return_value.first.return_value = dummy_user
-    session.execute.return_value = result
+
+    # Create a mock result that mimics SQLAlchemy's Result object
+    class MockResult:
+        def scalars(self):
+            return self
+
+        def first(self):
+            return dummy_user
+
+    session.execute.return_value = MockResult()
     user = await users_module.get_user_by_username(session, "alice")
     assert user is dummy_user
     session.execute.assert_called_once()
@@ -22,9 +29,15 @@ async def test_get_user_by_username_found():
 @pytest.mark.asyncio
 async def test_get_user_by_username_not_found():
     session = AsyncMock()
-    result = AsyncMock()
-    result.scalars.return_value.first.return_value = None
-    session.execute.return_value = result
+
+    class MockResult:
+        def scalars(self):
+            return self
+
+        def first(self):
+            return None
+
+    session.execute.return_value = MockResult()
     user = await users_module.get_user_by_username(session, "bob")
     assert user is None
     session.execute.assert_called_once()

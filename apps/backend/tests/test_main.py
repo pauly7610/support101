@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 from apps.backend.main import app, mask_api_keys
 
@@ -59,7 +59,7 @@ def test_register_and_login(monkeypatch):
 @pytest.mark.asyncio
 async def test_ingest_documentation_auth_and_rate_limit(monkeypatch):
     file_content = b"dummy"
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         # 1. Missing Authorization header
         resp = await ac.post(
             "/ingest_documentation",
@@ -98,7 +98,7 @@ async def test_ingest_documentation_error_branches(monkeypatch):
     token = "Bearer testtoken"
     headers = {"Authorization": token}
     file_content = b"dummy"
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         # 1. Invalid MIME type
         resp = await ac.post(
             "/ingest_documentation",
@@ -146,7 +146,7 @@ async def test_ingest_documentation_success_txt(monkeypatch):
         "apps.backend.main.chunk_page_content",
         lambda text, chunk_size=1000, chunk_overlap=100: ["chunk1", "chunk2"],
     )
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         resp = await ac.post(
             "/ingest_documentation",
             files={"file": ("test.txt", io.BytesIO(b"hello world"), "text/plain")},
@@ -186,7 +186,7 @@ async def test_ingest_documentation_success_pdf(monkeypatch):
         "apps.backend.main.chunk_page_content",
         lambda text, chunk_size=1000, chunk_overlap=100: ["chunk1"],
     )
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         resp = await ac.post(
             "/ingest_documentation",
             files={"file": ("test.pdf", io.BytesIO(b"%PDF-1.4"), "application/pdf")},
@@ -204,7 +204,7 @@ async def test_ingest_documentation_pdf_exception(monkeypatch):
     token = "Bearer testtoken"
     headers = {"Authorization": token}
     monkeypatch.setattr("pdfplumber.open", lambda _: (_ for _ in ()).throw(Exception("pdf error")))
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         resp = await ac.post(
             "/ingest_documentation",
             files={"file": ("test.pdf", io.BytesIO(b"%PDF-1.4"), "application/pdf")},
@@ -229,7 +229,7 @@ async def test_ingest_documentation_upsert_exception(monkeypatch):
         "apps.backend.main.chunk_page_content",
         lambda text, chunk_size=1000, chunk_overlap=100: ["chunk1"],
     )
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         resp = await ac.post(
             "/ingest_documentation",
             files={"file": ("test.txt", io.BytesIO(b"hello world"), "text/plain")},

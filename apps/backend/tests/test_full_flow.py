@@ -3,7 +3,7 @@ import sys
 from unittest.mock import patch
 
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 from apps.backend.main import app as backend_app
 
@@ -19,7 +19,7 @@ def anyio_backend():
 
 @pytest.fixture(scope="module")
 def client():
-    return AsyncClient(app=backend_app.app, base_url="http://testserver")
+    return AsyncClient(transport=ASGITransport(app=backend_app), base_url="http://testserver")
 
 
 async def test_document_ingestion_and_rag_flow(client):
