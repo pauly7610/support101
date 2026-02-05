@@ -14,7 +14,7 @@ class MockUser:
     is_admin = True
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(scope="function", autouse=True)
 def setup_mocks():
     """Set up mocks for FastAPILimiter and auth."""
     # Mock FastAPILimiter
@@ -28,10 +28,16 @@ def setup_mocks():
     except Exception:
         pass
 
+    original_call = None
     try:
         from fastapi_limiter.depends import RateLimiter
 
-        RateLimiter.__call__ = AsyncMock(return_value=None)
+        original_call = getattr(RateLimiter, "__call__", None)
+
+        async def mock_call(self, request, response):
+            return None
+
+        RateLimiter.__call__ = mock_call
     except Exception:
         pass
 
@@ -39,6 +45,15 @@ def setup_mocks():
     backend_app.dependency_overrides[get_current_user] = lambda: MockUser()
     yield
     backend_app.dependency_overrides.clear()
+
+    # Restore RateLimiter
+    if original_call is not None:
+        try:
+            from fastapi_limiter.depends import RateLimiter
+
+            RateLimiter.__call__ = original_call
+        except Exception:
+            pass
 
 
 @pytest.fixture

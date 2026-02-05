@@ -63,25 +63,19 @@ async def test_gdpr_delete_requires_jwt(async_client):
 
 @pytest.mark.asyncio
 async def test_ccpa_optout_requires_jwt(async_client):
-    from apps.backend.app.auth.jwt import get_current_user
-    from apps.backend.main import app
-
-    # No JWT - should return 401 (or 500 if DB error occurs first)
-    resp = await async_client.post("/v1/compliance/ccpa_optout", json={"user_id": TEST_USER_ID})
+    # Part 1: No JWT - should return 401 (or 500 if DB error occurs first)
+    resp = await async_client.post(
+        "/v1/compliance/ccpa_optout",
+        json={"user_id": TEST_USER_ID},
+    )
     assert resp.status_code in (401, 500)
 
-    # With auth override
-    class MockUser:
-        id = uuid.UUID(TEST_USER_ID)
-        username = "testuser"
-        is_admin = False
-
-    app.dependency_overrides[get_current_user] = lambda: MockUser()
-    try:
-        resp = await async_client.post(
-            "/v1/compliance/ccpa_optout",
-            json={"user_id": TEST_USER_ID},
-        )
-        assert resp.status_code in (200, 404, 500)
-    finally:
-        app.dependency_overrides.pop(get_current_user, None)
+    # Part 2: With valid JWT - should succeed or return user not found
+    token = create_test_token(is_admin=False)
+    resp = await async_client.post(
+        "/v1/compliance/ccpa_optout",
+        json={"user_id": TEST_USER_ID},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    # 200 = success, 404 = user not found, 500 = DB error
+    assert resp.status_code in (200, 404, 500)
