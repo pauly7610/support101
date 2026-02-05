@@ -65,7 +65,7 @@ def test_invalid_file_type():
         files={"file": ("bad.exe", b"MZ...", "application/octet-stream")},
         data={"chunk_size": 1024},
     )
-    assert resp.status_code in (400, 415)
+    assert resp.status_code == 400
 
 
 def test_invalid_chunk_size():
