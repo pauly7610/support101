@@ -28,23 +28,31 @@ async def test_get_current_user_valid(monkeypatch, user_dict):
     token = jwt_module.create_access_token(user_dict)
 
     class DummyUser:
-
-        def __init__(self, id):
-            self.id = id
+        def __init__(self, username):
+            self.username = username
             self.is_admin = True
+
+    class DummyScalars:
+        def __init__(self, user):
+            self._user = user
+
+        def first(self):
+            return self._user
+
+    class DummyResult:
+        def __init__(self, user):
+            self._user = user
+
+        def scalars(self):
+            return DummyScalars(self._user)
 
     class DummySession:
         async def execute(self, stmt):
-
-            class DummyResult:
-                def scalar_one_or_none(self):
-                    return DummyUser("user123")
-
-            return DummyResult()
+            return DummyResult(DummyUser("user123"))
 
     monkeypatch.setattr(jwt_module, "get_db", lambda: DummySession())
     user = await jwt_module.get_current_user(token, DummySession())
-    assert user.id == "user123"
+    assert user.username == "user123"
     assert user.is_admin is True
 
 
@@ -68,15 +76,19 @@ async def test_get_current_user_expired_token(monkeypatch):
 async def test_get_current_user_no_user(monkeypatch, user_dict):
     token = jwt_module.create_access_token(user_dict)
 
+    class DummyScalars:
+        def first(self):
+            return None
+
+    class DummyResult:
+        def scalars(self):
+            return DummyScalars()
+
     class DummySession:
         async def execute(self, stmt):
-            class DummyResult:
-                def scalar_one_or_none(self):
-                    return None
-
             return DummyResult()
 
     monkeypatch.setattr(jwt_module, "get_db", lambda: DummySession())
     with pytest.raises(HTTPException) as exc:
         await jwt_module.get_current_user(token, DummySession())
-    assert exc.value.status_code == 404
+    assert exc.value.status_code == 401
