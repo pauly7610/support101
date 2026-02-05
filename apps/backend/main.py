@@ -160,7 +160,18 @@ JWT_ALGORITHM = "HS256"
 
 
 def mask_api_keys(detail: str) -> str:
-    return detail.replace(os.getenv("PINECONE_API_KEY", "***"), "***MASKED***")
+    """Mask API keys in error messages."""
+    import re
+
+    # Mask Pinecone API key from env var
+    pinecone_key = os.getenv("PINECONE_API_KEY", "")
+    if pinecone_key:
+        detail = detail.replace(pinecone_key, "***MASKED***")
+
+    # Mask OpenAI API keys (sk-... pattern)
+    detail = re.sub(r"sk-[a-zA-Z0-9]+", "sk-***MASKED***", detail)
+
+    return detail
 
 
 # Use get_current_user from app.auth.jwt for authentication
@@ -242,7 +253,7 @@ def chunk_page_content(
 @app.post("/ingest_documentation", response_model=IngestResponse)
 async def ingest_documentation_endpoint(
     file: UploadFile = File(...),
-    chunk_size: int = Body(1000),
+    chunk_size: int = Form(1000),
     auth=Depends(get_current_user),
     limiter: None = Depends(RateLimiter(times=5, seconds=60)),
 ):
