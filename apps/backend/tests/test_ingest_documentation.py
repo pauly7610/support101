@@ -44,9 +44,7 @@ def override_auth_limiter_and_services(monkeypatch):
                     backend_app.dependency_overrides[dep.call] = mock_rate_limiter
 
     # Mock Pinecone/LLM services
-    monkeypatch.setattr(
-        "apps.backend.main.get_fastembed_model", lambda: "mock_model"
-    )
+    monkeypatch.setattr("apps.backend.main.get_fastembed_model", lambda: "mock_model")
     monkeypatch.setattr(
         "apps.backend.main.upsert_documents_to_pinecone",
         AsyncMock(return_value=1),
