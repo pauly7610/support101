@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -13,9 +14,14 @@ class MockUser:
     is_admin = True
 
 
+async def mock_rate_limiter():
+    """Mock rate limiter that always passes."""
+    return None
+
+
 @pytest.fixture(autouse=True)
-def override_auth_and_limiter():
-    """Override auth and rate limiter for all tests in this module."""
+def override_auth_limiter_and_services(monkeypatch):
+    """Override auth, rate limiter, and external services for all tests."""
     # Mock FastAPILimiter before creating client
     try:
         from fastapi_limiter import FastAPILimiter
@@ -27,13 +33,45 @@ def override_auth_and_limiter():
     except Exception:
         pass
 
-    # Mock RateLimiter to always pass
-    try:
-        from fastapi_limiter.depends import RateLimiter
+    # Override RateLimiter dependency directly in the app
+    from fastapi_limiter.depends import RateLimiter
 
-        RateLimiter.__call__ = AsyncMock(return_value=None)
-    except Exception:
-        pass
+    # Find and override all RateLimiter dependencies
+    for route in backend_app.routes:
+        if hasattr(route, "dependant") and hasattr(route.dependant, "dependencies"):
+            for dep in route.dependant.dependencies:
+                if isinstance(dep.call, RateLimiter):
+                    backend_app.dependency_overrides[dep.call] = mock_rate_limiter
+
+    # Mock Pinecone/LLM services
+    monkeypatch.setattr(
+        "apps.backend.main.get_fastembed_model", lambda: "mock_model"
+    )
+    monkeypatch.setattr(
+        "apps.backend.main.upsert_documents_to_pinecone",
+        AsyncMock(return_value=1),
+    )
+    monkeypatch.setattr("apps.backend.main.DocumentPayload", SimpleNamespace)
+    monkeypatch.setattr(
+        "apps.backend.main.chunk_page_content",
+        lambda text, chunk_size=1000, chunk_overlap=100: ["chunk1", "chunk2"],
+    )
+
+    # Mock pdfplumber for PDF tests
+    class DummyPage:
+        def extract_text(self):
+            return "page text content"
+
+    class DummyPDF:
+        pages = [DummyPage()]
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            pass
+
+    monkeypatch.setattr("pdfplumber.open", lambda _: DummyPDF())
 
     backend_app.dependency_overrides[get_current_user] = lambda: MockUser()
     yield
@@ -56,37 +94,39 @@ def test_invalid_file_type(client):
     assert resp.status_code in (400, 422)
 
 
-@pytest.mark.xfail(reason="May hang waiting for Pinecone/LLM services")
 def test_valid_pdf_ingestion(client):
     resp = client.post(
         "/ingest_documentation",
         files={"file": ("test.pdf", b"%PDF-1.4 ...", "application/pdf")},
         data={"chunk_size": 512},
-        timeout=5,
     )
-    assert resp.status_code in (200, 400, 500)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "success"
 
 
-@pytest.mark.xfail(reason="May hang waiting for Pinecone/LLM services")
 def test_valid_txt_ingestion(client):
     resp = client.post(
         "/ingest_documentation",
         files={"file": ("test.txt", b"hello world", "text/plain")},
         data={"chunk_size": 512},
-        timeout=5,
     )
-    assert resp.status_code in (200, 400, 500)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "success"
 
 
-@pytest.mark.xfail(reason="May hang waiting for Pinecone/LLM services")
 def test_valid_md_ingestion(client):
+    # Note: Python's mimetypes.guess_type returns None for .md files
+    # The endpoint uses mimetypes.guess_type(filename), so we need to accept 400
+    # as valid since text/markdown is not in the allowed_types when guessed from filename
     resp = client.post(
         "/ingest_documentation",
         files={"file": ("test.md", b"# Title", "text/markdown")},
         data={"chunk_size": 512},
-        timeout=5,
     )
-    assert resp.status_code in (200, 400, 500)
+    # 400 is expected because mimetypes.guess_type("test.md") returns None
+    assert resp.status_code in (200, 400)
 
 
 def test_missing_file(client):
