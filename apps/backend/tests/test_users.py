@@ -72,8 +72,11 @@ async def test_create_user_creates_and_returns_user():
 @pytest.mark.asyncio
 async def test_create_user_duplicate(monkeypatch):
     session = AsyncMock()
-    session.add = AsyncMock(side_effect=Exception("IntegrityError"))
+    # add() is synchronous, so use a regular Mock that raises
+    from unittest.mock import Mock
+
+    session.add = Mock(side_effect=Exception("IntegrityError"))
     session.commit = AsyncMock()
     session.refresh = AsyncMock()
-    with pytest.raises(Exception):
+    with pytest.raises(Exception, match="IntegrityError"):
         await users_module.create_user(session, "eve", "pw123")

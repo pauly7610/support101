@@ -8,7 +8,10 @@ import apps.backend.db as db
 @pytest.mark.asyncio
 async def test_get_engine_returns_engine_instance():
     engine = db.get_engine()
-    assert isinstance(engine, db.create_async_engine().__class__)
+    # Check that engine is an AsyncEngine instance
+    from sqlalchemy.ext.asyncio import AsyncEngine
+
+    assert isinstance(engine, AsyncEngine)
 
 
 def test_get_session_returns_async_session():
@@ -39,15 +42,20 @@ async def test_init_db_creates_tables(monkeypatch):
             # Simulate table creation
             return True
 
+    class DummyAsyncContextManager:
+        def __init__(self, conn):
+            self._conn = conn
+
         async def __aenter__(self):
-            return self
+            return self._conn
 
         async def __aexit__(self, exc_type, exc_val, exc_tb):
             return False
 
     class DummyEngine:
-        async def begin(self):
-            return DummyConn()
+        def begin(self):
+            # begin() returns an async context manager, not a coroutine
+            return DummyAsyncContextManager(DummyConn())
 
     monkeypatch.setattr(db, "engine", DummyEngine())
     # Should not raise

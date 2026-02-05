@@ -29,9 +29,17 @@ async def gdpr_delete(
     # Perform cascading deletion
     from sqlalchemy import text
 
-    await db.execute(text("DELETE FROM users WHERE id = :user_id"), {"user_id": request.user_id})
-    await db.commit()
-    return {"status": "User data permanently deleted"}
+    try:
+        await db.execute(
+            text("DELETE FROM users WHERE id = :user_id"), {"user_id": request.user_id}
+        )
+        await db.commit()
+        return {"status": "User data permanently deleted"}
+    except Exception as e:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"detail": f"Database error: {str(e)}"},
+        )
 
 
 @router.post("/ccpa_optout")
@@ -39,9 +47,15 @@ async def ccpa_optout(request: UserIdRequest, db: AsyncSession = Depends(get_db)
     """CCPA opt-out of data sale endpoint"""
     from sqlalchemy import text
 
-    await db.execute(
-        text("UPDATE users SET data_sale_optout = TRUE WHERE id = :user_id"),
-        {"user_id": request.user_id},
-    )
-    await db.commit()
-    return {"status": "Opt-out preference recorded"}
+    try:
+        await db.execute(
+            text("UPDATE users SET data_sale_optout = TRUE WHERE id = :user_id"),
+            {"user_id": request.user_id},
+        )
+        await db.commit()
+        return {"status": "Opt-out preference recorded"}
+    except Exception as e:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"detail": f"Database error: {str(e)}"},
+        )

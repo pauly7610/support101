@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import os
+from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
@@ -76,6 +77,26 @@ async def async_client(async_session):
 
 @pytest.fixture(autouse=True)
 def mock_externals(monkeypatch):
+    # Mock FastAPILimiter to avoid "You must call FastAPILimiter.init" errors
+    try:
+        from fastapi_limiter import FastAPILimiter
+
+        FastAPILimiter.redis = AsyncMock()
+        FastAPILimiter.lua_sha = "mock_sha"
+        FastAPILimiter.identifier = AsyncMock(return_value="test_identifier")
+        FastAPILimiter.http_callback = AsyncMock()
+    except Exception:
+        pass
+
+    # Mock RateLimiter dependency to always pass
+    try:
+        monkeypatch.setattr(
+            "fastapi_limiter.depends.RateLimiter.__call__",
+            AsyncMock(return_value=None),
+        )
+    except Exception:
+        pass
+
     try:
         monkeypatch.setattr("pinecone.Index.query", lambda *args, **kwargs: {"matches": []})
     except Exception:
