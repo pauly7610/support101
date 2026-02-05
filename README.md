@@ -247,8 +247,25 @@ npm run dev
 | Method | Route                  | Description                         |
 |--------|------------------------|-------------------------------------|
 | GET    | `/health`              | Simple health check                 |
+| POST   | `/register`            | Register a new user                 |
+| POST   | `/login`               | Login and get JWT token             |
+| GET    | `/protected`           | Example protected endpoint          |
 | POST   | `/generate_reply`      | Main endpoint for LLM reply         |
 | POST   | `/ingest_documentation`| Crawl & embed new documentation     |
+| POST   | `/feedback`            | Submit user feedback                |
+
+### Compliance Endpoints (`/v1/compliance`)
+| Method | Route                       | Description                              |
+|--------|-----------------------------|------------------------------------------|
+| POST   | `/v1/compliance/gdpr_delete`| GDPR-compliant data deletion (JWT req)   |
+| POST   | `/v1/compliance/ccpa_optout`| CCPA opt-out preference (JWT required)   |
+
+### Analytics Endpoints (`/v1/analytics`)
+| Method | Route                              | Description                         |
+|--------|------------------------------------|-------------------------------------|
+| GET    | `/v1/analytics/escalations`        | Get escalation analytics            |
+| GET    | `/v1/analytics/escalations/by-agent`| Escalations grouped by agent       |
+| GET    | `/v1/analytics/escalations/by-category`| Escalations grouped by category |
 
 ### Agent Framework Endpoints (`/v1`)
 | Method | Route                          | Description                              |
