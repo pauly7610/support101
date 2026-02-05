@@ -43,8 +43,12 @@ async def gdpr_delete(
 
 
 @router.post("/ccpa_optout")
-async def ccpa_optout(request: UserIdRequest, db: AsyncSession = Depends(get_db)):
-    """CCPA opt-out of data sale endpoint"""
+async def ccpa_optout(
+    request: UserIdRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """CCPA opt-out of data sale endpoint (JWT required)"""
     from sqlalchemy import text
 
     try:

@@ -77,7 +77,9 @@ class QueryResult(BaseModel):
 class SourceDocument(BaseModel):
     url: HttpUrl
     title: Optional[str] = None
-    # snippet: Optional[str] = None
+    excerpt: Optional[str] = None
+    confidence: Optional[float] = None
+    last_updated: Optional[str] = None
 
 
 class SuggestedResponse(BaseModel):

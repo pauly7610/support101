@@ -99,9 +99,10 @@ def test_gdpr_delete_db_error(client, admin_user, mock_db_error):
         app.dependency_overrides = {}
 
 
-def test_ccpa_optout_success(client, mock_db):
+def test_ccpa_optout_success(client, mock_db, admin_user):
     app.dependency_overrides = {}
     app.dependency_overrides[get_db] = lambda: mock_db
+    app.dependency_overrides[get_current_user] = lambda: admin_user
     try:
         response = client.post("/ccpa_optout", json={"user_id": "u4"})
         assert response.status_code == 200
@@ -110,9 +111,10 @@ def test_ccpa_optout_success(client, mock_db):
         app.dependency_overrides = {}
 
 
-def test_ccpa_optout_db_error(client, mock_db_error):
+def test_ccpa_optout_db_error(client, mock_db_error, admin_user):
     app.dependency_overrides = {}
     app.dependency_overrides[get_db] = lambda: mock_db_error
+    app.dependency_overrides[get_current_user] = lambda: admin_user
     try:
         response = client.post("/ccpa_optout", json={"user_id": "u5"})
         assert response.status_code in (500, 503)
