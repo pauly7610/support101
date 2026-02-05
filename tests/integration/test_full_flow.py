@@ -1,4 +1,3 @@
-import os
 from unittest.mock import AsyncMock
 
 import pytest
@@ -49,7 +48,7 @@ def client():
     return TestClient(backend_app)
 
 
-@pytest.mark.skip(reason="Requires OPENAI_API_KEY and causes event loop conflicts with backend conftest")
+@pytest.mark.skip(reason="Requires OPENAI_API_KEY and causes event loop conflicts")
 def test_ingest_and_query_flow(client, monkeypatch):
     # Simulate a TXT upload and then a query
     file_content = b"Test document for ingestion."
