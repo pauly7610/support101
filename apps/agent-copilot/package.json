@@ -7,8 +7,8 @@
   "scripts": {
     "dev": "webpack --mode development --watch",
     "build": "webpack --mode production",
-    "lint": "eslint --ext .js,.jsx,.ts,.tsx src",
-    "lint:fix": "eslint --fix --ext .js,.jsx,.ts,.tsx src",
+    "lint": "biome check src",
+    "lint:fix": "biome check --write src",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -24,8 +24,6 @@
     "@babel/core": "^7.0.0",
     "@babel/preset-react": "^7.0.0",
     "babel-loader": "^8.0.0",
-    "eslint": "8.57.1",
-    "eslint-plugin-react": "^7.33.2",
     "webpack": "^5.0.0",
     "@testing-library/jest-dom": "^6.6.0",
     "@testing-library/react": "^16.1.0",
