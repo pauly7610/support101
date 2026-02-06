@@ -66,7 +66,8 @@
 ### Observability & Governance
 - **OpenTelemetry tracing** — Traceloop SDK + raw OTEL fallback with specialized spans for LLM calls, vector search, agent execution
 - **Prometheus metrics** — LLM response times, vector store cache hits, API error rates
-- **LLM cost tracking** — Per-model pricing (10+ models), per-tenant breakdown, budget alerts, cost dashboard API
+- **Sentry error monitoring** — FastAPI + SQLAlchemy integrations, automatic API key scrubbing in `before_send`, performance tracing + profiling
+- **LLM cost tracking** — Per-model pricing (10+ models), per-tenant breakdown, budget alerts, PostgreSQL-persisted with in-memory write-through cache
 - **EvalAI integration** — Workflow tracing, decision auditing, governance checks via `@pauly4010/evalai-sdk`
 - **Governance dashboard** — Agent metrics, HITL stats, SLA compliance, audit log
 
@@ -74,7 +75,9 @@
 - **Multi-tenant** — Tenant isolation with resource limits, API key management, usage tracking
 - **GDPR/CCPA compliance** — Data deletion endpoints, opt-out mechanisms, chat log anonymization
 - **Production Docker** — Multi-stage builds, non-root users, postgres 16, redis 7, resource limits, healthchecks
+- **Test Docker** — `docker-compose.test.yml` with Postgres 16 + Redis 7 (tmpfs), test-runner service with Alembic + pytest
 - **Webhooks** — Zendesk, Slack, Jira, generic with HMAC signature verification
+- **Security** — JWT auth on all mutation endpoints, per-endpoint rate limiting, API key scrubbing in errors
 
 ### Frontend
 - **Customer chatbot** — Next.js 15 + React 19 + Tailwind, dark mode, glass morphism, streaming chat, voice input
@@ -85,7 +88,7 @@
 ### Developer Experience
 - **pnpm workspaces** — Monorepo with 4 frontend apps
 - **Biome** — Replaced ESLint 8 + Prettier with single config (linting, formatting, import sorting)
-- **Vitest + RTL** — 6 frontend unit test suites
+- **Vitest + RTL** — 8 frontend unit test suites (including admin dashboard + useVoiceChat)
 - **Cypress E2E** — 27 tests covering approval queue, governance dashboard, chat widget
 - **Integration tests** — 20+ tests covering feedback loop, activity stream, graph, playbooks, RAG, MCP, WebSocket
 - **Ruff** — Python linting (replaced black + flake8 + isort)
@@ -123,7 +126,7 @@ support101/
 │   │   ├── multi_model.py    # Provider abstraction (5 providers)
 │   │   ├── vector_store.py   # Pinecone v3 with reranking
 │   │   ├── voice.py          # Whisper STT + OpenAI TTS
-│   │   ├── cost_tracker.py   # Token counting + budget alerts
+│   │   ├── cost_tracker.py   # Token counting + budget alerts (DB-persisted)
 │   │   └── embeddings.py     # FastEmbed model
 │   └── agent_framework/      # Enterprise agent SDK
 │       ├── core/             # AgentExecutor, tool calling
@@ -137,10 +140,11 @@ support101/
 ├── tests/
 │   └── integration/          # 20+ integration tests
 ├── docs/
-│   └── openapi.yaml          # OpenAPI 3.0 spec (80+ endpoints)
+│   └── openapi.yaml          # OpenAPI 3.0 spec (90+ endpoints)
 ├── biome.json                # Biome linter/formatter config
 ├── pyproject.toml            # Python deps + ruff config (uv-compatible)
 ├── docker-compose.prod.yml   # Production Docker Compose
+├── docker-compose.test.yml   # Integration test environment (Postgres + Redis + test-runner)
 ├── docker-compose.dev.yml    # Development Docker Compose
 └── pnpm-workspace.yaml       # pnpm workspace config
 ```
@@ -236,6 +240,8 @@ Copy `.env.example` to `.env`. Key variables:
 | `EVALAI_ORGANIZATION_ID` | No | EvalAI organization ID |
 | `ACTIVITY_GRAPH_NAME` | No | Apache AGE graph name |
 | `TRACELOOP_API_KEY` | No | Traceloop/OTEL API key |
+| `SENTRY_DSN` | No | Sentry error monitoring DSN |
+| `SENTRY_ENVIRONMENT` | No | Sentry environment (default: development) |
 
 See `.env.example` for the complete list with descriptions.
 
@@ -245,7 +251,7 @@ See `.env.example` for the complete list with descriptions.
 
 ## API Endpoints
 
-Full OpenAPI spec: [`docs/openapi.yaml`](docs/openapi.yaml) (80+ endpoints)
+Full OpenAPI spec: [`docs/openapi.yaml`](docs/openapi.yaml) (90+ endpoints)
 
 ### Core
 | Method | Route | Description |
@@ -270,26 +276,26 @@ Full OpenAPI spec: [`docs/openapi.yaml`](docs/openapi.yaml) (80+ endpoints)
 | POST | `/v1/tenants` | Create tenant |
 | GET | `/v1/tenants/{id}/usage` | Tenant usage stats |
 
-### Voice I/O (`/v1/voice`)
+### Voice I/O (`/v1/voice`) — JWT + rate limited
 | Method | Route | Description |
 |--------|-------|-------------|
-| POST | `/v1/voice/transcribe` | Speech-to-text (Whisper) |
-| POST | `/v1/voice/synthesize` | Text-to-speech (TTS) |
-| POST | `/v1/voice/chat` | Full voice pipeline: audio → RAG → audio |
-| GET | `/v1/voice/status` | Voice feature availability |
+| POST | `/v1/voice/transcribe` | Speech-to-text (Whisper) — 10 req/min |
+| POST | `/v1/voice/synthesize` | Text-to-speech (TTS) — 10 req/min |
+| POST | `/v1/voice/chat` | Full voice pipeline: audio → RAG → audio — 5 req/min |
+| GET | `/v1/voice/status` | Voice feature availability (public) |
 
-### Cost Tracking (`/v1/analytics/costs`)
+### Cost Tracking (`/v1/analytics/costs`) — JWT + rate limited
 | Method | Route | Description |
 |--------|-------|-------------|
-| GET | `/v1/analytics/costs` | Cost dashboard (spend, budget, breakdowns) |
-| GET | `/v1/analytics/costs/tenant` | Per-tenant cost breakdown |
-| POST | `/v1/analytics/costs/record` | Record LLM usage event |
+| GET | `/v1/analytics/costs` | Cost dashboard (spend, budget, breakdowns) — 30 req/min |
+| GET | `/v1/analytics/costs/tenant` | Per-tenant cost breakdown — 30 req/min |
+| POST | `/v1/analytics/costs/record` | Record LLM usage event — 60 req/min |
 
-### A2A Protocol
+### A2A Protocol — rate limited
 | Method | Route | Description |
 |--------|-------|-------------|
-| GET | `/.well-known/agent.json` | Agent Card discovery |
-| POST | `/a2a` | JSON-RPC 2.0 task dispatch |
+| GET | `/.well-known/agent.json` | Agent Card discovery (public) |
+| POST | `/a2a` | JSON-RPC 2.0 task dispatch — 30 req/min |
 
 ### Webhooks (`/v1/webhooks`)
 | Method | Route | Description |
@@ -375,6 +381,7 @@ pytest tests/ -v
 # Frontend unit tests
 pnpm --filter customer-bot test
 pnpm --filter agent-copilot test
+pnpm --filter admin-dashboard test
 
 # Cypress E2E
 pnpm --filter customer-bot exec cypress run
@@ -385,6 +392,9 @@ ruff check packages/ apps/backend/
 
 # Feedback loop validation
 python -m packages.agent_framework.learning.feedback_validator --mock
+
+# Docker-based integration tests (real Postgres + Redis)
+docker compose -f docker-compose.test.yml run --rm test-runner
 ```
 
 ---
