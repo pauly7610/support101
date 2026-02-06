@@ -29,7 +29,7 @@ export default function ChatWidget() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, loading]);
+  });
 
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { generateSuggestedReply } = require('../../api');
@@ -73,6 +73,7 @@ export default function ChatWidget() {
   if (minimized) {
     return (
       <button
+        type="button"
         className={cn(
           'fixed bottom-6 right-6 z-50',
           'w-12 h-12 rounded-full',
@@ -104,7 +105,7 @@ export default function ChatWidget() {
     >
       <div className="flex flex-col pb-4 min-h-[360px]">
         {messages.map((msg, i) => (
-          <MessageBubble key={i} {...msg} />
+          <MessageBubble key={`${msg.from}-${msg.timestamp}-${i}`} {...msg} />
         ))}
         <div ref={messagesEndRef} />
       </div>

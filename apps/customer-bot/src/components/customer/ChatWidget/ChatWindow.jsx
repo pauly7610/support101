@@ -50,6 +50,7 @@ export default function ChatWindow({ onClose, onMinimize, children, loading, err
         </div>
         <div className="flex items-center gap-1">
           <button
+            type="button"
             onClick={onMinimize}
             aria-label="Minimize"
             className={cn(
@@ -61,6 +62,7 @@ export default function ChatWindow({ onClose, onMinimize, children, loading, err
             <Minus className="w-4 h-4" />
           </button>
           <button
+            type="button"
             onClick={onClose}
             aria-label="Close"
             className={cn(

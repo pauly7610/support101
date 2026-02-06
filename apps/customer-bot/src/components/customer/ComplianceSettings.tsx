@@ -50,6 +50,7 @@ export default function ComplianceSettings({ userId }: { userId?: string }) {
       )}
       <div className="mb-4">
         <button
+          type="button"
           className="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded mr-4 disabled:opacity-60"
           onClick={handleGdprDelete}
           disabled={loading === 'gdpr' || !userId}
@@ -60,6 +61,7 @@ export default function ComplianceSettings({ userId }: { userId?: string }) {
       </div>
       <div className="mb-4">
         <button
+          type="button"
           className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-4 py-2 rounded disabled:opacity-60"
           onClick={handleCcpaOptout}
           disabled={loading === 'ccpa' || !userId}

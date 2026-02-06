@@ -27,8 +27,7 @@ function Toast({ message, type, onClose }) {
   }, [message, onClose]);
   if (!message) return null;
   return (
-    <div
-      role="status"
+    <output
       aria-live="polite"
       className={cn(
         'fixed bottom-8 right-8 z-[9999]',
@@ -46,13 +45,14 @@ function Toast({ message, type, onClose }) {
       )}
       {message}
       <button
+        type="button"
         onClick={onClose}
         className="ml-2 hover:bg-white/20 rounded p-0.5 transition-colors"
         aria-label="Close notification"
       >
         <X className="w-3.5 h-3.5" />
       </button>
-    </div>
+    </output>
   );
 }
 
@@ -171,10 +171,14 @@ export default function CopilotSidebar() {
       <div className="flex-1 overflow-y-auto p-4 space-y-5 scrollbar-thin">
         {/* Input form */}
         <form onSubmit={handleSuggest}>
-          <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+          <label
+            htmlFor="copilot-input"
+            className="block text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-2"
+          >
             Customer Message
           </label>
           <textarea
+            id="copilot-input"
             className={cn(
               'w-full rounded-xl px-3.5 py-2.5 text-sm resize-none',
               'bg-gray-50 dark:bg-slate-800',
@@ -221,6 +225,7 @@ export default function CopilotSidebar() {
                 Suggested Reply
               </span>
               <button
+                type="button"
                 onClick={handleCopy}
                 className={cn(
                   'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium',
@@ -254,7 +259,7 @@ export default function CopilotSidebar() {
                   <div className="flex flex-wrap gap-1.5 mt-1.5">
                     {suggested.sources.map((src, idx) => (
                       <a
-                        key={idx}
+                        key={src.url || idx}
                         href={src.url}
                         target="_blank"
                         rel="noopener noreferrer"

@@ -46,7 +46,6 @@ function Badge({ type, value }: { type: 'priority' | 'status'; value: string }) 
   return (
     <span
       className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${config.bgColor} ${config.color}`}
-      role="status"
     >
       {config.label}
     </span>
@@ -176,7 +175,7 @@ export default function ApprovalQueue({
   ).length;
 
   return (
-    <div className="max-w-4xl mx-auto my-8" role="main" aria-label="Approval Queue">
+    <main className="max-w-4xl mx-auto my-8" aria-label="Approval Queue">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Approval Queue</h1>
@@ -211,6 +210,7 @@ export default function ApprovalQueue({
       >
         {(['all', 'pending', 'assigned'] as const).map((tab) => (
           <button
+            type="button"
             key={tab}
             role="tab"
             aria-selected={filter === tab}
@@ -239,6 +239,7 @@ export default function ApprovalQueue({
         >
           {error}
           <button
+            type="button"
             className="ml-2 underline text-red-800 hover:text-red-900"
             onClick={() => setError(null)}
             aria-label="Dismiss error"
@@ -264,16 +265,15 @@ export default function ApprovalQueue({
       )}
 
       {/* Request List */}
-      <div className="space-y-3" role="list" aria-label="HITL requests">
+      <ul className="space-y-3 list-none" aria-label="HITL requests">
         {filteredRequests.map((req) => (
-          <div
+          <li
             key={req.request_id}
             className={`bg-white border rounded-lg shadow-sm transition-all ${
               selectedRequest?.request_id === req.request_id
                 ? 'border-blue-400 ring-2 ring-blue-100'
                 : 'border-gray-200 hover:border-gray-300'
             }`}
-            role="listitem"
           >
             {/* Request Header */}
             <div className="p-4">
@@ -296,6 +296,7 @@ export default function ApprovalQueue({
                 <div className="flex gap-2 flex-shrink-0">
                   {req.status === 'pending' && (
                     <button
+                      type="button"
                       className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
                       onClick={() => handleAssign(req.request_id)}
                       aria-label={`Assign request ${req.request_id} to yourself`}
@@ -305,6 +306,7 @@ export default function ApprovalQueue({
                   )}
                   {req.status === 'assigned' && req.assigned_to === reviewerId && (
                     <button
+                      type="button"
                       className="px-3 py-1.5 text-xs font-medium bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
                       onClick={() =>
                         setSelectedRequest(
@@ -342,6 +344,7 @@ export default function ApprovalQueue({
                     <div className="flex gap-2 flex-wrap">
                       {req.options.map((option) => (
                         <button
+                          type="button"
                           key={option}
                           className="px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-md bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 disabled:opacity-50"
                           onClick={() => handleRespond(req.request_id, option)}
@@ -377,6 +380,7 @@ export default function ApprovalQueue({
                 {/* Quick Approve/Reject */}
                 <div className="flex gap-2">
                   <button
+                    type="button"
                     className="px-4 py-2 text-sm font-medium bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 disabled:opacity-50"
                     onClick={() => handleRespond(req.request_id, 'approve')}
                     disabled={submitting}
@@ -385,6 +389,7 @@ export default function ApprovalQueue({
                     {submitting ? 'Submitting...' : 'Approve'}
                   </button>
                   <button
+                    type="button"
                     className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1 disabled:opacity-50"
                     onClick={() => handleRespond(req.request_id, 'reject')}
                     disabled={submitting}
@@ -395,9 +400,9 @@ export default function ApprovalQueue({
                 </div>
               </div>
             )}
-          </div>
+          </li>
         ))}
-      </div>
-    </div>
+      </ul>
+    </main>
   );
 }

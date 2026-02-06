@@ -76,7 +76,10 @@ export default function ChatWidget() {
   const [input, setInput] = useState('');
   const [escalate, setEscalate] = useState(false);
   const [theme, setTheme] = useState('light');
-  const [citationPopup, setCitationPopup] = useState<CitationPopupState>({ open: false, citation: null });
+  const [citationPopup, setCitationPopup] = useState<CitationPopupState>({
+    open: false,
+    citation: null,
+  });
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Load chat history from IndexedDB
@@ -93,7 +96,7 @@ export default function ChatWidget() {
   useEffect(() => {
     if (chatEndRef.current)
       (chatEndRef.current as HTMLDivElement).scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  });
 
   // Keyboard accessibility for input: Enter to send, Shift+Enter for newline
   async function handleInputKeyDown(e: React.KeyboardEvent) {
@@ -176,6 +179,7 @@ export default function ChatWidget() {
           <span className="font-semibold">Customer Chat</span>
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={toggleTheme}
               aria-label="Toggle light/dark theme"
               className="rounded focus:ring-2 focus:ring-blue-400 px-2 py-1"
@@ -188,6 +192,7 @@ export default function ChatWidget() {
               {theme === 'dark' ? '🌙' : '☀️'}
             </button>
             <button
+              type="button"
               onClick={handleClear}
               aria-label="Clear chat history"
               className="rounded focus:ring-2 focus:ring-blue-400 px-2 py-1 ml-1"
@@ -205,7 +210,7 @@ export default function ChatWidget() {
         <main className="flex-1 overflow-y-auto px-4 py-2" aria-live="polite">
           {messages.map((msg, i) => (
             <div
-              key={i}
+              key={`${msg.sender}-${msg.timestamp}-${i}`}
               className={`mb-2 flex items-end gap-2 ${
                 msg.sender === 'user' ? 'justify-end' : 'justify-start'
               } animate-fadein-slideup`}
@@ -239,7 +244,8 @@ export default function ChatWidget() {
                 <span className="ml-1 align-top" aria-label="Citations">
                   {msg.citations.map((c, idx) => (
                     <button
-                      key={idx}
+                      type="button"
+                      key={c.sourceUrl || idx}
                       data-cy={`citation-marker-${idx}`}
                       aria-label={`Show citation ${idx + 1}`}
                       tabIndex={0}
@@ -324,6 +330,7 @@ export default function ChatWidget() {
       )}
       {/* Floating Feedback Button */}
       <button
+        type="button"
         className="fixed bottom-8 left-8 z-50 bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg hover:bg-blue-700 focus:outline-none focus:ring"
         aria-label="Send Feedback"
         onClick={() => setShowFeedback(true)}

@@ -29,7 +29,10 @@ export default function Chatbot() {
         <div className="text-lg font-semibold text-gray-800 mb-2">Support Chat</div>
         <div className="mb-4 h-80 overflow-y-auto flex flex-col gap-2">
           {messages.map((msg, i) => (
-            <div key={i} className={msg.from === 'bot' ? 'text-left' : 'text-right'}>
+            <div
+              key={`${msg.from}-${msg.text.slice(0, 20)}-${i}`}
+              className={msg.from === 'bot' ? 'text-left' : 'text-right'}
+            >
               <div
                 className={`${
                   msg.from === 'bot' ? 'bg-blue-100 text-blue-900' : 'bg-gray-200 text-gray-900'
@@ -40,7 +43,7 @@ export default function Chatbot() {
                   <div className="text-xs mt-1 text-blue-600">
                     Sources:{' '}
                     {msg.sources.map((s, idx) => (
-                      <span key={idx}>
+                      <span key={s}>
                         {s}
                         {idx < msg.sources.length - 1 ? ', ' : ''}
                       </span>
@@ -72,7 +75,9 @@ export default function Chatbot() {
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 24 24"
+                aria-label="Loading"
               >
+                <title>Loading</title>
                 <circle
                   className="opacity-25"
                   cx="12"

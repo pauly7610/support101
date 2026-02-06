@@ -10,11 +10,7 @@ declare module 'sentiment' {
 
   class Sentiment {
     constructor(options?: unknown);
-    analyze(
-      phrase: string,
-      opts?: unknown,
-      callback?: unknown,
-    ): SentimentResult;
+    analyze(phrase: string, opts?: unknown, callback?: unknown): SentimentResult;
   }
 
   export default Sentiment;

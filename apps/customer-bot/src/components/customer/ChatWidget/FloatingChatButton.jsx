@@ -6,6 +6,7 @@ import PropTypes from 'prop-types';
 export default function FloatingChatButton({ onClick, unreadCount = 0 }) {
   return (
     <button
+      type="button"
       aria-label={unreadCount > 0 ? `Open chat (${unreadCount} unread)` : 'Open chat'}
       onClick={onClick}
       className={cn(

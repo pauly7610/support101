@@ -99,7 +99,7 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}): UseVoiceChatRet
       };
 
       recorder.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
+        for (const t of stream.getTracks()) t.stop();
 
         if (chunksRef.current.length === 0) return;
 
@@ -133,7 +133,7 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}): UseVoiceChatRet
       if (mediaRecorderRef.current.state === 'recording') {
         mediaRecorderRef.current.stop();
       }
-      mediaRecorderRef.current.stream.getTracks().forEach((t) => t.stop());
+      for (const t of mediaRecorderRef.current.stream.getTracks()) t.stop();
       mediaRecorderRef.current = null;
     }
     chunksRef.current = [];

@@ -42,9 +42,9 @@ export default function MessageBubble({ from, text, timestamp, sources }) {
         </div>
         {sources && sources.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-1.5 px-1">
-            {sources.map((s, idx) => (
+            {sources.map((s) => (
               <span
-                key={idx}
+                key={s}
                 className={cn(
                   'inline-flex items-center gap-1',
                   'text-[10px] font-medium px-2 py-0.5 rounded-full',

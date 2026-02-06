@@ -60,8 +60,11 @@ export default function AnalyticsDashboard() {
       <Card className="mb-6">
         <form className="flex flex-wrap gap-4 items-end">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Agent ID</label>
+            <label htmlFor="agent_id" className="block text-sm font-medium text-gray-700 mb-1">
+              Agent ID
+            </label>
             <input
+              id="agent_id"
               type="text"
               name="agent_id"
               value={filters.agent_id}
@@ -71,8 +74,11 @@ export default function AnalyticsDashboard() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
+              Category
+            </label>
             <input
+              id="category"
               type="text"
               name="category"
               value={filters.category}
@@ -82,10 +88,11 @@ export default function AnalyticsDashboard() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="start_time" className="block text-sm font-medium text-gray-700 mb-1">
               Start Time (Unix)
             </label>
             <input
+              id="start_time"
               type="number"
               name="start_time"
               value={filters.start_time}
@@ -95,8 +102,11 @@ export default function AnalyticsDashboard() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">End Time (Unix)</label>
+            <label htmlFor="end_time" className="block text-sm font-medium text-gray-700 mb-1">
+              End Time (Unix)
+            </label>
             <input
+              id="end_time"
               type="number"
               name="end_time"
               value={filters.end_time}

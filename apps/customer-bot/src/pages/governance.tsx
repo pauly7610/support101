@@ -162,7 +162,7 @@ export default function GovernanceDashboard() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto my-8" role="main" aria-label="Governance Dashboard">
+    <main className="max-w-6xl mx-auto my-8" aria-label="Governance Dashboard">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -172,6 +172,7 @@ export default function GovernanceDashboard() {
           </p>
         </div>
         <button
+          type="button"
           className="px-3 py-1.5 text-sm font-medium bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400"
           onClick={fetchDashboard}
           aria-label="Refresh dashboard"
@@ -188,6 +189,7 @@ export default function GovernanceDashboard() {
         >
           {error}
           <button
+            type="button"
             className="ml-2 underline text-red-800 hover:text-red-900"
             onClick={() => setError(null)}
             aria-label="Dismiss error"
@@ -257,6 +259,7 @@ export default function GovernanceDashboard() {
       >
         {(['overview', 'agents', 'audit'] as const).map((tab) => (
           <button
+            type="button"
             key={tab}
             role="tab"
             aria-selected={activeTab === tab}
@@ -394,6 +397,7 @@ export default function GovernanceDashboard() {
                     </div>
                   </div>
                   <button
+                    type="button"
                     className="text-xs text-blue-600 hover:text-blue-800 flex-shrink-0"
                     onClick={() => {
                       const el = document.getElementById(`detail-${event.event_id}`);
@@ -415,6 +419,6 @@ export default function GovernanceDashboard() {
           )}
         </div>
       )}
-    </div>
+    </main>
   );
 }

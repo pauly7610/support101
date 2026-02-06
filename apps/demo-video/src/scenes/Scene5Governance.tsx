@@ -319,7 +319,7 @@ export const Scene5Governance: React.FC = () => {
               Audit Log
             </div>
             {AUDIT_EVENTS.map((evt, i) => (
-              <FadeIn key={i} startFrame={170 + i * 10} durationFrames={12}>
+              <FadeIn key={evt.type} startFrame={170 + i * 10} durationFrames={12}>
                 <div
                   style={{
                     padding: '12px 24px',

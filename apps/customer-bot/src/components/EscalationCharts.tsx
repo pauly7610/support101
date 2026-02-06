@@ -8,18 +8,23 @@ const ESCALATION_LOG_KEY = 'escalation_log';
 
 function groupByDay(escalations: unknown[]) {
   const counts: Record<string, number> = {};
-  escalations.forEach((e) => {
+  for (const e of escalations) {
     const escalation = e as { timestamp: number };
     const day = new Date(escalation.timestamp).toLocaleDateString();
     counts[day] = (counts[day] || 0) + 1;
-  });
+  }
   return Object.entries(counts)
     .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
     .map(([day, count]) => ({ day, count }));
 }
 
 function Skeleton({ className, style }: { className?: string; style?: React.CSSProperties }) {
-  return <div className={cn('animate-pulse rounded bg-gray-200 dark:bg-slate-700', className)} style={style} />;
+  return (
+    <div
+      className={cn('animate-pulse rounded bg-gray-200 dark:bg-slate-700', className)}
+      style={style}
+    />
+  );
 }
 
 function ChartSkeleton() {
@@ -28,7 +33,11 @@ function ChartSkeleton() {
       <Skeleton className="h-5 w-40" />
       <div className="flex items-end gap-2 h-40">
         {Array.from({ length: 7 }).map((_, i) => (
-          <Skeleton key={i} className="w-8" style={{ height: `${30 + Math.random() * 90}px` }} />
+          <Skeleton
+            key={`skeleton-${i}`}
+            className="w-8"
+            style={{ height: `${30 + Math.random() * 90}px` }}
+          />
         ))}
       </div>
     </div>

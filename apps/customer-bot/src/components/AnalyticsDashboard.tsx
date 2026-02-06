@@ -111,8 +111,11 @@ export default function AnalyticsDashboard() {
           }}
         >
           <div>
-            <label className="block text-xs mb-1">User ID</label>
+            <label htmlFor="analytics-user-id" className="block text-xs mb-1">
+              User ID
+            </label>
             <input
+              id="analytics-user-id"
               className="border px-2 py-1 rounded text-sm"
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
@@ -120,8 +123,11 @@ export default function AnalyticsDashboard() {
             />
           </div>
           <div>
-            <label className="block text-xs mb-1">Start Date</label>
+            <label htmlFor="analytics-start-date" className="block text-xs mb-1">
+              Start Date
+            </label>
             <input
+              id="analytics-start-date"
               type="date"
               className="border px-2 py-1 rounded text-sm"
               value={startDate}
@@ -129,8 +135,11 @@ export default function AnalyticsDashboard() {
             />
           </div>
           <div>
-            <label className="block text-xs mb-1">End Date</label>
+            <label htmlFor="analytics-end-date" className="block text-xs mb-1">
+              End Date
+            </label>
             <input
+              id="analytics-end-date"
               type="date"
               className="border px-2 py-1 rounded text-sm"
               value={endDate}
@@ -217,6 +226,7 @@ export default function AnalyticsDashboard() {
       </div>
       {/* Floating Feedback Button */}
       <button
+        type="button"
         className="fixed bottom-8 right-8 z-50 bg-blue-600 text-white px-4 py-2 rounded-full shadow-lg hover:bg-blue-700 focus:outline-none focus:ring"
         aria-label="Send Feedback"
         onClick={() => setShowFeedback(true)}

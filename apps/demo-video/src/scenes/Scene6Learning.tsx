@@ -252,7 +252,7 @@ export const Scene6Learning: React.FC = () => {
 
             <div style={{ padding: '12px 20px' }}>
               {STREAM_EVENTS.map((evt, i) => (
-                <FadeIn key={i} startFrame={100 + i * 12} durationFrames={10}>
+                <FadeIn key={evt.type} startFrame={100 + i * 12} durationFrames={10}>
                   <div
                     style={{
                       display: 'flex',
@@ -352,17 +352,19 @@ export const Scene6Learning: React.FC = () => {
               <svg
                 style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
                 viewBox="0 0 1760 280"
+                aria-label="Activity graph"
               >
+                <title>Activity Graph</title>
                 {GRAPH_EDGES.map((edge, i) => {
-                  const from = GRAPH_NODES.find((n) => n.id === edge.from)!;
-                  const to = GRAPH_NODES.find((n) => n.id === edge.to)!;
+                  const from = GRAPH_NODES.find((n) => n.id === edge.from) ?? GRAPH_NODES[0];
+                  const to = GRAPH_NODES.find((n) => n.id === edge.to) ?? GRAPH_NODES[0];
                   const edgeFrame = 185 + i * 15;
                   const progress = interpolate(frame, [edgeFrame, edgeFrame + 15], [0, 1], {
                     extrapolateLeft: 'clamp',
                     extrapolateRight: 'clamp',
                   });
                   return (
-                    <g key={i}>
+                    <g key={`${edge.from}-${edge.to}`}>
                       <line
                         x1={from.x}
                         y1={from.y - 180}

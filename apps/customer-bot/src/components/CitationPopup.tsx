@@ -39,12 +39,13 @@ export default function CitationPopup({
   onClose,
 }: CitationPopupProps) {
   return (
-    <div
+    <dialog
+      open
       className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in"
-      role="dialog"
       aria-modal="true"
       aria-label="Citation details"
       onClick={(e) => e.target === e.currentTarget && onClose?.()}
+      onKeyDown={(e) => e.key === 'Escape' && onClose?.()}
     >
       <div
         className={cn(
@@ -65,6 +66,7 @@ export default function CitationPopup({
           </div>
           {onClose && (
             <button
+              type="button"
               onClick={onClose}
               aria-label="Close citation popup"
               className={cn(
@@ -125,6 +127,6 @@ export default function CitationPopup({
           )}
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }

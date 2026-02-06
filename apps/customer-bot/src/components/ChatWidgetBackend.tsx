@@ -73,8 +73,9 @@ export default function ChatWidgetBackend() {
     saveHistory(messages);
   }, [messages]);
   useEffect(() => {
-    if (chatEndRef.current) (chatEndRef.current as HTMLDivElement).scrollIntoView({ behavior: 'smooth' });
-  }, [messages, minimized]);
+    if (chatEndRef.current)
+      (chatEndRef.current as HTMLDivElement).scrollIntoView({ behavior: 'smooth' });
+  });
   useEffect(() => {
     if (!minimized) setUnread(0);
   }, [minimized]);
@@ -205,6 +206,7 @@ export default function ChatWidgetBackend() {
         <span className="font-semibold">Customer Chat</span>
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={toggleTheme}
             aria-label="Toggle light/dark theme"
             className="rounded focus:ring-2 focus:ring-blue-400 px-2 py-1"
@@ -217,6 +219,7 @@ export default function ChatWidgetBackend() {
             {theme === 'dark' ? '🌙' : '☀️'}
           </button>
           <button
+            type="button"
             onClick={handleClear}
             aria-label="Clear chat history"
             className="rounded focus:ring-2 focus:ring-blue-400 px-2 py-1 ml-1"
@@ -225,6 +228,7 @@ export default function ChatWidgetBackend() {
             Clear
           </button>
           <button
+            type="button"
             onClick={() => setMinimized((m) => !m)}
             aria-label={minimized ? 'Open chat' : 'Minimize chat'}
             className="ml-2 rounded bg-gray-200 px-2 py-1 relative"
@@ -248,7 +252,7 @@ export default function ChatWidgetBackend() {
           <main className="flex-1 overflow-y-auto px-4 py-2" aria-live="polite">
             {messages.map((msg, i) => (
               <div
-                key={i}
+                key={`${msg.sender}-${msg.timestamp}-${i}`}
                 className={`mb-2 flex items-end gap-2 ${
                   msg.sender === 'user' ? 'justify-end' : 'justify-start'
                 } animate-fadein-slideup`}
@@ -318,6 +322,7 @@ export default function ChatWidgetBackend() {
                   </div>
                   {msg.error && (
                     <button
+                      type="button"
                       onClick={() => handleRetry(i)}
                       aria-label="Retry message"
                       className="ml-2 text-xs underline text-blue-600 focus:ring-2 focus:ring-blue-400"
@@ -327,6 +332,7 @@ export default function ChatWidgetBackend() {
                     </button>
                   )}
                   <button
+                    type="button"
                     onClick={() => handleReaction(i)}
                     aria-label="Like message"
                     className="ml-2 text-xs focus:ring-2 focus:ring-blue-400"
@@ -338,7 +344,7 @@ export default function ChatWidgetBackend() {
                     <div className="text-xs mt-1 text-primary-blue-light">
                       Sources:{' '}
                       {msg.sources.map((s: string, idx: number) => (
-                        <span key={idx}>
+                        <span key={s}>
                           {s}
                           {idx < (msg.sources?.length ?? 0) - 1 ? ', ' : ''}
                         </span>

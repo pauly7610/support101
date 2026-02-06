@@ -27,7 +27,7 @@ export const Scene1Hero: React.FC = () => {
         const colors = [COLORS.primary, COLORS.accent, COLORS.green];
         return (
           <div
-            key={i}
+            key={offset}
             style={{
               position: 'absolute',
               left: 960 + Math.cos(angle) * radius - 8,

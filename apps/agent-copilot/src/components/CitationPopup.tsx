@@ -14,8 +14,8 @@ interface CitationPopupProps {
  */
 function CitationPopup({ excerpt, confidence, lastUpdated, sourceUrl }: CitationPopupProps) {
   return (
-    <div
-      role="dialog"
+    <dialog
+      open
       aria-modal="true"
       aria-label="Citation details"
       style={{
@@ -52,7 +52,7 @@ function CitationPopup({ excerpt, confidence, lastUpdated, sourceUrl }: Citation
           </a>
         </div>
       )}
-    </div>
+    </dialog>
   );
 }
 

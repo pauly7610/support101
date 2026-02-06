@@ -107,6 +107,7 @@ function Sidebar({
       <nav className="space-y-1">
         {tabs.map((tab) => (
           <button
+            type="button"
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
@@ -179,8 +180,8 @@ function OverviewTab({
       {costs && costs.recent_alerts.length > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4">
           <h3 className="text-sm font-semibold text-red-800 mb-2">Recent Alerts</h3>
-          {costs.recent_alerts.map((alert, i) => (
-            <div key={i} className="text-sm text-red-700">
+          {costs.recent_alerts.map((alert) => (
+            <div key={alert.message} className="text-sm text-red-700">
               {alert.message}
             </div>
           ))}
@@ -568,6 +569,7 @@ export default function AdminDashboard() {
               </p>
             </div>
             <button
+              type="button"
               onClick={fetchData}
               disabled={loading}
               className="flex items-center gap-2 px-3 py-2 text-sm font-medium bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
