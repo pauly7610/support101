@@ -198,9 +198,14 @@ try:
 except ValueError:
     VECTOR_STORE_CACHE_HITS = REGISTRY._names_to_collectors["vector_store_cache_hits"]
 
+ALLOWED_ORIGINS = os.getenv(
+    "CORS_ALLOWED_ORIGINS",
+    "http://localhost:3000,http://localhost:3001",
+).split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[o.strip() for o in ALLOWED_ORIGINS],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

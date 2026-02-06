@@ -1,14 +1,14 @@
-# Agent Copilot Dockerfile (React)
-FROM node:20-alpine as build
+# Agent Copilot Dockerfile (Chrome Extension — webpack build)
+FROM node:20-alpine AS build
 WORKDIR /app
-COPY package.json package-lock.json* yarn.lock* ./
-RUN npm install || yarn install
+COPY package.json package-lock.json* ./
+RUN npm ci --no-audit --no-fund
 COPY . .
-RUN npm run build || yarn build
+RUN npm run build
 
-FROM node:20-alpine as prod
+FROM node:20-alpine AS prod
 WORKDIR /app
-COPY --from=build /app/build ./build
 RUN npm install -g serve
+COPY --from=build /app/dist ./dist
 EXPOSE 3001
-CMD ["serve", "-s", "build", "-l", "3001"]
+CMD ["serve", "-s", "dist", "-l", "3001"]

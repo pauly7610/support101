@@ -1,52 +1,53 @@
-fastapi
-uvicorn
-pydantic
-langchain
-langchain-openai
-langchain-community
-pinecone
-transformers
-sentence-transformers
-huggingface-hub
-fastembed
-# Firecrawl is optional; install if using web crawling
-dotenv
-# For CORS support
-httpx
-# apps/backend/requirements.txt
-pyjwt==2.8.0
-python-multipart==0.0.9
-python-jose==3.3.0
-redis==5.0.3
-fastapi-cache2==0.2.1
-# Add your dependencies here
-mutmut
+# ── Core Framework ──────────────────────────────────────────
+fastapi>=0.115.0
+uvicorn>=0.32.0
+pydantic>=2.10.0
+python-multipart>=0.0.9
+python-dotenv>=1.0.0
+httpx>=0.27.0
 
-prometheus_client
-asyncpg
-psycopg2-binary
-SQLAlchemy
-alembic
-# For PEP-8 formatting
-black
-flake8
-# For PDF parsing
-pdfplumber
-# For file uploads
-python-multipart
-# For JWT authentication
-PyJWT
-# For scheduled anonymization
-schedule
-# For impact sorting
-isort
-# For testing
-pytest
-pytest-cov
-pytest-asyncio
-pendulum
-pytest<8.0.0
-pytest-asyncio==0.21.0
-# For rate limiting
+# ── Database ────────────────────────────────────────────────
+SQLAlchemy>=2.0.36
+asyncpg>=0.30.0
+psycopg2-binary>=2.9.10
+alembic>=1.14.0
+
+# ── Auth ────────────────────────────────────────────────────
+PyJWT>=2.8.0
+python-jose>=3.3.0
+
+# ── Caching & Rate Limiting ─────────────────────────────────
+redis>=5.0.3
+fastapi-cache2>=0.2.1
 fastapi-limiter>=0.1.5
-pytest-cov
+
+# ── LLM & RAG ──────────────────────────────────────────────
+langchain>=0.3.0
+langchain-openai>=0.2.0
+langchain-community>=0.3.0
+pinecone>=5.0.0
+fastembed>=0.4.0
+sentence-transformers>=3.0.0
+huggingface-hub>=0.26.0
+tenacity>=9.0.0
+
+# ── Observability ───────────────────────────────────────────
+prometheus_client>=0.21.0
+
+# ── Document Processing ─────────────────────────────────────
+pdfplumber>=0.11.0
+
+# ── Scheduling ──────────────────────────────────────────────
+schedule>=1.2.0
+
+# ── Dev Tools ───────────────────────────────────────────────
+black>=24.0.0
+flake8>=7.0.0
+isort>=5.13.0
+
+# ── Testing ─────────────────────────────────────────────────
+pytest>=8.0.0
+pytest-cov>=6.0.0
+pytest-asyncio>=0.24.0
+pendulum>=3.0.0
+mutmut

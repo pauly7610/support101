@@ -12,8 +12,5 @@ COPY . .
 # Expose port for Uvicorn
 EXPOSE 8000
 
-# Use a mock Pinecone if running locally (optional: user can override)
-ENV PINECONE_API_KEY=dummy-key
-ENV PINECONE_ENVIRONMENT=mock
-
+# API keys must be provided via env_file or runtime env — never hardcode
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

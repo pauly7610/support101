@@ -14,7 +14,7 @@ test-stop:
 # Run backend tests with local services
 test-backend: test-start
 	DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/support101_test \
-	python -m pytest apps/backend/tests -v --tb=short || true
+	python -m pytest apps/backend/tests -v --tb=short
 	$(MAKE) test-stop
 
 # Run agent framework tests (no external services needed)
@@ -24,7 +24,7 @@ test-agent-framework:
 # Run all tests locally
 test-local: test-start
 	DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/support101_test \
-	python -m pytest apps/backend/tests tests/agent_framework -v --tb=short || true
+	python -m pytest apps/backend/tests tests/agent_framework -v --tb=short
 	$(MAKE) test-stop
 
 # Quick lint check before push
