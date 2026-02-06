@@ -6,173 +6,129 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  PYTHONPATH: ${{ github.workspace }}
+  DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/support101
+  REDIS_URL: redis://localhost:6379/0
+  SECRET_KEY: ci-test-secret
+  OPENAI_API_KEY: sk-ci-not-real
+  PINECONE_API_KEY: ci-not-real
+  PINECONE_ENVIRONMENT: gcp-starter
+  LLM_COST_TRACKING_ENABLED: "true"
+  VOICE_ENABLED: "false"
+
 jobs:
-  build-and-test:
+  # ── Python Backend ─────────────────────────────────────────────
+  backend:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.11]
-        node-version: [22.x]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: support101
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
     steps:
       - uses: actions/checkout@v4
 
-      # Python backend setup
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.11"
 
-      - name: Cache Python venv
+      - name: Cache pip
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.cache/pip
-            .venv
-          key: ${{ runner.os }}-python-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            venv-${{ runner.os }}-
-        # Caches Python virtual environment and pip cache for faster builds
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('apps/backend/requirements.txt', 'pyproject.toml') }}
+          restore-keys: ${{ runner.os }}-pip-
 
       - name: Install dependencies
         run: |
-          set -e
-          python -m venv ~/.venv
-          source ~/.venv/bin/activate
+          python -m pip install --upgrade pip
           pip install -r apps/backend/requirements.txt
+          pip install ruff
 
-      - name: Add project root to PYTHONPATH
-        run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)/apps/backend" >> $GITHUB_ENV
+      - name: Ruff lint
+        run: ruff check packages/ apps/backend/
 
-      - name: Install lint tools
-        run: |
-          set -e
-          source ~/.venv/bin/activate
-          pip install black flake8 isort
-
-      - name: Lint
-        run: |
-          set -e
-          ~/.venv/bin/black --check .
-          ~/.venv/bin/flake8
-          ~/.venv/bin/isort --check-only .
-        # 'set -e' ensures the job fails on lint error; removed all '|| true' for strict compliance
+      - name: Ruff format check
+        run: ruff format packages/ apps/backend/ --check
 
       - name: Check for missing LLM engine components
         run: |
-          # Fail CI if core LLM engine file is missing
-          if [ ! -f packages/llm_engine/chains/rag_chain.py ]; then echo "rag_chain.py missing" && exit 1; fi
-
-      - name: Start Postgres
-        uses: harmon758/postgresql-action@v1
-        with:
-          postgresql version: '15'
-          postgresql db: support101_test
-          postgresql user: postgres
-          postgresql password: postgres
-        env:
-          PGUSER: postgres
-          PGPASSWORD: postgres
-
-      - name: Create database for Alembic
-        run: |
-          sudo apt-get install -y postgresql-client
-          psql -h localhost -U postgres -c "CREATE DATABASE support101;"
-        env:
-          PGPASSWORD: postgres
-
-      - name: Start Redis
-        uses: supercharge/redis-github-action@1.6.0
-        with:
-          redis-version: '7'
-        env:
-          REDIS_URL: redis://localhost:6379/0
-
-      - name: Add project root to PYTHONPATH
-        run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
+          test -f packages/llm_engine/chains/rag_chain.py
+          test -f packages/llm_engine/cost_tracker.py
+          test -f packages/llm_engine/multi_model.py
+          test -f packages/llm_engine/vector_store.py
+          test -f packages/llm_engine/voice.py
 
       - name: Run Alembic migrations
-        run: |
-          set -e
-          source ~/.venv/bin/activate
-          alembic -c apps/backend/alembic.ini upgrade head
+        run: alembic -c apps/backend/alembic.ini upgrade head
 
       - name: Run backend tests
-        run: |
-          set -e
-          source ~/.venv/bin/activate
-          pytest --disable-warnings --cov=apps/backend -v
+        run: pytest tests/ apps/backend/tests/ -v --tb=short --disable-warnings
 
-      - name: Check backend components
-        run: |
-          set -e
-          test -f apps/backend/migrations.py
-          test -f packages/llm_engine/chains/rag_chain.py
+  # ── JavaScript/TypeScript Frontend ─────────────────────────────
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Cache node_modules
-        uses: actions/cache@v3
-        with:
-          path: node_modules
-          key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            node-modules-${{ runner.os }}-
-        # Caches node_modules for faster frontend builds
-
-      # Node.js frontend setup
-      - name: Set up Node.js ${{ matrix.node-version }}
+      - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: "22"
 
-      - name: Cache root node_modules
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Cache pnpm store
         uses: actions/cache@v4
         with:
-          path: node_modules
-          key: ${{ runner.os }}-node-root-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-root-
+          path: ~/.local/share/pnpm/store/v3
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
 
-      - name: Cache agent-copilot node_modules
-        uses: actions/cache@v4
-        with:
-          path: apps/agent-copilot/node_modules
-          key: ${{ runner.os }}-node-agent-copilot-${{ hashFiles('apps/agent-copilot/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-agent-copilot-
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name: Cache customer-bot node_modules
-        uses: actions/cache@v4
-        with:
-          path: apps/customer-bot/node_modules
-          key: ${{ runner.os }}-node-customer-bot-${{ hashFiles('apps/customer-bot/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-customer-bot-
-
-      - name: Install frontend dependencies (root and apps)
-        run: |
-          set -e
-          npm ci --no-audit --no-fund
-          cd apps/agent-copilot && npm ci --no-audit --no-fund
-          cd ../customer-bot && npm ci --no-audit --no-fund
-
-      - name: Build agent-copilot
-        run: |
-          set -e
-          cd apps/agent-copilot
-          npm run build
+      - name: Biome lint
+        run: npx @biomejs/biome check apps/ packages/ --max-diagnostics=100
 
       - name: Build customer-bot
-        run: |
-          set -e
-          cd apps/customer-bot
-          npm run build
+        run: pnpm --filter customer-bot build
 
-      - name: Lint frontends
-        run: |
-          set -e
-          cd apps/agent-copilot && npx --no-install eslint .
-          cd ../customer-bot && npx eslint .
+      - name: Build admin-dashboard
+        run: pnpm --filter admin-dashboard build
 
-      - name: Test frontends (if tests exist)
-        run: |
-          cd apps/agent-copilot && if [ -d "__tests__" ]; then npm test; fi
-          cd ../customer-bot && if [ -d "__tests__" ]; then npm test; fi
+      - name: Build agent-copilot
+        run: pnpm --filter agent-copilot build
+
+      - name: Test customer-bot
+        run: pnpm --filter customer-bot test
+
+      - name: Test agent-copilot
+        run: pnpm --filter agent-copilot test
+
+      - name: Test admin-dashboard
+        run: pnpm --filter admin-dashboard test
