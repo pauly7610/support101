@@ -4,19 +4,40 @@ node_modules/
 build/
 dist/
 *.log
+*.tsbuildinfo
 
 # Python
 __pycache__/
 *.pyc
+*.pyo
 .venv/
+venv/
 .env
-.env.template
+.env.local
+.env.*.local
 *.local
 config/credentials.yaml
 config/creds.tpl
+*.egg-info/
+.eggs/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
 
-# VSCode
+# Remotion / Video output
+**/out/*.mp4
+**/out/*.webm
+**/out/*.mkv
+
+# IDE
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
 
 # Docker
 **/data/
@@ -24,4 +45,6 @@ config/creds.tpl
 # OS
 .DS_Store
 Thumbs.db
-venv/
+Desktop.ini
+ehthumbs.db
+*.bak
