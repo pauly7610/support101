@@ -1,54 +1,118 @@
 import React, { useEffect, useState } from 'react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { AlertTriangle } from 'lucide-react';
 import * as idb from 'idb-keyval';
+import { cn } from '../lib/utils';
 
 const ESCALATION_LOG_KEY = 'escalation_log';
 
-// Simple bar chart for escalations per day
 function groupByDay(escalations: unknown[]) {
   const counts: Record<string, number> = {};
   escalations.forEach((e) => {
-    const escalation = e as { timestamp: string };
+    const escalation = e as { timestamp: number };
     const day = new Date(escalation.timestamp).toLocaleDateString();
     counts[day] = (counts[day] || 0) + 1;
   });
-  return counts;
+  return Object.entries(counts)
+    .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
+    .map(([day, count]) => ({ day, count }));
+}
+
+function Skeleton({ className }: { className?: string }) {
+  return <div className={cn('animate-pulse rounded bg-gray-200 dark:bg-slate-700', className)} />;
+}
+
+function ChartSkeleton() {
+  return (
+    <div className="space-y-3">
+      <Skeleton className="h-5 w-40" />
+      <div className="flex items-end gap-2 h-40">
+        {Array.from({ length: 7 }).map((_, i) => (
+          <Skeleton key={i} className="w-8" style={{ height: `${30 + Math.random() * 90}px` }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <div className={cn(
+        'w-12 h-12 rounded-full flex items-center justify-center mb-3',
+        'bg-emerald-50 dark:bg-emerald-900/20',
+      )}>
+        <AlertTriangle className="w-5 h-5 text-emerald-500" />
+      </div>
+      <p className="text-sm font-medium text-gray-700 dark:text-slate-300">No escalations yet</p>
+      <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
+        Escalation data will appear here when tickets are flagged
+      </p>
+    </div>
+  );
 }
 
 export default function EscalationCharts() {
-  const [escalations, setEscalations] = useState([]);
+  const [escalations, setEscalations] = useState<unknown[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    idb.get(ESCALATION_LOG_KEY).then((log: unknown[] = []) => setEscalations(log));
+    idb.get(ESCALATION_LOG_KEY).then((log: unknown[] | undefined) => {
+      setEscalations(log || []);
+      setLoading(false);
+    });
   }, []);
 
-  const counts = groupByDay(escalations);
-  const days = Object.keys(counts).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
-  const values = days.map((day) => counts[day]);
-  const max = Math.max(...values, 1);
+  if (loading) return <ChartSkeleton />;
+
+  const data = groupByDay(escalations);
+
+  if (data.length === 0) return <EmptyState />;
 
   return (
     <div className="mb-8">
-      <h3 className="text-lg font-semibold mb-2">Escalations per Day</h3>
-      <div className="flex items-end gap-2 h-40">
-        {days.map((day, i) => (
-          <div key={day} className="flex flex-col items-center" style={{ width: 36 }}>
-            <div
-              style={{
-                height: `${(values[i] / max) * 120}px`,
-                background: '#2563eb',
-                width: 24,
-                borderRadius: 4,
+      <h3 className="text-sm font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-3">
+        Escalations per Day
+      </h3>
+      <div className={cn(
+        'rounded-xl p-4',
+        'bg-white dark:bg-slate-900',
+        'border border-gray-200 dark:border-slate-700',
+        'shadow-sm',
+      )}>
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={data} margin={{ top: 4, right: 4, bottom: 4, left: -20 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.1} />
+            <XAxis
+              dataKey="day"
+              tick={{ fontSize: 10, fill: '#9ca3af' }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              allowDecimals={false}
+              tick={{ fontSize: 10, fill: '#9ca3af' }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <Tooltip
+              contentStyle={{
+                borderRadius: 12,
+                border: '1px solid #e5e7eb',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                fontSize: 12,
               }}
-              title={`${values[i]} escalation${values[i] !== 1 ? 's' : ''}`}
-            ></div>
-            <span
-              className="text-xs mt-1"
-              style={{ writingMode: 'vertical-lr', textOrientation: 'mixed', color: '#555' }}
-            >
-              {day}
-            </span>
-          </div>
-        ))}
+              labelStyle={{ fontWeight: 600 }}
+            />
+            <Bar
+              dataKey="count"
+              name="Escalations"
+              fill="#6366f1"
+              radius={[4, 4, 0, 0]}
+              maxBarSize={32}
+            />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );

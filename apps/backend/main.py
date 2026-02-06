@@ -28,6 +28,7 @@ from prometheus_client import REGISTRY, Counter, Histogram
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.backend.app.analytics.router import router as analytics_router
+from apps.backend.app.websocket.copilot_ws import router as ws_router
 from apps.backend.app.auth.jwt import create_access_token, get_current_user
 from apps.backend.app.auth.users import (
     create_user,
@@ -86,6 +87,7 @@ app.include_router(agents_router, prefix="/v1")
 app.include_router(governance_router, prefix="/v1")
 app.include_router(hitl_router, prefix="/v1")
 app.include_router(tenants_router, prefix="/v1")
+app.include_router(ws_router)
 
 security = HTTPBearer()
 

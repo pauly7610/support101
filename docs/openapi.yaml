@@ -1,32 +1,70 @@
 openapi: 3.0.3
 info:
   title: Support Intelligence Core API
-  version: '1.0.0'
+  version: '2.0.0'
   description: |
-    API for Support Intelligence Core (SIC) - LLM-powered customer support platform.
-    Includes endpoints for RAG, analytics, ingestion, and compliance.
+    Full API for Support Intelligence Core (SIC) — LLM-powered customer support platform.
+    Covers RAG, document ingestion, agent framework, HITL queue, governance & RBAC,
+    multi-tenant management, webhooks, analytics, compliance, and Prometheus metrics.
+  contact:
+    name: Support101
+    url: https://github.com/pauly7610/support101
 servers:
   - url: http://localhost:8000
+    description: Local development
+tags:
+  - name: RAG
+    description: Retrieval-Augmented Generation endpoints
+  - name: Ingestion
+    description: Document ingestion and vectorization
+  - name: Agents
+    description: Agent CRUD and execution
+  - name: HITL
+    description: Human-in-the-loop review queue
+  - name: Governance
+    description: Dashboard, RBAC, audit logging
+  - name: Tenants
+    description: Multi-tenant management
+  - name: Webhooks
+    description: Inbound webhooks (Zendesk, Slack, Jira, generic)
+  - name: Analytics
+    description: Escalation analytics
+  - name: Compliance
+    description: GDPR and CCPA endpoints
+  - name: Observability
+    description: Prometheus metrics
+
 paths:
+  # ── RAG ──────────────────────────────────────────────────────
   /generate_reply:
     post:
-      summary: Generate agent/customer reply (RAG)
+      tags: [RAG]
+      summary: Generate a support reply using RAG
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenerateReplyRequest'
+              $ref: '#/components/schemas/TicketContext'
       responses:
         '200':
-          description: Generated reply with sources
+          description: Generated reply with source citations
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenerateReplyResponse'
+                $ref: '#/components/schemas/SuggestedResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  # ── Ingestion ────────────────────────────────────────────────
   /ingest_documentation:
     post:
-      summary: Ingest documentation for search
+      tags: [Ingestion]
+      summary: Ingest a document for vector search
+      security:
+        - BearerAuth: []
       requestBody:
         required: true
         content:
@@ -37,10 +75,12 @@ paths:
                 file:
                   type: string
                   format: binary
+                  description: PDF, MD, or TXT file
                 chunk_size:
                   type: integer
                   minimum: 512
                   maximum: 2048
+                  default: 1024
       responses:
         '200':
           description: Ingestion result
@@ -55,44 +95,996 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '429':
-          description: Rate limit exceeded
+          $ref: '#/components/responses/RateLimited'
+
+  # ── Agents ───────────────────────────────────────────────────
+  /v1/agents:
+    post:
+      tags: [Agents]
+      summary: Create an agent from a blueprint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAgentRequest'
+      responses:
+        '201':
+          description: Agent created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /analytics/escalations:
+                $ref: '#/components/schemas/AgentResponse'
     get:
-      summary: Get escalation analytics
+      tags: [Agents]
+      summary: List agents
       parameters:
-        - in: query
-          name: user_id
+        - $ref: '#/components/parameters/TenantId'
+        - name: blueprint_name
+          in: query
           schema:
             type: string
-          required: false
-          description: Filter by user ID
-        - in: query
-          name: start_time
-          schema:
-            type: number
-            format: float
-          required: false
-          description: Filter by start timestamp (epoch seconds)
-        - in: query
-          name: end_time
-          schema:
-            type: number
-            format: float
-          required: false
-          description: Filter by end timestamp (epoch seconds)
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
       responses:
         '200':
-          description: Aggregated escalation analytics
+          description: List of agents
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AnalyticsResponse'
+                type: array
+                items:
+                  $ref: '#/components/schemas/AgentResponse'
+
+  /v1/agents/{agent_id}:
+    get:
+      tags: [Agents]
+      summary: Get agent details
+      parameters:
+        - $ref: '#/components/parameters/AgentId'
+      responses:
+        '200':
+          description: Agent details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentResponse'
+        '404':
+          description: Agent not found
+    delete:
+      tags: [Agents]
+      summary: Delete an agent
+      parameters:
+        - $ref: '#/components/parameters/AgentId'
+      responses:
+        '204':
+          description: Agent deleted
+
+  /v1/agents/{agent_id}/execute:
+    post:
+      tags: [Agents]
+      summary: Execute an agent with input data
+      parameters:
+        - $ref: '#/components/parameters/AgentId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecuteAgentRequest'
+      responses:
+        '200':
+          description: Execution result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionResponse'
+
+  /v1/agents/{agent_id}/state:
+    get:
+      tags: [Agents]
+      summary: Get agent runtime state
+      parameters:
+        - $ref: '#/components/parameters/AgentId'
+      responses:
+        '200':
+          description: Agent state
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /v1/agents/stats/overview:
+    get:
+      tags: [Agents]
+      summary: Agent statistics overview
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+      responses:
+        '200':
+          description: Agent stats
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /v1/blueprints:
+    get:
+      tags: [Agents]
+      summary: List available agent blueprints
+      responses:
+        '200':
+          description: List of blueprints
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BlueprintResponse'
+
+  /v1/blueprints/{blueprint_name}:
+    get:
+      tags: [Agents]
+      summary: Get blueprint details
+      parameters:
+        - name: blueprint_name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Blueprint details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlueprintResponse'
+
+  # ── HITL ─────────────────────────────────────────────────────
+  /v1/hitl/queue:
+    get:
+      tags: [HITL]
+      summary: Get HITL review queue
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [critical, high, medium, low]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, assigned, completed, cancelled]
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Queue items
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                  total:
+                    type: integer
+
+  /v1/hitl/queue/{request_id}:
+    get:
+      tags: [HITL]
+      summary: Get a specific HITL request
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Request details
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /v1/hitl/queue/{request_id}/assign:
+    post:
+      tags: [HITL]
+      summary: Assign a request to a reviewer
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - name: reviewer_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Assignment result
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /v1/hitl/queue/{request_id}/unassign:
+    post:
+      tags: [HITL]
+      summary: Unassign a request
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Unassignment result
+
+  /v1/hitl/queue/{request_id}/respond:
+    post:
+      tags: [HITL]
+      summary: Respond to a HITL request (approve/reject/edit)
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [approve, reject, edit]
+                response_text:
+                  type: string
+                feedback:
+                  type: string
+      responses:
+        '200':
+          description: Response recorded
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /v1/hitl/queue/{request_id}/cancel:
+    post:
+      tags: [HITL]
+      summary: Cancel a HITL request
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - name: reason
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cancellation result
+
+  /v1/hitl/reviewers:
+    post:
+      tags: [HITL]
+      summary: Register a reviewer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reviewer_id, name]
+              properties:
+                reviewer_id:
+                  type: string
+                name:
+                  type: string
+                specializations:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Reviewer registered
+
+  /v1/hitl/reviewers/{reviewer_id}/availability:
+    put:
+      tags: [HITL]
+      summary: Set reviewer availability
+      parameters:
+        - name: reviewer_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: available
+          in: query
+          required: true
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Availability updated
+
+  /v1/hitl/reviewers/{reviewer_id}/dashboard:
+    get:
+      tags: [HITL]
+      summary: Get reviewer dashboard
+      parameters:
+        - name: reviewer_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Dashboard data
+
+  /v1/hitl/reviewers/{reviewer_id}/assignments:
+    get:
+      tags: [HITL]
+      summary: Get reviewer assignments
+      parameters:
+        - name: reviewer_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Assignments list
+
+  /v1/hitl/escalate:
+    post:
+      tags: [HITL]
+      summary: Manually escalate a ticket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ticket_id, reason]
+              properties:
+                ticket_id:
+                  type: string
+                reason:
+                  type: string
+                priority:
+                  type: string
+                  enum: [critical, high, medium, low]
+                tenant_id:
+                  type: string
+      responses:
+        '200':
+          description: Escalation created
+
+  /v1/hitl/escalation-policies:
+    post:
+      tags: [HITL]
+      summary: Create an escalation policy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, rules]
+              properties:
+                name:
+                  type: string
+                rules:
+                  type: array
+                  items:
+                    type: object
+                include_default_rules:
+                  type: boolean
+                  default: true
+      responses:
+        '200':
+          description: Policy created
+
+  # ── Governance ───────────────────────────────────────────────
+  /v1/governance/dashboard:
+    get:
+      tags: [Governance]
+      summary: Get governance dashboard metrics
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+      responses:
+        '200':
+          description: Dashboard metrics
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /v1/governance/agents/active:
+    get:
+      tags: [Governance]
+      summary: List active agents
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+      responses:
+        '200':
+          description: Active agents list
+
+  /v1/governance/roles:
+    get:
+      tags: [Governance]
+      summary: List all roles
+      responses:
+        '200':
+          description: Roles list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+    post:
+      tags: [Governance]
+      summary: Create a role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role_name, permissions]
+              properties:
+                role_name:
+                  type: string
+                permissions:
+                  type: array
+                  items:
+                    type: string
+                description:
+                  type: string
+      responses:
+        '201':
+          description: Role created
+
+  /v1/governance/roles/assign:
+    post:
+      tags: [Governance]
+      summary: Assign a role to an agent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent_id, role_name]
+              properties:
+                agent_id:
+                  type: string
+                role_name:
+                  type: string
+                tenant_id:
+                  type: string
+      responses:
+        '200':
+          description: Role assigned
+
+  /v1/governance/roles/{agent_id}/{role_name}:
+    delete:
+      tags: [Governance]
+      summary: Revoke a role from an agent
+      parameters:
+        - $ref: '#/components/parameters/AgentId'
+        - name: role_name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Role revoked
+
+  /v1/governance/permissions/{agent_id}:
+    get:
+      tags: [Governance]
+      summary: Get agent permissions
+      parameters:
+        - $ref: '#/components/parameters/AgentId'
+        - $ref: '#/components/parameters/TenantId'
+      responses:
+        '200':
+          description: Agent permissions
+
+  /v1/governance/permissions/grant:
+    post:
+      tags: [Governance]
+      summary: Grant a permission
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent_id, resource, actions]
+              properties:
+                agent_id:
+                  type: string
+                resource:
+                  type: string
+                actions:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Permission granted
+
+  /v1/governance/permissions/{agent_id}/{resource}:
+    delete:
+      tags: [Governance]
+      summary: Revoke a permission
+      parameters:
+        - $ref: '#/components/parameters/AgentId'
+        - name: resource
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Permission revoked
+
+  /v1/governance/permissions/check:
+    get:
+      tags: [Governance]
+      summary: Check if agent has permission
+      parameters:
+        - name: agent_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: resource
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Permission check result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  allowed:
+                    type: boolean
+
+  /v1/governance/audit:
+    get:
+      tags: [Governance]
+      summary: Query audit logs
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+        - name: agent_id
+          in: query
+          schema:
+            type: string
+        - name: action
+          in: query
+          schema:
+            type: string
+        - name: start_time
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Audit log entries
+
+  /v1/governance/audit/agent/{agent_id}:
+    get:
+      tags: [Governance]
+      summary: Get audit history for an agent
+      parameters:
+        - $ref: '#/components/parameters/AgentId'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Agent audit history
+
+  /v1/governance/audit/execution/{execution_id}:
+    get:
+      tags: [Governance]
+      summary: Get audit trail for an execution
+      parameters:
+        - name: execution_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Execution audit trail
+
+  /v1/governance/audit/human-interactions:
+    get:
+      tags: [Governance]
+      summary: Get human interaction audit logs
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+        - name: start_time
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: end_time
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Human interaction logs
+
+  /v1/governance/audit/security:
+    get:
+      tags: [Governance]
+      summary: Get security event logs
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Security events
+
+  /v1/governance/audit/export:
+    get:
+      tags: [Governance]
+      summary: Export audit logs (JSON or CSV)
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, csv]
+            default: json
+      responses:
+        '200':
+          description: Exported audit data
+
+  /v1/governance/stats:
+    get:
+      tags: [Governance]
+      summary: Get governance statistics
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+      responses:
+        '200':
+          description: Governance stats
+
+  # ── Tenants ──────────────────────────────────────────────────
+  /v1/tenants:
+    post:
+      tags: [Tenants]
+      summary: Create a tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTenantRequest'
+      responses:
+        '201':
+          description: Tenant created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantResponse'
+    get:
+      tags: [Tenants]
+      summary: List tenants
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, suspended, pending]
+        - name: tier
+          in: query
+          schema:
+            type: string
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+      responses:
+        '200':
+          description: Tenant list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TenantResponse'
+
+  /v1/tenants/{tenant_id}:
+    get:
+      tags: [Tenants]
+      summary: Get tenant details
+      parameters:
+        - $ref: '#/components/parameters/TenantIdPath'
+      responses:
+        '200':
+          description: Tenant details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantResponse'
+    put:
+      tags: [Tenants]
+      summary: Update tenant
+      parameters:
+        - $ref: '#/components/parameters/TenantIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                tier:
+                  type: string
+                config:
+                  type: object
+      responses:
+        '200':
+          description: Tenant updated
+    delete:
+      tags: [Tenants]
+      summary: Delete tenant
+      parameters:
+        - $ref: '#/components/parameters/TenantIdPath'
+        - name: force
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '204':
+          description: Tenant deleted
+
+  /v1/tenants/{tenant_id}/activate:
+    post:
+      tags: [Tenants]
+      summary: Activate a tenant
+      parameters:
+        - $ref: '#/components/parameters/TenantIdPath'
+      responses:
+        '200':
+          description: Tenant activated
+
+  /v1/tenants/{tenant_id}/suspend:
+    post:
+      tags: [Tenants]
+      summary: Suspend a tenant
+      parameters:
+        - $ref: '#/components/parameters/TenantIdPath'
+        - name: reason
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Tenant suspended
+
+  /v1/tenants/{tenant_id}/usage:
+    get:
+      tags: [Tenants]
+      summary: Get tenant usage metrics
+      parameters:
+        - $ref: '#/components/parameters/TenantIdPath'
+      responses:
+        '200':
+          description: Usage metrics
+
+  /v1/tenants/{tenant_id}/limits:
+    put:
+      tags: [Tenants]
+      summary: Set custom resource limits
+      parameters:
+        - $ref: '#/components/parameters/TenantIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                max_agents:
+                  type: integer
+                max_executions_per_hour:
+                  type: integer
+                max_concurrent_executions:
+                  type: integer
+      responses:
+        '200':
+          description: Limits updated
+
+  /v1/tenants/{tenant_id}/api-key:
+    post:
+      tags: [Tenants]
+      summary: Set tenant API key
+      parameters:
+        - $ref: '#/components/parameters/TenantIdPath'
+        - name: api_key_hash
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: API key set
+
+  /v1/tenants/stats/overview:
+    get:
+      tags: [Tenants]
+      summary: Tenant statistics overview
+      responses:
+        '200':
+          description: Tenant stats
+
+  # ── Webhooks ─────────────────────────────────────────────────
+  /v1/webhooks/generic:
+    post:
+      tags: [Webhooks]
+      summary: Receive a generic webhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookPayload'
+      responses:
+        '202':
+          description: Webhook accepted
+
+  /v1/webhooks/zendesk:
+    post:
+      tags: [Webhooks]
+      summary: Receive a Zendesk webhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '202':
+          description: Webhook accepted
+
+  /v1/webhooks/slack:
+    post:
+      tags: [Webhooks]
+      summary: Receive a Slack webhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '202':
+          description: Webhook accepted
+
+  /v1/webhooks/jira:
+    post:
+      tags: [Webhooks]
+      summary: Receive a Jira webhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '202':
+          description: Webhook accepted
+
+  /v1/webhooks/stats:
+    get:
+      tags: [Webhooks]
+      summary: Get webhook and activity stream stats
+      responses:
+        '200':
+          description: Webhook stats
+
+  # ── Analytics ────────────────────────────────────────────────
+  /v1/analytics/escalations:
+    get:
+      tags: [Analytics]
+      summary: Get escalation analytics
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: user_id
+          in: query
+          schema:
+            type: string
+        - name: start_time
+          in: query
+          schema:
+            type: integer
+          description: Unix timestamp
+        - name: end_time
+          in: query
+          schema:
+            type: integer
+          description: Unix timestamp
+      responses:
+        '200':
+          description: Escalation analytics
+        '403':
+          description: Admin only
+
+  /v1/analytics/escalations/by-agent:
+    get:
+      tags: [Analytics]
+      summary: Escalations aggregated by agent
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: agent_id
+          in: query
+          schema:
+            type: string
+        - name: start_time
+          in: query
+          schema:
+            type: integer
+        - name: end_time
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: By-agent escalation data
+
+  /v1/analytics/escalations/by-category:
+    get:
+      tags: [Analytics]
+      summary: Escalations aggregated by category
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: start_time
+          in: query
+          schema:
+            type: integer
+        - name: end_time
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: By-category escalation data
+
   /report_escalation:
     post:
+      tags: [Analytics]
       summary: Report an escalation event
       requestBody:
         required: true
@@ -103,109 +1095,274 @@ paths:
       responses:
         '200':
           description: Escalation recorded
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-        '400':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /metrics:
-    get:
-      summary: Prometheus metrics endpoint
+
+  # ── Compliance ───────────────────────────────────────────────
+  /v1/compliance/gdpr_delete:
+    post:
+      tags: [Compliance]
+      summary: GDPR data deletion (admin only)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id]
+              properties:
+                user_id:
+                  type: string
       responses:
         '200':
-          description: Prometheus metrics text
+          description: User data deleted
+        '403':
+          description: Admin only
+
+  /v1/compliance/ccpa_optout:
+    post:
+      tags: [Compliance]
+      summary: CCPA opt-out of data sale (admin only)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id]
+              properties:
+                user_id:
+                  type: string
+      responses:
+        '200':
+          description: Opt-out recorded
+        '403':
+          description: Admin only
+
+  # ── Observability ────────────────────────────────────────────
+  /metrics:
+    get:
+      tags: [Observability]
+      summary: Prometheus metrics
+      responses:
+        '200':
+          description: Prometheus text format
           content:
             text/plain:
               schema:
                 type: string
+
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    TenantId:
+      name: tenant_id
+      in: query
+      schema:
+        type: string
+    TenantIdPath:
+      name: tenant_id
+      in: path
+      required: true
+      schema:
+        type: string
+    AgentId:
+      name: agent_id
+      in: path
+      required: true
+      schema:
+        type: string
+    RequestId:
+      name: request_id
+      in: path
+      required: true
+      schema:
+        type: string
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 50
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        default: 0
+
+  responses:
+    RateLimited:
+      description: Rate limit exceeded (10 req/min/IP)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
   schemas:
-    GenerateReplyRequest:
+    TicketContext:
       type: object
       properties:
+        ticket_id:
+          type: string
         user_id:
           type: string
-        ticket:
-          type: object
-          properties:
-            subject:
-              type: string
-            body:
-              type: string
-            context:
-              type: string
-        history:
-          type: array
-          items:
-            type: object
-            properties:
-              sender:
-                type: string
-              message:
-                type: string
-    GenerateReplyResponse:
+        content:
+          type: string
+        user_query:
+          type: string
+
+    SuggestedResponse:
       type: object
       properties:
-        reply:
+        reply_text:
           type: string
         sources:
           type: array
           items:
             $ref: '#/components/schemas/SourceDocument'
+        error:
+          $ref: '#/components/schemas/ErrorResponse'
+
     SourceDocument:
       type: object
       properties:
+        url:
+          type: string
         excerpt:
           type: string
         confidence:
           type: number
+          format: float
         last_updated:
           type: string
-        url:
-          type: string
+
     IngestResponse:
       type: object
       properties:
         status:
           type: string
-        details:
-          type: string
-    AnalyticsResponse:
-      type: object
-      properties:
-        total_escalations:
+        chunks_created:
           type: integer
-        per_day:
+        document_id:
+          type: string
+
+    CreateAgentRequest:
+      type: object
+      required: [blueprint_name, tenant_id]
+      properties:
+        blueprint_name:
+          type: string
+        tenant_id:
+          type: string
+        config:
           type: object
-          additionalProperties:
-            type: integer
-        last_escalation:
-          $ref: '#/components/schemas/Escalation'
-    Escalation:
+
+    AgentResponse:
       type: object
       properties:
-        id:
-          type: integer
-        user_id:
+        agent_id:
           type: string
-        text:
+        blueprint_name:
           type: string
-        timestamp:
+        tenant_id:
+          type: string
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        config:
+          type: object
+
+    BlueprintResponse:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        version:
+          type: string
+        tools:
+          type: array
+          items:
+            type: string
+        default_config:
+          type: object
+
+    ExecuteAgentRequest:
+      type: object
+      required: [input_data]
+      properties:
+        input_data:
+          type: object
+        tenant_id:
+          type: string
+
+    ExecutionResponse:
+      type: object
+      properties:
+        execution_id:
+          type: string
+        agent_id:
+          type: string
+        result:
+          type: object
+        duration_ms:
           type: number
-        last_updated:
+        status:
           type: string
-        confidence:
-          type: number
-        source_url:
+
+    CreateTenantRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
           type: string
+        tier:
+          type: string
+          enum: [free, starter, professional, enterprise]
+        config:
+          type: object
+
+    TenantResponse:
+      type: object
+      properties:
+        tenant_id:
+          type: string
+        name:
+          type: string
+        tier:
+          type: string
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        usage:
+          type: object
+
+    WebhookPayload:
+      type: object
+      required: [source, event_type, data]
+      properties:
+        source:
+          type: string
+        event_type:
+          type: string
+        data:
+          type: object
+        tenant_id:
+          type: string
+
     ReportEscalationRequest:
       type: object
       properties:
@@ -217,6 +1374,7 @@ components:
           type: number
         source_url:
           type: string
+
     ErrorResponse:
       type: object
       properties:

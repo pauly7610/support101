@@ -12,7 +12,8 @@ from typing import Any, Dict, List
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI  # fallback
+from packages.llm_engine.multi_model import get_chat_model
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -53,7 +54,10 @@ class RAGChain:
 
     def __init__(self) -> None:
         self.embedding_model = get_fastembed_model()
-        self.llm = ChatOpenAI(model=os.getenv("LLM_MODEL_NAME", "gpt-4o"), temperature=0.3)
+        try:
+            self.llm = get_chat_model(temperature=0.3)
+        except ValueError:
+            self.llm = ChatOpenAI(model=os.getenv("LLM_MODEL_NAME", "gpt-4o"), temperature=0.3)
         self.prompt = ChatPromptTemplate.from_template(RAG_PROMPT_TEMPLATE)
         self.chain = (
             RunnablePassthrough.assign(
