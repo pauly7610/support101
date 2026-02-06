@@ -52,8 +52,20 @@
 
 ## 🚦 New in This Release
 
-- **🤖 Enterprise Agent Framework:** A reusable agent SDK with swappable blueprints, human-in-the-loop queues, multi-tenant deployment, and governance dashboards. See [Agent Framework README](packages/agent_framework/README.md).
+- **🤖 Enterprise Agent Framework:** A reusable agent SDK with 9 swappable blueprints, human-in-the-loop queues, multi-tenant deployment, and governance dashboards. See [Agent Framework README](packages/agent_framework/README.md).
 - **📊 EvalAI Platform Integration:** Agent workflow tracing, decision auditing, cost tracking, and governance via [`@pauly4010/evalai-sdk`](https://www.npmjs.com/package/@pauly4010/evalai-sdk). Python backend sends traces to EvalAI REST API; JS frontends use the npm SDK directly. See [EvalAI Integration](#evalai-integration) below.
+- **🧩 9 Agent Blueprints** (all auto-registered, create via `framework.create_agent(blueprint="name")`):
+  - **support_agent** — RAG-powered customer support with intent analysis and escalation
+  - **triage_agent** — Intelligent ticket routing and prioritization
+  - **data_analyst** — Data analysis with pattern detection, insights, and reporting
+  - **code_review** — Automated code review (security, quality, performance)
+  - **qa_test** — Test generation, output validation, and regression detection
+  - **knowledge_manager** — KB curation with auditing, gap analysis, and deduplication
+  - **sentiment_monitor** — Real-time sentiment tracking with escalation triggers
+  - **onboarding** — Customer onboarding with personalized checklists and guided setup
+  - **compliance_auditor** — PII scanning, policy checks (GDPR/HIPAA/SOC2/CCPA), remediation
+- **🖥️ HITL Approval Queue UI:** React component with claim/review/approve/reject workflow, SLA indicators, priority badges, filter tabs, and ARIA accessibility (`apps/customer-bot/src/components/ApprovalQueue.tsx`)
+- **📈 Governance Dashboard UI:** React page with agent metrics, HITL stats, SLA compliance, active agents table, and expandable audit log (`apps/customer-bot/src/pages/governance.tsx`)
 - **GDPR/CCPA Compliance:** Endpoints `/gdpr_delete` and `/ccpa_optout` with JWT auth for secure data deletion and opt-out, supporting regulatory compliance.
 - **Analytics & Reporting:** Escalation tracking, 30-day reporting, and agent/category breakdowns.
 - **Compliance UI:** Customer-facing settings and admin dashboard for data/privacy management.
