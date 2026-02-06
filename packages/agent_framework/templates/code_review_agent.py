@@ -15,6 +15,8 @@ from langchain_openai import ChatOpenAI
 
 from ..core.agent_registry import AgentBlueprint
 from ..core.base_agent import AgentConfig, AgentState, AgentStatus, BaseAgent, Tool
+from ..services.llm_helpers import LLMCallTimer, llm_retry, track_agent_decision
+from .validation_models import BlockMergeInput, CodeReviewInput
 
 
 class CodeReviewAgent(BaseAgent):
@@ -123,9 +125,11 @@ class CodeReviewAgent(BaseAgent):
         self,
         config: AgentConfig,
         llm: Optional[Any] = None,
+        evalai_tracer: Optional[Any] = None,
     ) -> None:
         super().__init__(config)
         self._llm = llm
+        self._evalai_tracer = evalai_tracer
         self._initialized = False
         self._register_default_tools()
 
@@ -185,16 +189,20 @@ class CodeReviewAgent(BaseAgent):
             )
         )
 
+    @llm_retry(max_attempts=3)
     async def _security_scan(
         self,
         code: str,
         language: str = "python",
     ) -> Dict[str, Any]:
         """Scan code for security vulnerabilities."""
-        chain = self.SECURITY_PROMPT | self.llm
-        result = await chain.ainvoke(
-            {"code": code[:5000], "language": language}
-        )
+        validated = CodeReviewInput(code=code, language=language)
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.SECURITY_PROMPT | self.llm
+            result = await chain.ainvoke(
+                {"code": validated.code[:5000], "language": validated.language}
+            )
+            timer.set_tokens(input_tokens=len(validated.code) // 4, output_tokens=len(result.content) // 4)
         try:
             findings = json.loads(result.content)
         except json.JSONDecodeError:
@@ -205,16 +213,20 @@ class CodeReviewAgent(BaseAgent):
             }
         return findings
 
+    @llm_retry(max_attempts=3)
     async def _quality_check(
         self,
         code: str,
         language: str = "python",
     ) -> Dict[str, Any]:
         """Check code quality and best practices."""
-        chain = self.QUALITY_PROMPT | self.llm
-        result = await chain.ainvoke(
-            {"code": code[:5000], "language": language}
-        )
+        validated = CodeReviewInput(code=code, language=language)
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.QUALITY_PROMPT | self.llm
+            result = await chain.ainvoke(
+                {"code": validated.code[:5000], "language": validated.language}
+            )
+            timer.set_tokens(input_tokens=len(validated.code) // 4, output_tokens=len(result.content) // 4)
         try:
             findings = json.loads(result.content)
         except json.JSONDecodeError:
@@ -226,16 +238,20 @@ class CodeReviewAgent(BaseAgent):
             }
         return findings
 
+    @llm_retry(max_attempts=3)
     async def _performance_review(
         self,
         code: str,
         language: str = "python",
     ) -> Dict[str, Any]:
         """Review code for performance issues."""
-        chain = self.PERFORMANCE_PROMPT | self.llm
-        result = await chain.ainvoke(
-            {"code": code[:5000], "language": language}
-        )
+        validated = CodeReviewInput(code=code, language=language)
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.PERFORMANCE_PROMPT | self.llm
+            result = await chain.ainvoke(
+                {"code": validated.code[:5000], "language": validated.language}
+            )
+            timer.set_tokens(input_tokens=len(validated.code) // 4, output_tokens=len(result.content) // 4)
         try:
             findings = json.loads(result.content)
         except json.JSONDecodeError:
@@ -246,6 +262,7 @@ class CodeReviewAgent(BaseAgent):
             }
         return findings
 
+    @llm_retry(max_attempts=3)
     async def _generate_summary(
         self,
         security: Dict[str, Any],
@@ -253,14 +270,16 @@ class CodeReviewAgent(BaseAgent):
         performance: Dict[str, Any],
     ) -> Dict[str, Any]:
         """Generate overall review summary."""
-        chain = self.SUMMARY_PROMPT | self.llm
-        result = await chain.ainvoke(
-            {
-                "security": json.dumps(security, indent=2),
-                "quality": json.dumps(quality, indent=2),
-                "performance": json.dumps(performance, indent=2),
-            }
-        )
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.SUMMARY_PROMPT | self.llm
+            result = await chain.ainvoke(
+                {
+                    "security": json.dumps(security, indent=2),
+                    "quality": json.dumps(quality, indent=2),
+                    "performance": json.dumps(performance, indent=2),
+                }
+            )
+            timer.set_tokens(input_tokens=300, output_tokens=len(result.content) // 4)
         try:
             summary = json.loads(result.content)
         except json.JSONDecodeError:
@@ -281,10 +300,20 @@ class CodeReviewAgent(BaseAgent):
         critical_findings: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
         """Block merge due to critical findings."""
+        validated = BlockMergeInput(reason=reason, critical_findings=critical_findings)
+        await track_agent_decision(
+            self._evalai_tracer,
+            agent_name="code_review",
+            decision_type="block_merge",
+            chosen="block",
+            alternatives=["approve", "request_changes"],
+            confidence=95,
+            reasoning=validated.reason,
+        )
         return {
             "blocked": True,
-            "reason": reason,
-            "critical_findings": critical_findings,
+            "reason": validated.reason,
+            "critical_findings": validated.critical_findings,
             "timestamp": datetime.utcnow().isoformat(),
         }
 
@@ -373,6 +402,15 @@ class CodeReviewAgent(BaseAgent):
                 performance=action_input.get("performance", {}),
             )
             state.output_data["review"] = result
+            await track_agent_decision(
+                self._evalai_tracer,
+                agent_name="code_review",
+                decision_type="verdict",
+                chosen=result.get("verdict", "request_changes"),
+                alternatives=["approve", "request_changes", "block"],
+                confidence=result.get("confidence", 50),
+                reasoning=result.get("summary", "")[:200],
+            )
             return {"action": action_name, **result}
 
         elif action_name == "block_merge":

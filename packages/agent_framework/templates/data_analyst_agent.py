@@ -14,6 +14,8 @@ from langchain_openai import ChatOpenAI
 
 from ..core.agent_registry import AgentBlueprint
 from ..core.base_agent import AgentConfig, AgentState, AgentStatus, BaseAgent, Tool
+from ..services.llm_helpers import LLMCallTimer, llm_retry, track_agent_decision
+from .validation_models import AnalyzeDataInput, GenerateInsightsInput, QueryDataInput
 
 
 class DataAnalystAgent(BaseAgent):
@@ -74,9 +76,11 @@ class DataAnalystAgent(BaseAgent):
         self,
         config: AgentConfig,
         llm: Optional[Any] = None,
+        evalai_tracer: Optional[Any] = None,
     ) -> None:
         super().__init__(config)
         self._llm = llm
+        self._evalai_tracer = evalai_tracer
         self._initialized = False
         self._register_default_tools()
 
@@ -129,6 +133,7 @@ class DataAnalystAgent(BaseAgent):
             )
         )
 
+    @llm_retry(max_attempts=3)
     async def _analyze_data(
         self,
         data_sample: str,
@@ -136,14 +141,19 @@ class DataAnalystAgent(BaseAgent):
         analysis_type: str = "exploratory",
     ) -> Dict[str, Any]:
         """Analyze data using LLM."""
-        chain = self.ANALYSIS_PROMPT | self.llm
-        result = await chain.ainvoke(
-            {
-                "data_sample": data_sample[:3000],
-                "description": description,
-                "analysis_type": analysis_type,
-            }
+        validated = AnalyzeDataInput(
+            data_sample=data_sample, description=description, analysis_type=analysis_type
         )
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.ANALYSIS_PROMPT | self.llm
+            result = await chain.ainvoke(
+                {
+                    "data_sample": validated.data_sample[:3000],
+                    "description": validated.description,
+                    "analysis_type": validated.analysis_type,
+                }
+            )
+            timer.set_tokens(input_tokens=len(validated.data_sample) // 4, output_tokens=len(result.content) // 4)
         try:
             analysis = json.loads(result.content)
         except json.JSONDecodeError:
@@ -158,19 +168,23 @@ class DataAnalystAgent(BaseAgent):
             }
         return analysis
 
+    @llm_retry(max_attempts=3)
     async def _generate_insights(
         self,
         analysis: Dict[str, Any],
         context: str = "",
     ) -> Dict[str, Any]:
         """Generate insights from analysis results."""
-        chain = self.INSIGHT_PROMPT | self.llm
-        result = await chain.ainvoke(
-            {
-                "analysis": json.dumps(analysis, indent=2),
-                "context": context or "General business analysis",
-            }
-        )
+        validated = GenerateInsightsInput(analysis=analysis, context=context)
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.INSIGHT_PROMPT | self.llm
+            result = await chain.ainvoke(
+                {
+                    "analysis": json.dumps(validated.analysis, indent=2),
+                    "context": validated.context or "General business analysis",
+                }
+            )
+            timer.set_tokens(input_tokens=200, output_tokens=len(result.content) // 4)
         try:
             insights = json.loads(result.content)
         except json.JSONDecodeError:
@@ -189,6 +203,7 @@ class DataAnalystAgent(BaseAgent):
             }
         return insights
 
+    @llm_retry(max_attempts=3)
     async def _query_data(
         self,
         question: str,
@@ -196,14 +211,19 @@ class DataAnalystAgent(BaseAgent):
         previous_analysis: str = "",
     ) -> Dict[str, Any]:
         """Answer a question about the data."""
-        chain = self.QUERY_PROMPT | self.llm
-        result = await chain.ainvoke(
-            {
-                "question": question,
-                "data_context": data_context,
-                "previous_analysis": previous_analysis,
-            }
+        validated = QueryDataInput(
+            question=question, data_context=data_context, previous_analysis=previous_analysis
         )
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.QUERY_PROMPT | self.llm
+            result = await chain.ainvoke(
+                {
+                    "question": validated.question,
+                    "data_context": validated.data_context,
+                    "previous_analysis": validated.previous_analysis,
+                }
+            )
+            timer.set_tokens(input_tokens=len(validated.question) // 4, output_tokens=len(result.content) // 4)
         return {
             "question": question,
             "answer": result.content,
@@ -320,6 +340,14 @@ class DataAnalystAgent(BaseAgent):
                 finding=action_input.get("finding", ""),
                 impact=action_input.get("impact", "medium"),
                 evidence=action_input.get("evidence", {}),
+            )
+            await track_agent_decision(
+                self._evalai_tracer,
+                agent_name="data_analyst",
+                decision_type="flag",
+                chosen="human_review",
+                confidence=90,
+                reasoning=f"High-impact finding: {action_input.get('finding', '')[:100]}",
             )
             await self.request_human_feedback(
                 question="Review high-impact data finding",

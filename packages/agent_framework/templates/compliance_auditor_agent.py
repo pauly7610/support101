@@ -15,6 +15,14 @@ from langchain_openai import ChatOpenAI
 
 from ..core.agent_registry import AgentBlueprint
 from ..core.base_agent import AgentConfig, AgentState, AgentStatus, BaseAgent, Tool
+from ..services.external_api import get_external_api_client
+from ..services.llm_helpers import LLMCallTimer, llm_retry, track_agent_decision
+from .validation_models import (
+    CheckPolicyInput,
+    GenerateReportInput,
+    ScanPIIInput,
+    TriggerRemediationInput,
+)
 
 
 class ComplianceAuditorAgent(BaseAgent):
@@ -129,11 +137,14 @@ class ComplianceAuditorAgent(BaseAgent):
         config: AgentConfig,
         llm: Optional[Any] = None,
         policies: Optional[List[str]] = None,
+        evalai_tracer: Optional[Any] = None,
     ) -> None:
         super().__init__(config)
         self._llm = llm
         self._policies = policies or ["GDPR", "SOC2"]
+        self._evalai_tracer = evalai_tracer
         self._initialized = False
+        self._api = get_external_api_client()
         self._register_default_tools()
 
     def _lazy_init(self) -> None:
@@ -182,44 +193,58 @@ class ComplianceAuditorAgent(BaseAgent):
             )
         )
 
+    @llm_retry(max_attempts=3)
     async def _scan_pii(self, content: str) -> Dict[str, Any]:
-        chain = self.PII_SCAN_PROMPT | self.llm
-        result = await chain.ainvoke({"content": content[:5000]})
+        validated = ScanPIIInput(content=content)
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.PII_SCAN_PROMPT | self.llm
+            result = await chain.ainvoke({"content": validated.content[:5000]})
+            timer.set_tokens(input_tokens=len(validated.content) // 4, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
         except json.JSONDecodeError:
             return {"pii_found": False, "findings": [], "risk_score": 0, "data_categories": []}
 
+    @llm_retry(max_attempts=3)
     async def _check_policy(
         self,
         action: str,
         response: str,
         policies: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
-        active_policies = policies or self._policies
-        chain = self.POLICY_CHECK_PROMPT | self.llm
-        result = await chain.ainvoke({
-            "action": action[:2000],
-            "response": response[:3000],
-            "policies": ", ".join(active_policies),
-        })
+        validated = CheckPolicyInput(action=action, response=response, policies=policies)
+        active_policies = validated.policies or self._policies
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.POLICY_CHECK_PROMPT | self.llm
+            result = await chain.ainvoke({
+                "action": validated.action[:2000],
+                "response": validated.response[:3000],
+                "policies": ", ".join(active_policies),
+            })
+            timer.set_tokens(input_tokens=(len(validated.action) + len(validated.response)) // 4, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
         except json.JSONDecodeError:
             return {"compliant": True, "violations": [], "warnings": [], "compliance_score": 50}
 
+    @llm_retry(max_attempts=3)
     async def _generate_report(
         self,
         pii_results: Dict[str, Any],
         policy_results: Dict[str, Any],
         scope: str = "",
     ) -> Dict[str, Any]:
-        chain = self.REPORT_PROMPT | self.llm
-        result = await chain.ainvoke({
-            "pii_results": json.dumps(pii_results, indent=2),
-            "policy_results": json.dumps(policy_results, indent=2),
-            "scope": scope or "Full agent interaction audit",
-        })
+        validated = GenerateReportInput(
+            pii_results=pii_results, policy_results=policy_results, scope=scope
+        )
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.REPORT_PROMPT | self.llm
+            result = await chain.ainvoke({
+                "pii_results": json.dumps(validated.pii_results, indent=2),
+                "policy_results": json.dumps(validated.policy_results, indent=2),
+                "scope": validated.scope or "Full agent interaction audit",
+            })
+            timer.set_tokens(input_tokens=400, output_tokens=len(result.content) // 4)
         try:
             report = json.loads(result.content)
         except json.JSONDecodeError:
@@ -248,12 +273,30 @@ class ComplianceAuditorAgent(BaseAgent):
         details: Dict[str, Any],
         required_action: str,
     ) -> Dict[str, Any]:
+        validated = TriggerRemediationInput(
+            violation_type=violation_type, severity=severity,
+            details=details, required_action=required_action,
+        )
+        await self._api.send_notification(
+            channel="compliance",
+            message=f"Compliance violation: {validated.violation_type} ({validated.severity})",
+            urgency="high" if validated.severity in ("critical", "high") else "normal",
+            metadata={"agent_id": self.agent_id, "tenant_id": self.tenant_id},
+        )
+        await track_agent_decision(
+            self._evalai_tracer,
+            agent_name="compliance_auditor",
+            decision_type="remediation",
+            chosen="trigger_remediation",
+            confidence=95,
+            reasoning=f"{validated.violation_type}: {validated.required_action[:150]}",
+        )
         return {
             "remediation_triggered": True,
-            "violation_type": violation_type,
-            "severity": severity,
-            "details": details,
-            "required_action": required_action,
+            "violation_type": validated.violation_type,
+            "severity": validated.severity,
+            "details": validated.details,
+            "required_action": validated.required_action,
             "timestamp": datetime.utcnow().isoformat(),
         }
 

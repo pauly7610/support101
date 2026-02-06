@@ -15,6 +15,9 @@ from langchain_openai import ChatOpenAI
 
 from ..core.agent_registry import AgentBlueprint
 from ..core.base_agent import AgentConfig, AgentState, AgentStatus, BaseAgent, Tool
+from ..services.external_api import get_external_api_client
+from ..services.llm_helpers import LLMCallTimer, llm_retry, track_agent_decision
+from .validation_models import AnalyzeSentimentInput, TrackTrajectoryInput, TriggerEscalationInput
 
 
 class SentimentMonitorAgent(BaseAgent):
@@ -95,11 +98,14 @@ class SentimentMonitorAgent(BaseAgent):
         self,
         config: AgentConfig,
         llm: Optional[Any] = None,
+        evalai_tracer: Optional[Any] = None,
     ) -> None:
         super().__init__(config)
         self._llm = llm
+        self._evalai_tracer = evalai_tracer
         self._initialized = False
         self._sentiment_history: List[Dict[str, Any]] = []
+        self._api = get_external_api_client()
         self._register_default_tools()
 
     def _lazy_init(self) -> None:
@@ -148,15 +154,19 @@ class SentimentMonitorAgent(BaseAgent):
             )
         )
 
+    @llm_retry(max_attempts=3)
     async def _analyze_sentiment(
         self, message: str, history: List[Dict[str, str]]
     ) -> Dict[str, Any]:
+        validated = AnalyzeSentimentInput(message=message, history=history)
         history_str = "\n".join(
-            f"{m.get('role', 'user')}: {m.get('content', '')}" for m in history[-10:]
-        ) if history else "No previous messages"
+            f"{m.get('role', 'user')}: {m.get('content', '')}" for m in validated.history[-10:]
+        ) if validated.history else "No previous messages"
 
-        chain = self.SENTIMENT_PROMPT | self.llm
-        result = await chain.ainvoke({"message": message, "history": history_str})
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.SENTIMENT_PROMPT | self.llm
+            result = await chain.ainvoke({"message": validated.message, "history": history_str})
+            timer.set_tokens(input_tokens=len(validated.message) // 4, output_tokens=len(result.content) // 4)
         try:
             analysis = json.loads(result.content)
         except json.JSONDecodeError:
@@ -174,13 +184,17 @@ class SentimentMonitorAgent(BaseAgent):
         self._sentiment_history.append(analysis)
         return analysis
 
+    @llm_retry(max_attempts=3)
     async def _track_trajectory(
         self, sentiment_history: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
-        chain = self.TRAJECTORY_PROMPT | self.llm
-        result = await chain.ainvoke({
-            "sentiment_history": json.dumps(sentiment_history, indent=2),
-        })
+        validated = TrackTrajectoryInput(sentiment_history=sentiment_history)
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.TRAJECTORY_PROMPT | self.llm
+            result = await chain.ainvoke({
+                "sentiment_history": json.dumps(validated.sentiment_history, indent=2),
+            })
+            timer.set_tokens(input_tokens=300, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
         except json.JSONDecodeError:
@@ -194,18 +208,21 @@ class SentimentMonitorAgent(BaseAgent):
                 "recommended_action": "Continue monitoring",
             }
 
+    @llm_retry(max_attempts=3)
     async def _generate_summary(
         self,
         current_sentiment: Dict[str, Any],
         trajectory: Dict[str, Any],
         customer_context: str = "",
     ) -> Dict[str, Any]:
-        chain = self.SUMMARY_PROMPT | self.llm
-        result = await chain.ainvoke({
-            "current_sentiment": json.dumps(current_sentiment),
-            "trajectory": json.dumps(trajectory),
-            "customer_context": customer_context or "No additional context",
-        })
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.SUMMARY_PROMPT | self.llm
+            result = await chain.ainvoke({
+                "current_sentiment": json.dumps(current_sentiment),
+                "trajectory": json.dumps(trajectory),
+                "customer_context": customer_context or "No additional context",
+            })
+            timer.set_tokens(input_tokens=300, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
         except json.JSONDecodeError:
@@ -221,11 +238,28 @@ class SentimentMonitorAgent(BaseAgent):
     async def _trigger_escalation(
         self, reason: str, sentiment_data: Dict[str, Any], urgency: str
     ) -> Dict[str, Any]:
+        validated = TriggerEscalationInput(
+            reason=reason, sentiment_data=sentiment_data, urgency=urgency
+        )
+        await self._api.send_notification(
+            channel="escalations",
+            message=f"Sentiment escalation: {validated.reason}",
+            urgency=validated.urgency,
+            metadata={"agent_id": self.agent_id, "tenant_id": self.tenant_id},
+        )
+        await track_agent_decision(
+            self._evalai_tracer,
+            agent_name="sentiment_monitor",
+            decision_type="escalate",
+            chosen="trigger_escalation",
+            confidence=85,
+            reasoning=validated.reason[:200],
+        )
         return {
             "escalated": True,
-            "reason": reason,
-            "urgency": urgency,
-            "sentiment_data": sentiment_data,
+            "reason": validated.reason,
+            "urgency": validated.urgency,
+            "sentiment_data": validated.sentiment_data,
             "timestamp": datetime.utcnow().isoformat(),
         }
 

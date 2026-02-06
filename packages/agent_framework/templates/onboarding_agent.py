@@ -15,6 +15,14 @@ from langchain_openai import ChatOpenAI
 
 from ..core.agent_registry import AgentBlueprint
 from ..core.base_agent import AgentConfig, AgentState, AgentStatus, BaseAgent, Tool
+from ..services.external_api import get_external_api_client
+from ..services.llm_helpers import LLMCallTimer, llm_retry, track_agent_decision
+from .validation_models import (
+    AssessCustomerInput,
+    GenerateChecklistInput,
+    ProvideGuidanceInput,
+    ValidateCompletionInput,
+)
 
 
 class OnboardingAgent(BaseAgent):
@@ -111,10 +119,13 @@ class OnboardingAgent(BaseAgent):
         self,
         config: AgentConfig,
         llm: Optional[Any] = None,
+        evalai_tracer: Optional[Any] = None,
     ) -> None:
         super().__init__(config)
         self._llm = llm
+        self._evalai_tracer = evalai_tracer
         self._initialized = False
+        self._api = get_external_api_client()
         self._register_default_tools()
 
     def _lazy_init(self) -> None:
@@ -170,14 +181,18 @@ class OnboardingAgent(BaseAgent):
             )
         )
 
+    @llm_retry(max_attempts=3)
     async def _assess_customer(
         self, customer_info: Dict[str, Any], product: str = ""
     ) -> Dict[str, Any]:
-        chain = self.ASSESSMENT_PROMPT | self.llm
-        result = await chain.ainvoke({
-            "customer_info": json.dumps(customer_info, indent=2),
-            "product": product or "Support101 Platform",
-        })
+        validated = AssessCustomerInput(customer_info=customer_info, product=product)
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.ASSESSMENT_PROMPT | self.llm
+            result = await chain.ainvoke({
+                "customer_info": json.dumps(validated.customer_info, indent=2),
+                "product": validated.product,
+            })
+            timer.set_tokens(input_tokens=200, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
         except json.JSONDecodeError:
@@ -192,19 +207,24 @@ class OnboardingAgent(BaseAgent):
                 "personalization_notes": "",
             }
 
+    @llm_retry(max_attempts=3)
     async def _generate_checklist(
         self, assessment: Dict[str, Any], product: str = ""
     ) -> Dict[str, Any]:
-        chain = self.CHECKLIST_PROMPT | self.llm
-        result = await chain.ainvoke({
-            "assessment": json.dumps(assessment, indent=2),
-            "product": product or "Support101 Platform",
-        })
+        validated = GenerateChecklistInput(assessment=assessment, product=product)
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.CHECKLIST_PROMPT | self.llm
+            result = await chain.ainvoke({
+                "assessment": json.dumps(validated.assessment, indent=2),
+                "product": validated.product,
+            })
+            timer.set_tokens(input_tokens=200, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
         except json.JSONDecodeError:
             return {"checklist": [], "total_steps": 0, "estimated_total_minutes": 0, "priority_order": []}
 
+    @llm_retry(max_attempts=3)
     async def _provide_guidance(
         self,
         step_title: str,
@@ -212,13 +232,19 @@ class OnboardingAgent(BaseAgent):
         experience_level: str = "beginner",
         question: str = "",
     ) -> Dict[str, Any]:
-        chain = self.GUIDANCE_PROMPT | self.llm
-        result = await chain.ainvoke({
-            "step_title": step_title,
-            "step_description": step_description,
-            "experience_level": experience_level,
-            "question": question or "How do I complete this step?",
-        })
+        validated = ProvideGuidanceInput(
+            step_title=step_title, step_description=step_description,
+            experience_level=experience_level, question=question,
+        )
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.GUIDANCE_PROMPT | self.llm
+            result = await chain.ainvoke({
+                "step_title": validated.step_title,
+                "step_description": validated.step_description,
+                "experience_level": validated.experience_level,
+                "question": validated.question or "How do I complete this step?",
+            })
+            timer.set_tokens(input_tokens=200, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
         except json.JSONDecodeError:
@@ -230,18 +256,24 @@ class OnboardingAgent(BaseAgent):
                 "estimated_time_remaining": "unknown",
             }
 
+    @llm_retry(max_attempts=3)
     async def _validate_completion(
         self,
         checklist: List[Dict[str, Any]],
         completed_steps: List[str],
         customer_profile: Dict[str, Any],
     ) -> Dict[str, Any]:
-        chain = self.COMPLETION_PROMPT | self.llm
-        result = await chain.ainvoke({
-            "checklist": json.dumps(checklist, indent=2),
-            "completed_steps": json.dumps(completed_steps),
-            "customer_profile": json.dumps(customer_profile, indent=2),
-        })
+        validated = ValidateCompletionInput(
+            checklist=checklist, completed_steps=completed_steps, customer_profile=customer_profile,
+        )
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.COMPLETION_PROMPT | self.llm
+            result = await chain.ainvoke({
+                "checklist": json.dumps(validated.checklist, indent=2),
+                "completed_steps": json.dumps(validated.completed_steps),
+                "customer_profile": json.dumps(validated.customer_profile, indent=2),
+            })
+            timer.set_tokens(input_tokens=300, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
         except json.JSONDecodeError:
@@ -258,6 +290,20 @@ class OnboardingAgent(BaseAgent):
     async def _request_setup_help(
         self, issue: str, step_id: str, customer_info: Dict[str, Any]
     ) -> Dict[str, Any]:
+        await self._api.send_notification(
+            channel="onboarding",
+            message=f"Setup help needed: {issue}",
+            urgency="normal",
+            metadata={"step_id": step_id, "agent_id": self.agent_id},
+        )
+        await track_agent_decision(
+            self._evalai_tracer,
+            agent_name="onboarding",
+            decision_type="request_help",
+            chosen="human_assist",
+            confidence=70,
+            reasoning=f"Customer needs help with step {step_id}: {issue[:100]}",
+        )
         return {
             "help_requested": True,
             "issue": issue,

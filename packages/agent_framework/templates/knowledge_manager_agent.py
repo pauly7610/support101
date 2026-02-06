@@ -14,6 +14,15 @@ from langchain_openai import ChatOpenAI
 
 from ..core.agent_registry import AgentBlueprint
 from ..core.base_agent import AgentConfig, AgentState, AgentStatus, BaseAgent, Tool
+from ..services.database import get_database_service
+from ..services.llm_helpers import LLMCallTimer, llm_retry, track_agent_decision
+from ..services.vector_store import get_vector_store_service
+from .validation_models import (
+    AuditContentInput,
+    DetectDuplicatesInput,
+    FindGapsInput,
+    GenerateUpdateInput,
+)
 
 RAGChainType = Any
 EmbeddingModelType = Any
@@ -110,11 +119,15 @@ class KnowledgeManagerAgent(BaseAgent):
         config: AgentConfig,
         llm: Optional[Any] = None,
         rag_chain: Optional[RAGChainType] = None,
+        evalai_tracer: Optional[Any] = None,
     ) -> None:
         super().__init__(config)
         self._llm = llm
         self._rag_chain = rag_chain
+        self._evalai_tracer = evalai_tracer
         self._initialized = False
+        self._db = get_database_service()
+        self._vs = get_vector_store_service()
         self._register_default_tools()
 
     def _lazy_init(self) -> None:
@@ -170,44 +183,65 @@ class KnowledgeManagerAgent(BaseAgent):
             )
         )
 
+    @llm_retry(max_attempts=3)
     async def _audit_content(self, articles: List[Dict[str, Any]]) -> Dict[str, Any]:
-        chain = self.AUDIT_PROMPT | self.llm
-        result = await chain.ainvoke({"articles": json.dumps(articles[:20], indent=2)})
+        validated = AuditContentInput(articles=articles)
+        if not validated.articles and self._db.available:
+            db_articles = await self._db.list_articles(tenant_id=self.tenant_id)
+            validated = AuditContentInput(articles=db_articles) if db_articles else validated
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.AUDIT_PROMPT | self.llm
+            result = await chain.ainvoke({"articles": json.dumps(validated.articles[:20], indent=2)})
+            timer.set_tokens(input_tokens=500, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
         except json.JSONDecodeError:
             return {"audit_results": [], "overall_health": 50, "stale_count": 0, "action_needed_count": 0}
 
+    @llm_retry(max_attempts=3)
     async def _find_gaps(
         self, queries: List[str], existing_topics: List[str]
     ) -> Dict[str, Any]:
-        chain = self.GAP_ANALYSIS_PROMPT | self.llm
-        result = await chain.ainvoke({
-            "queries": "\n".join(f"- {q}" for q in queries[:50]),
-            "existing_topics": "\n".join(f"- {t}" for t in existing_topics[:50]),
-        })
+        validated = FindGapsInput(queries=queries, existing_topics=existing_topics)
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.GAP_ANALYSIS_PROMPT | self.llm
+            result = await chain.ainvoke({
+                "queries": "\n".join(f"- {q}" for q in validated.queries[:50]),
+                "existing_topics": "\n".join(f"- {t}" for t in validated.existing_topics[:50]),
+            })
+            timer.set_tokens(input_tokens=300, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
         except json.JSONDecodeError:
             return {"gaps": [], "total_gaps": 0, "coverage_score": 50}
 
+    @llm_retry(max_attempts=3)
     async def _detect_duplicates(self, articles: List[Dict[str, Any]]) -> Dict[str, Any]:
-        chain = self.DEDUP_PROMPT | self.llm
-        result = await chain.ainvoke({"articles": json.dumps(articles[:20], indent=2)})
+        validated = DetectDuplicatesInput(articles=articles)
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.DEDUP_PROMPT | self.llm
+            result = await chain.ainvoke({"articles": json.dumps(validated.articles[:20], indent=2)})
+            timer.set_tokens(input_tokens=500, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
         except json.JSONDecodeError:
             return {"duplicate_groups": [], "total_duplicates": 0}
 
+    @llm_retry(max_attempts=3)
     async def _generate_update(
         self, current_content: str, reason: str, context: str = ""
     ) -> Dict[str, Any]:
-        chain = self.UPDATE_PROMPT | self.llm
-        result = await chain.ainvoke({
-            "current_content": current_content[:3000],
-            "reason": reason,
-            "context": context,
-        })
+        validated = GenerateUpdateInput(
+            current_content=current_content, reason=reason, context=context
+        )
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.UPDATE_PROMPT | self.llm
+            result = await chain.ainvoke({
+                "current_content": validated.current_content[:3000],
+                "reason": validated.reason,
+                "context": validated.context,
+            })
+            timer.set_tokens(input_tokens=len(validated.current_content) // 4, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
         except json.JSONDecodeError:
@@ -284,6 +318,14 @@ class KnowledgeManagerAgent(BaseAgent):
             return {"action": action_name, **result}
         elif action_name == "request_content_approval":
             result = await self._request_content_approval(**action_input)
+            await track_agent_decision(
+                self._evalai_tracer,
+                agent_name="knowledge_manager",
+                decision_type="content_change",
+                chosen="request_approval",
+                confidence=85,
+                reasoning=action_input.get("summary", "")[:200],
+            )
             await self.request_human_feedback(
                 question="Knowledge base changes require approval",
                 context=result,

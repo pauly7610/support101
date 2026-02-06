@@ -13,6 +13,10 @@ from langchain_openai import ChatOpenAI
 
 from ..core.agent_registry import AgentBlueprint
 from ..core.base_agent import AgentConfig, AgentState, AgentStatus, BaseAgent, Tool
+from ..services.database import get_database_service
+from ..services.external_api import get_external_api_client
+from ..services.llm_helpers import LLMCallTimer, llm_retry, track_agent_decision
+from .validation_models import AnalyzeTicketInput, AssignToAgentInput, AssignToQueueInput
 
 
 class TriageAgent(BaseAgent):
@@ -51,9 +55,12 @@ class TriageAgent(BaseAgent):
         "low": {"max_wait_minutes": 240, "escalate_after": 1440},
     }
 
-    def __init__(self, config: AgentConfig) -> None:
+    def __init__(self, config: AgentConfig, evalai_tracer: Optional[Any] = None) -> None:
         super().__init__(config)
         self.llm = ChatOpenAI(temperature=0.1)
+        self._evalai_tracer = evalai_tracer
+        self._db = get_database_service()
+        self._api = get_external_api_client()
         self._register_default_tools()
 
     def _register_default_tools(self) -> None:
@@ -88,6 +95,7 @@ class TriageAgent(BaseAgent):
             )
         )
 
+    @llm_retry(max_attempts=3)
     async def _analyze_ticket(
         self,
         content: str,
@@ -95,14 +103,19 @@ class TriageAgent(BaseAgent):
         ticket_history: str = "None",
     ) -> Dict[str, Any]:
         """Analyze ticket using LLM."""
-        chain = self.TRIAGE_PROMPT | self.llm
-        result = await chain.ainvoke(
-            {
-                "content": content,
-                "customer_tier": customer_tier,
-                "ticket_history": ticket_history,
-            }
+        validated = AnalyzeTicketInput(
+            content=content, customer_tier=customer_tier, ticket_history=ticket_history
         )
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.TRIAGE_PROMPT | self.llm
+            result = await chain.ainvoke(
+                {
+                    "content": validated.content,
+                    "customer_tier": validated.customer_tier,
+                    "ticket_history": validated.ticket_history,
+                }
+            )
+            timer.set_tokens(input_tokens=len(validated.content) // 4, output_tokens=len(result.content) // 4)
 
         import json
 
@@ -123,15 +136,15 @@ class TriageAgent(BaseAgent):
         return analysis
 
     async def _check_customer_history(self, customer_id: str) -> Dict[str, Any]:
-        """Check customer's ticket history (stub - integrate with your DB)."""
-        return {
-            "customer_id": customer_id,
-            "total_tickets": 0,
-            "open_tickets": 0,
-            "avg_satisfaction": None,
-            "is_vip": False,
-            "notes": [],
-        }
+        """Check customer's ticket history from Postgres and external CRM."""
+        db_result = await self._db.get_customer_history(customer_id)
+        crm_result = await self._api.get_customer_profile(customer_id)
+        if crm_result.get("source") == "external":
+            db_result["name"] = crm_result.get("name", db_result.get("name"))
+            db_result["email"] = crm_result.get("email", db_result.get("email"))
+            db_result["tier"] = crm_result.get("tier", db_result.get("tier", "standard"))
+            db_result["is_vip"] = crm_result.get("is_vip", db_result.get("is_vip", False))
+        return db_result
 
     async def _assign_to_queue(
         self,
@@ -140,18 +153,36 @@ class TriageAgent(BaseAgent):
         priority: str,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """Assign ticket to a queue."""
-        routing_rules = self.ROUTING_RULES.get(priority, self.ROUTING_RULES["medium"])
+        """Assign ticket to a queue via DB and external ticketing system."""
+        validated = AssignToQueueInput(
+            ticket_id=ticket_id, queue_name=queue_name, priority=priority, metadata=metadata
+        )
+        routing_rules = self.ROUTING_RULES.get(validated.priority, self.ROUTING_RULES["medium"])
+
+        await self._db.assign_ticket(validated.ticket_id, f"queue:{validated.queue_name}")
+        await self._api.update_external_ticket(
+            validated.ticket_id,
+            {"queue": validated.queue_name, "priority": validated.priority},
+        )
+
+        await track_agent_decision(
+            self._evalai_tracer,
+            agent_name="triage_agent",
+            decision_type="route",
+            chosen=validated.queue_name,
+            confidence=80,
+            reasoning=f"Routed to {validated.queue_name} with priority {validated.priority}",
+        )
 
         return {
             "assigned": True,
-            "ticket_id": ticket_id,
-            "queue": queue_name,
-            "priority": priority,
+            "ticket_id": validated.ticket_id,
+            "queue": validated.queue_name,
+            "priority": validated.priority,
             "max_wait_minutes": routing_rules["max_wait_minutes"],
             "escalate_after_minutes": routing_rules["escalate_after"],
             "assigned_at": datetime.utcnow().isoformat(),
-            "metadata": metadata or {},
+            "metadata": validated.metadata or {},
         }
 
     async def _assign_to_agent(
@@ -160,12 +191,30 @@ class TriageAgent(BaseAgent):
         agent_id: str,
         reason: str,
     ) -> Dict[str, Any]:
-        """Assign ticket directly to an agent."""
+        """Assign ticket directly to an agent via DB and external ticketing."""
+        validated = AssignToAgentInput(
+            ticket_id=ticket_id, agent_id=agent_id, reason=reason
+        )
+        await self._db.assign_ticket(validated.ticket_id, validated.agent_id)
+        await self._api.update_external_ticket(
+            validated.ticket_id,
+            {"assigned_agent": validated.agent_id, "reason": validated.reason},
+        )
+
+        await track_agent_decision(
+            self._evalai_tracer,
+            agent_name="triage_agent",
+            decision_type="assign",
+            chosen=validated.agent_id,
+            confidence=85,
+            reasoning=validated.reason,
+        )
+
         return {
             "assigned": True,
-            "ticket_id": ticket_id,
-            "agent_id": agent_id,
-            "reason": reason,
+            "ticket_id": validated.ticket_id,
+            "agent_id": validated.agent_id,
+            "reason": validated.reason,
             "assigned_at": datetime.utcnow().isoformat(),
         }
 

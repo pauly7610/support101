@@ -13,6 +13,11 @@ from langchain_openai import ChatOpenAI
 
 from ..core.agent_registry import AgentBlueprint
 from ..core.base_agent import AgentConfig, AgentState, AgentStatus, BaseAgent, Tool
+from ..services.database import get_database_service
+from ..services.external_api import get_external_api_client
+from ..services.llm_helpers import LLMCallTimer, llm_retry, track_agent_decision
+from ..services.vector_store import get_vector_store_service
+from .validation_models import CreateTicketInput, EscalateToHumanInput, SearchKnowledgeBaseInput
 
 # Type hints for optional dependencies
 RAGChainType = Any
@@ -54,6 +59,7 @@ class SupportAgent(BaseAgent):
         rag_chain: Optional[RAGChainType] = None,
         llm: Optional[Any] = None,
         embedding_model: Optional[EmbeddingModelType] = None,
+        evalai_tracer: Optional[Any] = None,
     ) -> None:
         """
         Initialize SupportAgent with optional dependency injection.
@@ -63,12 +69,17 @@ class SupportAgent(BaseAgent):
             rag_chain: Optional RAGChain instance (lazy-loaded if not provided)
             llm: Optional LLM instance (lazy-loaded if not provided)
             embedding_model: Optional embedding model (lazy-loaded if not provided)
+            evalai_tracer: Optional EvalAI tracer for cost/decision tracking
         """
         super().__init__(config)
         self._rag_chain = rag_chain
         self._llm = llm
         self._embedding_model = embedding_model
+        self._evalai_tracer = evalai_tracer
         self._initialized = False
+        self._db = get_database_service()
+        self._vs = get_vector_store_service()
+        self._api = get_external_api_client()
         self._register_default_tools()
 
     def _lazy_init(self) -> None:
@@ -144,47 +155,97 @@ class SupportAgent(BaseAgent):
         )
 
     async def _search_knowledge_base(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
-        """Search knowledge base using RAG."""
-        try:
-            from packages.llm_engine.vector_store import query_pinecone
-        except ImportError:
+        """Search knowledge base using Pinecone vector store service."""
+        validated = SearchKnowledgeBaseInput(query=query, top_k=top_k)
+
+        results = await self._vs.search(
+            query=validated.query,
+            top_k=validated.top_k,
+            min_score=self.config.confidence_threshold or 0.0,
+        )
+
+        if not results:
+            try:
+                from packages.llm_engine.vector_store import query_pinecone
+
+                if self.embedding_model is not None:
+                    raw = await query_pinecone(
+                        query_text=validated.query,
+                        embedding_model=self.embedding_model,
+                        top_k=validated.top_k,
+                    )
+                    results = [
+                        {
+                            "content": r.get("metadata", {}).get("text", ""),
+                            "source": r.get("metadata", {}).get("source_url", ""),
+                            "score": r.get("score", 0.0),
+                        }
+                        for r in raw
+                    ]
+            except ImportError:
+                pass
+
+        if not results:
             return [{"content": "Knowledge base unavailable", "source": "", "score": 0.0}]
 
-        if self.embedding_model is None:
-            return [{"content": "Embedding model unavailable", "source": "", "score": 0.0}]
-
-        results = await query_pinecone(
-            query_text=query,
-            embedding_model=self.embedding_model,
-            top_k=top_k,
-        )
-        return [
-            {
-                "content": r.get("metadata", {}).get("text", ""),
-                "source": r.get("metadata", {}).get("source_url", ""),
-                "score": r.get("score", 0.0),
-            }
-            for r in results
-        ]
+        return results
 
     async def _escalate_to_human(self, reason: str, context: Dict[str, Any]) -> Dict[str, Any]:
-        """Escalate to human agent."""
+        """Escalate to human agent with notification."""
+        validated = EscalateToHumanInput(reason=reason, context=context)
+
+        await self._api.send_notification(
+            channel="escalations",
+            message=f"Escalation: {validated.reason}",
+            urgency="high",
+            metadata={"agent_id": self.agent_id, "tenant_id": self.tenant_id},
+        )
+
+        await track_agent_decision(
+            self._evalai_tracer,
+            agent_name="support_agent",
+            decision_type="escalate",
+            chosen="human_agent",
+            confidence=60,
+            reasoning=validated.reason,
+        )
+
         return {
             "escalated": True,
-            "reason": reason,
-            "context": context,
+            "reason": validated.reason,
+            "context": validated.context,
             "timestamp": datetime.utcnow().isoformat(),
         }
 
     async def _create_ticket(
         self, subject: str, description: str, priority: str = "medium"
     ) -> Dict[str, Any]:
-        """Create a support ticket."""
+        """Create a support ticket in Postgres and external ticketing system."""
+        validated = CreateTicketInput(
+            subject=subject, description=description, priority=priority
+        )
+        import uuid
+
+        ticket_id = f"TKT-{uuid.uuid4().hex[:8].upper()}"
+
+        db_result = await self._db.create_ticket(
+            ticket_id=ticket_id,
+            tenant_id=self.tenant_id,
+            customer_id=self.state.input_data.get("customer_id", "unknown") if self.state else "unknown",
+            subject=validated.subject,
+            description=validated.description,
+            priority=validated.priority,
+        )
+
+        ext_result = await self._api.create_external_ticket(
+            subject=validated.subject,
+            description=validated.description,
+            priority=validated.priority,
+        )
+
         return {
-            "ticket_created": True,
-            "subject": subject,
-            "priority": priority,
-            "timestamp": datetime.utcnow().isoformat(),
+            **db_result,
+            "external_ticket": ext_result.get("external_ticket_id"),
         }
 
     async def plan(self, state: AgentState) -> Dict[str, Any]:
@@ -259,11 +320,14 @@ class SupportAgent(BaseAgent):
 
         return {"action": action_name, "error": "Unknown action"}
 
+    @llm_retry(max_attempts=3)
     async def _analyze_intent(self, query: str) -> Dict[str, Any]:
         """Analyze query intent using LLM."""
         try:
-            chain = self.INTENT_PROMPT | self.llm
-            result = await chain.ainvoke({"query": query})
+            async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+                chain = self.INTENT_PROMPT | self.llm
+                result = await chain.ainvoke({"query": query})
+                timer.set_tokens(input_tokens=len(query) // 4, output_tokens=len(result.content) // 4)
             import json
 
             intent_data = json.loads(result.content)
@@ -275,6 +339,7 @@ class SupportAgent(BaseAgent):
                 "error": str(e),
             }
 
+    @llm_retry(max_attempts=3)
     async def _generate_response(
         self,
         query: str,
@@ -294,14 +359,19 @@ class SupportAgent(BaseAgent):
             else "No previous conversation"
         )
 
-        chain = self.RESPONSE_PROMPT | self.llm
-        result = await chain.ainvoke(
-            {
-                "query": query,
-                "context": context_str,
-                "history": history_str,
-            }
-        )
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.RESPONSE_PROMPT | self.llm
+            result = await chain.ainvoke(
+                {
+                    "query": query,
+                    "context": context_str,
+                    "history": history_str,
+                }
+            )
+            timer.set_tokens(
+                input_tokens=(len(query) + len(context_str) + len(history_str)) // 4,
+                output_tokens=len(result.content) // 4,
+            )
 
         avg_score = sum(c.get("score", 0) for c in context) / len(context) if context else 0
 

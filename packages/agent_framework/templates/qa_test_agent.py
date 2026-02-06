@@ -14,6 +14,8 @@ from langchain_openai import ChatOpenAI
 
 from ..core.agent_registry import AgentBlueprint
 from ..core.base_agent import AgentConfig, AgentState, AgentStatus, BaseAgent, Tool
+from ..services.llm_helpers import LLMCallTimer, llm_retry, track_agent_decision
+from .validation_models import CheckRegressionInput, GenerateTestsInput, ValidateOutputInput
 
 
 class QATestAgent(BaseAgent):
@@ -90,9 +92,11 @@ class QATestAgent(BaseAgent):
         self,
         config: AgentConfig,
         llm: Optional[Any] = None,
+        evalai_tracer: Optional[Any] = None,
     ) -> None:
         super().__init__(config)
         self._llm = llm
+        self._evalai_tracer = evalai_tracer
         self._initialized = False
         self._register_default_tools()
 
@@ -142,6 +146,7 @@ class QATestAgent(BaseAgent):
             )
         )
 
+    @llm_retry(max_attempts=3)
     async def _generate_tests(
         self,
         agent_name: str,
@@ -149,13 +154,19 @@ class QATestAgent(BaseAgent):
         sample_input: str = "",
         sample_output: str = "",
     ) -> Dict[str, Any]:
-        chain = self.TEST_GENERATION_PROMPT | self.llm
-        result = await chain.ainvoke({
-            "agent_name": agent_name,
-            "agent_description": agent_description,
-            "sample_input": sample_input,
-            "sample_output": sample_output,
-        })
+        validated = GenerateTestsInput(
+            agent_name=agent_name, agent_description=agent_description,
+            sample_input=sample_input, sample_output=sample_output,
+        )
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.TEST_GENERATION_PROMPT | self.llm
+            result = await chain.ainvoke({
+                "agent_name": validated.agent_name,
+                "agent_description": validated.agent_description,
+                "sample_input": validated.sample_input,
+                "sample_output": validated.sample_output,
+            })
+            timer.set_tokens(input_tokens=200, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
         except json.JSONDecodeError:
@@ -166,6 +177,7 @@ class QATestAgent(BaseAgent):
                 "error": "Failed to parse test generation output",
             }
 
+    @llm_retry(max_attempts=3)
     async def _validate_output(
         self,
         test_case: Dict[str, Any],
@@ -173,30 +185,42 @@ class QATestAgent(BaseAgent):
         agent_output: Dict[str, Any],
         criteria: List[str],
     ) -> Dict[str, Any]:
-        chain = self.VALIDATION_PROMPT | self.llm
-        result = await chain.ainvoke({
-            "test_case": json.dumps(test_case),
-            "agent_input": json.dumps(agent_input),
-            "agent_output": json.dumps(agent_output),
-            "criteria": json.dumps(criteria),
-        })
+        validated = ValidateOutputInput(
+            test_case=test_case, agent_input=agent_input,
+            agent_output=agent_output, criteria=criteria,
+        )
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.VALIDATION_PROMPT | self.llm
+            result = await chain.ainvoke({
+                "test_case": json.dumps(validated.test_case),
+                "agent_input": json.dumps(validated.agent_input),
+                "agent_output": json.dumps(validated.agent_output),
+                "criteria": json.dumps(validated.criteria),
+            })
+            timer.set_tokens(input_tokens=300, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
         except json.JSONDecodeError:
             return {"passed": False, "score": 0, "criteria_results": [], "issues": ["Validation parse error"]}
 
+    @llm_retry(max_attempts=3)
     async def _check_regression(
         self,
         previous_output: Dict[str, Any],
         current_output: Dict[str, Any],
         test_case: Dict[str, Any],
     ) -> Dict[str, Any]:
-        chain = self.REGRESSION_PROMPT | self.llm
-        result = await chain.ainvoke({
-            "previous_output": json.dumps(previous_output),
-            "current_output": json.dumps(current_output),
-            "test_case": json.dumps(test_case),
-        })
+        validated = CheckRegressionInput(
+            previous_output=previous_output, current_output=current_output, test_case=test_case,
+        )
+        async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
+            chain = self.REGRESSION_PROMPT | self.llm
+            result = await chain.ainvoke({
+                "previous_output": json.dumps(validated.previous_output),
+                "current_output": json.dumps(validated.current_output),
+                "test_case": json.dumps(validated.test_case),
+            })
+            timer.set_tokens(input_tokens=300, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
         except json.JSONDecodeError:
@@ -275,6 +299,14 @@ class QATestAgent(BaseAgent):
             return {"action": action_name, **result}
         elif action_name == "report_failure":
             result = await self._report_failure(**action_input)
+            await track_agent_decision(
+                self._evalai_tracer,
+                agent_name="qa_test",
+                decision_type="report_failure",
+                chosen="escalate",
+                confidence=90,
+                reasoning=action_input.get("description", "")[:200],
+            )
             await self.request_human_feedback(
                 question="Critical test failure detected. Review required.",
                 context=result,
