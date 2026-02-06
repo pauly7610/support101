@@ -1,0 +1,19 @@
+{
+  "$schema": "https://langchain-ai.github.io/langgraph/cloud/reference/cli/#configuration-file",
+  "graphs": {
+    "playbook_engine": {
+      "module": "packages.agent_framework.learning.playbook_engine",
+      "class": "PlaybookEngine",
+      "description": "Executes proven resolution playbooks derived from successful support patterns"
+    }
+  },
+  "env": {
+    "PINECONE_API_KEY": "",
+    "OPENAI_API_KEY": "",
+    "REDIS_URL": "",
+    "DATABASE_URL": ""
+  },
+  "python_version": "3.11",
+  "dependencies": ["../../apps/backend/requirements.txt"],
+  "pip_config_file": null
+}
