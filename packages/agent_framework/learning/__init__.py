@@ -10,6 +10,7 @@ Provides:
 
 from .activity_stream import ActivityEvent, ActivityStream
 from .feedback_loop import FeedbackCollector, FeedbackOutcome, GoldenPath
+from .feedback_validator import FeedbackLoopValidator
 from .graph import ActivityGraph
 from .graph_models import (
     AgentNode,
@@ -38,6 +39,7 @@ __all__ = [
     "ArticleNode",
     "CustomerNode",
     "FeedbackCollector",
+    "FeedbackLoopValidator",
     "FeedbackOutcome",
     "GoldenPath",
     "GraphEdge",
