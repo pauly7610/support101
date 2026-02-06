@@ -1,11 +1,12 @@
 openapi: 3.0.3
 info:
   title: Support Intelligence Core API
-  version: '2.0.0'
+  version: '3.0.0'
   description: |
     Full API for Support Intelligence Core (SIC) — LLM-powered customer support platform.
-    Covers RAG, document ingestion, agent framework, HITL queue, governance & RBAC,
-    multi-tenant management, webhooks, analytics, compliance, and Prometheus metrics.
+    Covers RAG (multi-model), document ingestion, agent framework (9 blueprints), HITL queue,
+    governance & RBAC, multi-tenant management, webhooks, analytics, compliance,
+    voice I/O (Whisper + TTS), LLM cost tracking, A2A protocol, and Prometheus metrics.
   contact:
     name: Support101
     url: https://github.com/pauly7610/support101
@@ -33,6 +34,12 @@ tags:
     description: GDPR and CCPA endpoints
   - name: Observability
     description: Prometheus metrics
+  - name: Voice
+    description: Voice I/O (Whisper STT + OpenAI TTS)
+  - name: Cost Tracking
+    description: LLM cost tracking and budget management
+  - name: A2A Protocol
+    description: Agent-to-Agent interoperability (Google A2A spec)
 
 paths:
   # ── RAG ──────────────────────────────────────────────────────
@@ -1153,6 +1160,366 @@ paths:
             text/plain:
               schema:
                 type: string
+
+  # ── Voice I/O ──────────────────────────────────────────────
+  /v1/voice/transcribe:
+    post:
+      tags: [Voice]
+      summary: Speech-to-text transcription (Whisper)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Audio file (mp3, wav, webm, ogg, flac, m4a, mp4)
+                language:
+                  type: string
+                  description: ISO-639-1 language hint
+                prompt:
+                  type: string
+                  description: Transcription style prompt
+      responses:
+        '200':
+          description: Transcription result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  text:
+                    type: string
+                  language:
+                    type: string
+                  duration_seconds:
+                    type: number
+                  segments:
+                    type: array
+                    items:
+                      type: object
+                  processing_time_ms:
+                    type: number
+        '400':
+          description: Invalid audio format or file too large
+        '502':
+          description: Whisper API error
+        '503':
+          description: Voice features disabled
+
+  /v1/voice/synthesize:
+    post:
+      tags: [Voice]
+      summary: Text-to-speech synthesis (OpenAI TTS)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+                  description: Text to synthesize (max 4096 chars)
+                voice:
+                  type: string
+                  enum: [alloy, echo, fable, onyx, nova, shimmer]
+                  default: nova
+                speed:
+                  type: number
+                  minimum: 0.25
+                  maximum: 4.0
+                  default: 1.0
+                response_format:
+                  type: string
+                  enum: [mp3, opus, aac, flac, wav, pcm]
+                  default: mp3
+      responses:
+        '200':
+          description: Audio stream
+          content:
+            audio/mpeg:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Invalid parameters
+        '502':
+          description: TTS API error
+
+  /v1/voice/chat:
+    post:
+      tags: [Voice]
+      summary: Full voice chat pipeline (audio → RAG → audio)
+      description: |
+        Transcribes uploaded audio, sends text to RAG chain, synthesizes response as audio.
+        Returns both text and base64-encoded audio.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Audio file with customer question
+                language:
+                  type: string
+                  description: ISO-639-1 language hint
+                voice:
+                  type: string
+                  default: nova
+                text_only:
+                  type: boolean
+                  default: false
+                  description: Return text only (skip audio synthesis)
+      responses:
+        '200':
+          description: Voice chat response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_text:
+                    type: string
+                  reply_text:
+                    type: string
+                  audio_base64:
+                    type: string
+                    nullable: true
+                  audio_format:
+                    type: string
+                    nullable: true
+                  sources:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SourceDocument'
+
+  /v1/voice/status:
+    get:
+      tags: [Voice]
+      summary: Check voice feature availability
+      responses:
+        '200':
+          description: Voice status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enabled:
+                    type: boolean
+                  supported_audio_formats:
+                    type: array
+                    items:
+                      type: string
+                  supported_voices:
+                    type: array
+                    items:
+                      type: string
+
+  # ── Cost Tracking ──────────────────────────────────────────
+  /v1/analytics/costs:
+    get:
+      tags: [Cost Tracking]
+      summary: Get LLM cost dashboard
+      description: Returns current month spend, budget status, per-model and per-tenant breakdowns, daily trend, and recent alerts.
+      responses:
+        '200':
+          description: Cost dashboard
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  period:
+                    type: string
+                  current_spend_usd:
+                    type: number
+                  monthly_budget_usd:
+                    type: number
+                  budget_remaining_usd:
+                    type: number
+                  budget_utilization_pct:
+                    type: number
+                  total_requests:
+                    type: integer
+                  total_tokens:
+                    type: integer
+                  by_model:
+                    type: object
+                  by_tenant:
+                    type: object
+                  daily_trend:
+                    type: object
+                  recent_alerts:
+                    type: array
+                    items:
+                      type: object
+
+  /v1/analytics/costs/tenant:
+    get:
+      tags: [Cost Tracking]
+      summary: Get per-tenant cost breakdown
+      parameters:
+        - name: tenant_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Tenant cost data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tenant_id:
+                    type: string
+                  total_requests:
+                    type: integer
+                  total_tokens:
+                    type: integer
+                  total_cost_usd:
+                    type: number
+
+  /v1/analytics/costs/record:
+    post:
+      tags: [Cost Tracking]
+      summary: Record an LLM usage event
+      parameters:
+        - name: model
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: prompt_tokens
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: completion_tokens
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: provider
+          in: query
+          schema:
+            type: string
+            default: openai
+        - name: tenant_id
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Usage recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recorded:
+                    type: boolean
+                  estimated_cost_usd:
+                    type: number
+                  total_tokens:
+                    type: integer
+
+  # ── A2A Protocol ───────────────────────────────────────────
+  /.well-known/agent.json:
+    get:
+      tags: [A2A Protocol]
+      summary: Agent Card discovery
+      description: Returns the A2A Agent Card describing this agent's identity, skills, and capabilities.
+      responses:
+        '200':
+          description: Agent Card
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  description:
+                    type: string
+                  url:
+                    type: string
+                  version:
+                    type: string
+                  protocolVersion:
+                    type: string
+                  skills:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        description:
+                          type: string
+                        tags:
+                          type: array
+                          items:
+                            type: string
+                  capabilities:
+                    type: object
+
+  /a2a:
+    post:
+      tags: [A2A Protocol]
+      summary: A2A JSON-RPC 2.0 task dispatch
+      description: |
+        Accepts JSON-RPC 2.0 requests per the Google A2A protocol spec.
+        Supported methods: tasks/send, tasks/get, tasks/cancel.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [jsonrpc, method]
+              properties:
+                jsonrpc:
+                  type: string
+                  enum: ['2.0']
+                id:
+                  type: string
+                method:
+                  type: string
+                  enum: ['tasks/send', 'tasks/get', 'tasks/cancel']
+                params:
+                  type: object
+      responses:
+        '200':
+          description: JSON-RPC 2.0 response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jsonrpc:
+                    type: string
+                  id:
+                    type: string
+                  result:
+                    type: object
+                  error:
+                    type: object
 
 components:
   securitySchemes:

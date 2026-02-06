@@ -1,83 +1,94 @@
-# 🧠 Support Intelligence Core (SIC)
+# Support Intelligence Core (SIC)
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/pauly7610/support101/ci.yml?branch=main)](https://github.com/pauly7610/support101/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-*A modular, LLM-powered customer support platform for rapid deployment and extensibility.*
+**A modular, LLM-powered customer support platform with RAG, multi-model AI, agent orchestration, and continuous learning.**
 
 ---
 
-## 🚀 Visuals
+## Architecture
 
-### System Architecture
-
-![Customer Support Platform Architecture](https://raw.githubusercontent.com/veritasautomata/veritasautomata.com/main/static/img/architecture-chatbot.png)
-<sub><sup>Reference: Veritas Automata, “Building an Efficient Customer Support Chatbot: Reference Architectures for Azure OpenAI API and Open-Source LLM/Langchain Integration” ([source](https://veritasautomata.com/insights/thought-leadership/build-efficient-chatbot/))</sup></sub>
-
-### UI Examples
-
-- ![Agent Copilot Example](https://user-images.githubusercontent.com/674621/229366721-9b5f2b5b-8f60-4c6e-9b7c-4b2b7d3c7b8e.png)
-  <sub><sup>Example Chrome extension copilot UI (replace with your own screenshot)</sup></sub>
-- ![Customer Chatbot Example](https://user-images.githubusercontent.com/674621/229366740-1d2b3e2d-9e4e-4b7a-8c8c-2b8c6b6c2a2b.png)
-  <sub><sup>Example customer chatbot widget UI (replace with your own screenshot)</sup></sub>
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          Frontend Apps (React / Next.js 15)                │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
+│  │ Customer Bot │  │Agent Copilot │  │Admin Dashboard│  │  Demo Video  │   │
+│  │  (Next.js)   │  │  (Chrome Ext)│  │  (Next.js)   │  │  (Remotion)  │   │
+│  │  Port 3000   │  │  Extension   │  │  Port 3002   │  │              │   │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────────────┘   │
+│         │ Vercel AI SDK    │ WebSocket        │ REST                       │
+├─────────┴──────────────────┴─────────────────┴────────────────────────────┤
+│                        FastAPI Backend (Port 8000)                         │
+│  ┌────────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐  │
+│  │ RAG Engine │ │  Agents  │ │   HITL   │ │Governance│ │   Voice I/O  │  │
+│  │ /generate  │ │ /v1/agent│ │ /v1/hitl │ │ /v1/gov  │ │  /v1/voice   │  │
+│  ├────────────┤ ├──────────┤ ├──────────┤ ├──────────┤ ├──────────────┤  │
+│  │  A2A Proto │ │Cost Track│ │ Webhooks │ │Analytics │ │  Compliance  │  │
+│  │ /a2a       │ │ /costs   │ │ /webhooks│ │/analytics│ │ /compliance  │  │
+│  └────────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────────┘  │
+├───────────────────────────────────────────────────────────────────────────┤
+│                         Packages (Shared Libraries)                       │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌────────────────────────┐  │
+│  │   LLM Engine     │  │ Agent Framework  │  │    Shared Models       │  │
+│  │ Multi-model RAG  │  │ 9 Blueprints     │  │ Pydantic contracts     │  │
+│  │ Pinecone v3      │  │ Tool calling     │  │ Constants & utils      │  │
+│  │ Voice (Whisper)  │  │ Continuous learn  │  │                        │  │
+│  │ Cost tracking    │  │ OTEL tracing     │  │                        │  │
+│  └──────────────────┘  │ A2A protocol     │  └────────────────────────┘  │
+│                        │ MCP server       │                               │
+│                        └──────────────────┘                               │
+├───────────────────────────────────────────────────────────────────────────┤
+│                         Infrastructure                                    │
+│  PostgreSQL 16 │ Redis 7 │ Pinecone │ Apache AGE │ Prometheus │ Docker   │
+└───────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## Features
 
-### Async Database & Migrations
-- Uses SQLAlchemy async engine with asyncpg driver for PostgreSQL.
-- Alembic is configured for async migrations. Always use `postgresql+asyncpg://` in connection URLs.
-- To run migrations, set `PYTHONPATH` to the repo root and run:
-  ```sh
-  export PYTHONPATH=$PWD  # or set PYTHONPATH=%CD% on Windows
-  alembic -c apps/backend/alembic.ini upgrade head
-  ```
-- If you see `InvalidPasswordError`, reset your Postgres password:
-  ```sql
-  ALTER USER postgres WITH PASSWORD 'yourpassword';
-  ```
-- See backend/README.md for more details.
+### AI & LLM
+- **Multi-model RAG** — OpenAI, Anthropic Claude, Google Gemini, Ollama, LiteLLM via unified `get_chat_model()`
+- **Pinecone Serverless v3** — Integrated reranking (bge-reranker-v2-m3), metadata filtering v2, namespace isolation, GDPR delete
+- **Vercel AI SDK** — Streaming chat via `useChat()` hook with sentiment analysis and source citations
+- **Structured tool calling** — `ToolRegistry` with OpenAI/Anthropic schema converters, parallel execution, 4 built-in tools
+- **Voice I/O** — Whisper STT + OpenAI TTS with full voice chat pipeline (audio in → RAG → audio out)
 
----
+### Agent Framework
+- **9 agent blueprints** — support, triage, data analyst, code review, QA test, knowledge manager, sentiment monitor, onboarding, compliance auditor
+- **Human-in-the-loop (HITL)** — Approval queue with claim/review/approve/reject, SLA indicators, priority badges
+- **Continuous learning** — 4-layer system: Feedback Loop (Pinecone) → Activity Stream (Redis) → Activity Graph (Apache AGE) → Playbook Engine (LangGraph)
+- **A2A Protocol** — Agent-to-Agent interoperability via AgentCard discovery + JSON-RPC 2.0 task dispatch
+- **MCP Server** — 8 tools exposed via JSON-RPC 2.0 over stdio for IDE/editor integration
 
-- **GDPR/CCPA Compliance:** Endpoints `/gdpr_delete` and `/ccpa_optout` with JWT auth for secure data deletion and opt-out, supporting regulatory compliance.
-- **Analytics & Reporting:** Escalation tracking, 30-day reporting, and agent/category breakdowns.
-- **FastAPI Backend:** LangChain RAG, ingestion pipeline, Pinecone, HuggingFace/OpenAI support
-- **Agent Copilot:** Chrome extension for Zendesk/Intercom
-- **Customer Chatbot:** Embeddable widget (Next.js + Tailwind)
-- **Shared Models & Design System:** Unified contracts, telemetry, and UI
-- **Built for:** Speed, reusability, and modularity
+### Observability & Governance
+- **OpenTelemetry tracing** — Traceloop SDK + raw OTEL fallback with specialized spans for LLM calls, vector search, agent execution
+- **Prometheus metrics** — LLM response times, vector store cache hits, API error rates
+- **LLM cost tracking** — Per-model pricing (10+ models), per-tenant breakdown, budget alerts, cost dashboard API
+- **EvalAI integration** — Workflow tracing, decision auditing, governance checks via `@pauly4010/evalai-sdk`
+- **Governance dashboard** — Agent metrics, HITL stats, SLA compliance, audit log
 
-## 🚦 New in This Release
+### Infrastructure
+- **Multi-tenant** — Tenant isolation with resource limits, API key management, usage tracking
+- **GDPR/CCPA compliance** — Data deletion endpoints, opt-out mechanisms, chat log anonymization
+- **Production Docker** — Multi-stage builds, non-root users, postgres 16, redis 7, resource limits, healthchecks
+- **Webhooks** — Zendesk, Slack, Jira, generic with HMAC signature verification
 
-- **🤖 Enterprise Agent Framework:** A reusable agent SDK with 9 swappable blueprints, human-in-the-loop queues, multi-tenant deployment, and governance dashboards. See [Agent Framework README](packages/agent_framework/README.md).
-- **📊 EvalAI Platform Integration:** Agent workflow tracing, decision auditing, cost tracking, and governance via [`@pauly4010/evalai-sdk`](https://www.npmjs.com/package/@pauly4010/evalai-sdk). Python backend sends traces to EvalAI REST API; JS frontends use the npm SDK directly. See [EvalAI Integration](#evalai-integration) below.
-- **🧩 9 Agent Blueprints** (all auto-registered, create via `framework.create_agent(blueprint="name")`):
-  - **support_agent** — RAG-powered customer support with intent analysis and escalation
-  - **triage_agent** — Intelligent ticket routing and prioritization
-  - **data_analyst** — Data analysis with pattern detection, insights, and reporting
-  - **code_review** — Automated code review (security, quality, performance)
-  - **qa_test** — Test generation, output validation, and regression detection
-  - **knowledge_manager** — KB curation with auditing, gap analysis, and deduplication
-  - **sentiment_monitor** — Real-time sentiment tracking with escalation triggers
-  - **onboarding** — Customer onboarding with personalized checklists and guided setup
-  - **compliance_auditor** — PII scanning, policy checks (GDPR/HIPAA/SOC2/CCPA), remediation
-- **🧠 Continuous Learning System:** 4-layer learning loop that makes agents smarter over time without model fine-tuning:
-  - **Feedback Loop** — HITL outcomes (approve/reject/edit) captured as "golden paths" in Pinecone for future RAG
-  - **Activity Stream** — Redis Streams-backed event sourcing for all internal + external activity
-  - **Activity Graph** — Apache AGE knowledge graph on Postgres linking customers → tickets → resolutions → articles → agents
-  - **Playbook Engine** — LangGraph-based auto-generated resolution workflows from successful traces
-  - See [Continuous Learning](#continuous-learning) below.
-- **🔗 Inbound Webhooks:** FastAPI endpoints for Zendesk, Slack, Jira, and generic webhooks with HMAC signature verification
-- **🖥️ HITL Approval Queue UI:** React component with claim/review/approve/reject workflow, SLA indicators, priority badges, filter tabs, and ARIA accessibility (`apps/customer-bot/src/components/ApprovalQueue.tsx`)
-- **📈 Governance Dashboard UI:** React page with agent metrics, HITL stats, SLA compliance, active agents table, and expandable audit log (`apps/customer-bot/src/pages/governance.tsx`)
-- **GDPR/CCPA Compliance:** Endpoints `/gdpr_delete` and `/ccpa_optout` with JWT auth for secure data deletion and opt-out, supporting regulatory compliance.
-- **Analytics & Reporting:** Escalation tracking, 30-day reporting, and agent/category breakdowns.
-- **Compliance UI:** Customer-facing settings and admin dashboard for data/privacy management.
-- **Async Test Infrastructure:** Refactored backend tests with async DB mocking, pytest-asyncio, and improved isolation.
-- **SQLAlchemy Utilities:** Enhanced DB layer for robust migrations and testability.
+### Frontend
+- **Customer chatbot** — Next.js 15 + React 19 + Tailwind, dark mode, glass morphism, streaming chat, voice input
+- **Agent copilot** — Chrome extension for Zendesk/Intercom with real-time WebSocket suggestions
+- **Admin dashboard** — KB management, agent config, cost tracking, voice config, settings (6 tabs)
+- **Demo video** — Remotion project with 7 animated scenes showcasing all features
+
+### Developer Experience
+- **pnpm workspaces** — Monorepo with 4 frontend apps
+- **Biome** — Replaced ESLint 8 + Prettier with single config (linting, formatting, import sorting)
+- **Vitest + RTL** — 6 frontend unit test suites
+- **Cypress E2E** — 27 tests covering approval queue, governance dashboard, chat widget
+- **Integration tests** — 20+ tests covering feedback loop, activity stream, graph, playbooks, RAG, MCP, WebSocket
+- **Ruff** — Python linting (replaced black + flake8 + isort)
 
 ---
 
@@ -86,260 +97,245 @@
 ```text
 support101/
 ├── apps/
-│   ├── backend/           # FastAPI API (RAG, ingestion, LLM, Alembic migrations)
-│   ├── agent-copilot/     # React Chrome Extension for agent support
-│   └── customer-bot/      # Next.js Chatbot widget
+│   ├── backend/              # FastAPI API server
+│   │   ├── app/
+│   │   │   ├── analytics/    # Escalation analytics + cost tracking
+│   │   │   ├── auth/         # JWT authentication
+│   │   │   ├── compliance/   # GDPR/CCPA endpoints
+│   │   │   ├── core/         # DB, cache, config
+│   │   │   ├── voice/        # Voice I/O endpoints (Whisper + TTS)
+│   │   │   └── websocket/    # WebSocket copilot server
+│   │   ├── migrations/       # Alembic migration scripts
+│   │   └── main.py           # FastAPI app entry point
+│   ├── customer-bot/         # Next.js 15 customer chat widget
+│   │   ├── src/
+│   │   │   ├── components/   # ChatWidget, ApprovalQueue, GovernanceDashboard
+│   │   │   ├── hooks/        # useStreamingChat, useVoiceChat, useThemeDetection
+│   │   │   └── pages/        # Next.js pages + /api/chat streaming route
+│   │   └── cypress/          # E2E tests (27 specs)
+│   ├── agent-copilot/        # Chrome extension (React + Webpack)
+│   ├── admin-dashboard/      # Admin app (Next.js 15, port 3002)
+│   └── demo-video/           # Remotion product demo (7 scenes)
 ├── packages/
-│   ├── shared/            # Pydantic models, constants, utils
-│   ├── llm_engine/        # LangChain chains, vector store, prompts
-│   ├── agent_framework/   # Enterprise Agent SDK (blueprints, HITL, learning)
-│   │   └── learning/      # Feedback loop, activity stream, graph, playbooks
-│   └── observability/     # LangSmith, PromptLayer, OpenTelemetry hooks
-├── .env.template
-├── docker-compose.yml
-├── turbo.json
-└── README.md
+│   ├── shared/               # Pydantic models, constants, utils
+│   ├── llm_engine/           # LLM & RAG
+│   │   ├── chains/           # RAG chain with LangChain
+│   │   ├── multi_model.py    # Provider abstraction (5 providers)
+│   │   ├── vector_store.py   # Pinecone v3 with reranking
+│   │   ├── voice.py          # Whisper STT + OpenAI TTS
+│   │   ├── cost_tracker.py   # Token counting + budget alerts
+│   │   └── embeddings.py     # FastEmbed model
+│   └── agent_framework/      # Enterprise agent SDK
+│       ├── core/             # AgentExecutor, tool calling
+│       ├── blueprints/       # 9 agent blueprints
+│       ├── hitl/             # Human-in-the-loop manager
+│       ├── learning/         # Feedback, stream, graph, playbooks
+│       ├── observability/    # OTEL tracing, EvalAI tracer
+│       ├── a2a/              # A2A protocol (AgentCard + JSON-RPC)
+│       ├── mcp_server.py     # MCP server (8 tools)
+│       └── sdk.py            # Framework entry point
+├── tests/
+│   └── integration/          # 20+ integration tests
+├── docs/
+│   └── openapi.yaml          # OpenAPI 3.0 spec (80+ endpoints)
+├── biome.json                # Biome linter/formatter config
+├── pyproject.toml            # Python deps + ruff config (uv-compatible)
+├── docker-compose.prod.yml   # Production Docker Compose
+├── docker-compose.dev.yml    # Development Docker Compose
+└── pnpm-workspace.yaml       # pnpm workspace config
 ```
 
 ---
 
-## Database Migrations & Testing
-
-- **Canonical Alembic migrations directory:**
-  - All migration scripts are located in `apps/backend/migrations/versions/`.
-  - The Alembic config is `apps/backend/alembic.ini`.
-  - Example command to generate a migration (from repo root):
-    ```bash
-    # On Windows PowerShell
-    $env:PYTHONPATH="apps/backend"; alembic -c apps/backend/alembic.ini revision --autogenerate -m "My migration"
-    # On Linux/macOS
-    PYTHONPATH=apps/backend alembic -c apps/backend/alembic.ini revision --autogenerate -m "My migration"
-    ```
-  - To apply migrations:
-    ```bash
-    $env:PYTHONPATH="apps/backend"; alembic -c apps/backend/alembic.ini upgrade head
-    ```
-- **CI/CD:**
-  - The workflow ensures the database exists, runs Alembic migrations, and then runs backend tests.
-  - If you see `relation "users" does not exist`, check that migrations ran and the correct DB is targeted.
-- **Troubleshooting:**
-  - Ensure all relevant directories (`app/`, `app/core/`, `app/auth/`) contain `__init__.py` files.
-  - Only one canonical migrations directory should exist: `apps/backend/migrations`.
-  - If Alembic does not detect models, check imports in `migrations/env.py` and `PYTHONPATH`.
-
----
-
-## Configuration & Environment Variables
-
-Before running the backend or frontend, you must set up your environment variables. Copy `.env.example` to `.env` and provide your own API keys and database URLs:
-
-```bash
-cp .env.example .env
-```
-
-**Required variables:**
-- `DATABASE_URL`: Your database connection string (e.g., PostgreSQL, MySQL, SQLite)
-- `OPENAI_API_KEY`: Your OpenAI API key (if using OpenAI models)
-- `PINECONE_API_KEY`: Your Pinecone API key (for vector storage)
-- `PINECONE_ENVIRONMENT`: Pinecone environment (e.g., `gcp-starter`)
-- `SECRET_KEY`: (Backend secret for Flask, Django, etc.)
-- `REDIS_URL`: (Optional, for caching, async tasks)
-
-See `.env.example` for all supported variables.
-
-**Note:** Never commit your real API keys or secrets to version control. Use environment variables or a `.env` file that is excluded via `.gitignore`.
-
----
-## Key Features
-
-- **Retrieval-Augmented Generation (RAG):**
-  - Query embedding & document search via Pinecone
-  - Context-aware generation (HuggingFace or OpenAI LLMs)
-  - Source citation for all responses
-- **Persistent Analytics:**
-  - Escalation analytics stored in PostgreSQL for reliability and reporting
-  - Advanced dashboard filters (by user, date range) and visualizations
-- **Automated Database Migrations:**
-  - Run `python apps/backend/migrations.py` before starting backend
-- **Testing & Linting:**
-  - Cypress E2E with type definitions (`npm install --save-dev cypress @types/cypress`)
-  - Black for Python, strict TypeScript for frontend
-- **Production Workflow:**
-  - Use `start-all.sh` for full stack startup (migrations, backend, frontend)
-  - Set `POSTGRES_URL` for backend analytics
-
----
 ## Quickstart
 
-1. Clone repo and install dependencies (Python, Node.js)
-2. Set up `.env` files and `POSTGRES_URL`
-3. Run DB migrations: `python apps/backend/migrations.py`
-4. Start all: `./start-all.sh`
-5. Install Cypress types in `apps/customer-bot`: `npm install --save-dev cypress @types/cypress`
-6. Access analytics dashboard for advanced filtering and reporting
+### Prerequisites
+- Python 3.11+
+- Node.js 20+ with pnpm (`corepack enable`)
+- PostgreSQL 16
+- Redis 7 (optional, for caching + activity stream)
 
----
-## Troubleshooting
-- If you see Cypress or type errors: ensure `@types/cypress` is installed
-- Backend analytics not updating? Check DB connection and run migrations
-- For more, see individual app READMEs
-- **Documentation Ingestion:**
-  - Ingest content from public URLs (Firecrawl-ready)
-  - Chunk, embed, and store with `/ingest_documentation`
-  - Markdown & semantic chunking
-- **Agent Copilot (Chrome Extension):**
-  - Injected into Zendesk/Intercom UI
-  - Auto-detects or pastes customer query
-  - Shows suggested reply & source docs
-  - One-click copy to reply
-- **Customer Chatbot:**
-  - Embeddable widget
-  - User questions → backend RAG → instant answers
-  - Cites doc links for context
-- **Shared Infrastructure:**
-  - Pydantic models for contracts
-  - Telemetry via LangSmith & PromptLayer
-  - Modular LangChain chains
-  - Unified UI (see `DESIGN_SYSTEM.md`)
+### 1. Clone & Configure
 
----
-### 1. Clone & Set Up Environment
-
-```sh
+```bash
 git clone https://github.com/pauly7610/support101
 cd support101
+cp .env.example .env
+# Edit .env with your API keys (see Environment Variables below)
 ```
-
-## ⚠️ Test Suite Note
-
-Some backend tests are marked with `@pytest.mark.xfail` because certain endpoints are not yet implemented or require real API keys (e.g., LLM, analytics, ingest, or compliance endpoints). These tests are expected to fail until the corresponding endpoints are completed and valid keys are provided.
-
-- See `apps/backend/tests/` for details.
-- Remove or update the `xfail` marks as endpoints and keys become available.
-
-cp .env.template .env
-
-Fill in your `.env` with:
-- `PINECONE_API_KEY`
-- `FIRECRAWL_API_KEY`
-- `HUGGINGFACE_API_KEY` (or OpenAI)
-- `LANGSMITH_API_KEY`, etc.
 
 ### 2. Install Dependencies
 
-**Backend:**
-```sh
-cd apps/backend
-pip install -r requirements.txt
-```
-**Frontends:**
-```sh
-cd apps/agent-copilot && npm install
-cd ../customer-bot && npm install
+```bash
+# Python backend
+python -m venv .venv
+source .venv/bin/activate  # or .venv\Scripts\activate on Windows
+pip install -e ".[dev]"
+
+# Frontend apps
+pnpm install
 ```
 
-### 3. Run Locally
+### 3. Database Setup
 
-**Backend:**
-```sh
+```bash
+# Create database
+createdb support101
+
+# Run migrations
+PYTHONPATH=$PWD alembic -c apps/backend/alembic.ini upgrade head
+# Windows: $env:PYTHONPATH=$PWD; alembic -c apps/backend/alembic.ini upgrade head
+```
+
+### 4. Run Locally
+
+```bash
+# Backend (port 8000)
 uvicorn apps.backend.main:app --reload
-```
-**Agent Copilot Extension:**
-```sh
-cd apps/agent-copilot
-npm run dev
-```
-**Customer Bot Widget:**
-```sh
-cd apps/customer-bot
-npm run dev
+
+# Customer chatbot (port 3000)
+pnpm --filter customer-bot dev
+
+# Agent copilot extension
+pnpm --filter agent-copilot dev
+
+# Admin dashboard (port 3002)
+pnpm --filter admin-dashboard dev
 ```
 
-### 4. Try It Out
-- Visit a helpdesk page with the extension running to see the Copilot sidebar
-- Open the website widget and ask a question
-- Both use `/generate_reply` for grounded answers with source docs
+### 5. Production (Docker)
+
+```bash
+docker compose -f docker-compose.prod.yml up -d
+```
+
+---
+
+## Environment Variables
+
+Copy `.env.example` to `.env`. Key variables:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `OPENAI_API_KEY` | Yes | OpenAI API key (GPT, Whisper, TTS) |
+| `PINECONE_API_KEY` | Yes | Pinecone vector store API key |
+| `SECRET_KEY` | Yes | JWT signing secret |
+| `REDIS_URL` | No | Redis for caching + activity stream |
+| `PINECONE_NAMESPACE` | No | Namespace for tenant isolation |
+| `PINECONE_RERANK_ENABLED` | No | Enable Pinecone reranking (default: true) |
+| `ANTHROPIC_API_KEY` | No | Anthropic Claude models |
+| `GOOGLE_API_KEY` | No | Google Gemini models |
+| `VOICE_ENABLED` | No | Enable voice features (default: true) |
+| `VOICE_TTS_VOICE` | No | TTS voice: alloy, echo, fable, onyx, nova, shimmer |
+| `LLM_BUDGET_MONTHLY_USD` | No | Monthly LLM budget in USD (default: 100) |
+| `LLM_BUDGET_ALERT_THRESHOLD` | No | Alert at this % of budget (default: 0.8) |
+| `A2A_BASE_URL` | No | Base URL for A2A Agent Card |
+| `EVALAI_API_KEY` | No | EvalAI platform API key |
+| `EVALAI_BASE_URL` | No | EvalAI platform URL |
+| `EVALAI_ORGANIZATION_ID` | No | EvalAI organization ID |
+| `ACTIVITY_GRAPH_NAME` | No | Apache AGE graph name |
+| `TRACELOOP_API_KEY` | No | Traceloop/OTEL API key |
+
+See `.env.example` for the complete list with descriptions.
+
+> **Security:** Never commit API keys. Use `.env` files excluded via `.gitignore`.
 
 ---
 
 ## API Endpoints
 
-### Core Endpoints
-| Method | Route                  | Description                         |
-|--------|------------------------|-------------------------------------|
-| GET    | `/health`              | Simple health check                 |
-| POST   | `/register`            | Register a new user                 |
-| POST   | `/login`               | Login and get JWT token             |
-| GET    | `/protected`           | Example protected endpoint          |
-| POST   | `/generate_reply`      | Main endpoint for LLM reply         |
-| POST   | `/ingest_documentation`| Crawl & embed new documentation     |
-| POST   | `/feedback`            | Submit user feedback                |
+Full OpenAPI spec: [`docs/openapi.yaml`](docs/openapi.yaml) (80+ endpoints)
 
-### Compliance Endpoints (`/v1/compliance`)
-| Method | Route                       | Description                              |
-|--------|-----------------------------|------------------------------------------|
-| POST   | `/v1/compliance/gdpr_delete`| GDPR-compliant data deletion (JWT req)   |
-| POST   | `/v1/compliance/ccpa_optout`| CCPA opt-out preference (JWT required)   |
+### Core
+| Method | Route | Description |
+|--------|-------|-------------|
+| GET | `/health` | Health check |
+| POST | `/register` | Register user |
+| POST | `/login` | Login (JWT) |
+| POST | `/generate_reply` | RAG-powered reply with citations |
+| POST | `/ingest_documentation` | Ingest PDF/MD/TXT to vector store |
+| POST | `/feedback` | Submit user feedback |
 
-### Analytics Endpoints (`/v1/analytics`)
-| Method | Route                              | Description                         |
-|--------|------------------------------------|-------------------------------------|
-| GET    | `/v1/analytics/escalations`        | Get escalation analytics            |
-| GET    | `/v1/analytics/escalations/by-agent`| Escalations grouped by agent       |
-| GET    | `/v1/analytics/escalations/by-category`| Escalations grouped by category |
+### Agents (`/v1`)
+| Method | Route | Description |
+|--------|-------|-------------|
+| GET | `/v1/blueprints` | List agent blueprints |
+| POST | `/v1/agents` | Create agent from blueprint |
+| POST | `/v1/agents/{id}/execute` | Execute agent |
+| GET | `/v1/governance/dashboard` | Governance metrics |
+| GET | `/v1/governance/audit` | Audit logs |
+| GET | `/v1/hitl/queue` | HITL review queue |
+| POST | `/v1/hitl/queue/{id}/respond` | Approve/reject HITL request |
+| POST | `/v1/tenants` | Create tenant |
+| GET | `/v1/tenants/{id}/usage` | Tenant usage stats |
 
-### Agent Framework Endpoints (`/v1`)
-| Method | Route                          | Description                              |
-|--------|--------------------------------|------------------------------------------|
-| GET    | `/v1/agents/blueprints`        | List available agent blueprints          |
-| POST   | `/v1/agents`                   | Create an agent from a blueprint         |
-| POST   | `/v1/agents/{id}/execute`      | Execute an agent                         |
-| GET    | `/v1/governance/dashboard`     | Real-time agent monitoring dashboard     |
-| GET    | `/v1/governance/audit`         | Query audit logs                         |
-| GET    | `/v1/hitl/queue`               | Get pending human-in-the-loop requests   |
-| POST   | `/v1/hitl/queue/{id}/respond`  | Respond to a HITL request                |
-| POST   | `/v1/tenants`                  | Create a new tenant                      |
-| GET    | `/v1/tenants/{id}/usage`       | Get tenant usage statistics              |
+### Voice I/O (`/v1/voice`)
+| Method | Route | Description |
+|--------|-------|-------------|
+| POST | `/v1/voice/transcribe` | Speech-to-text (Whisper) |
+| POST | `/v1/voice/synthesize` | Text-to-speech (TTS) |
+| POST | `/v1/voice/chat` | Full voice pipeline: audio → RAG → audio |
+| GET | `/v1/voice/status` | Voice feature availability |
 
-### Webhook Endpoints (`/v1/webhooks`)
-| Method | Route                          | Description                              |
-|--------|--------------------------------|------------------------------------------|
-| POST   | `/v1/webhooks/generic`         | Receive generic webhook events           |
-| POST   | `/v1/webhooks/zendesk`         | Receive Zendesk events (tickets, CSAT)   |
-| POST   | `/v1/webhooks/slack`           | Receive Slack events (messages, reactions)|
-| POST   | `/v1/webhooks/jira`            | Receive Jira events (issues, comments)   |
-| GET    | `/v1/webhooks/stats`           | Webhook & activity stream statistics     |
+### Cost Tracking (`/v1/analytics/costs`)
+| Method | Route | Description |
+|--------|-------|-------------|
+| GET | `/v1/analytics/costs` | Cost dashboard (spend, budget, breakdowns) |
+| GET | `/v1/analytics/costs/tenant` | Per-tenant cost breakdown |
+| POST | `/v1/analytics/costs/record` | Record LLM usage event |
+
+### A2A Protocol
+| Method | Route | Description |
+|--------|-------|-------------|
+| GET | `/.well-known/agent.json` | Agent Card discovery |
+| POST | `/a2a` | JSON-RPC 2.0 task dispatch |
+
+### Webhooks (`/v1/webhooks`)
+| Method | Route | Description |
+|--------|-------|-------------|
+| POST | `/v1/webhooks/zendesk` | Zendesk events |
+| POST | `/v1/webhooks/slack` | Slack events |
+| POST | `/v1/webhooks/jira` | Jira events |
+| POST | `/v1/webhooks/generic` | Generic webhook |
+
+### Compliance (`/v1/compliance`)
+| Method | Route | Description |
+|--------|-------|-------------|
+| POST | `/v1/compliance/gdpr_delete` | GDPR data deletion |
+| POST | `/v1/compliance/ccpa_optout` | CCPA opt-out |
+
+### WebSocket
+| Protocol | Route | Description |
+|----------|-------|-------------|
+| WS | `/ws/copilot` | Real-time agent suggestions (JWT auth) |
 
 ---
 
 ## Continuous Learning
 
-The agent framework includes a 4-layer continuous learning system that makes agents smarter over time — **no model fine-tuning required**. Learning happens at the retrieval layer: better context in prompts (golden paths), better routing (graph-informed), and proven step sequences (playbooks).
+4-layer system that makes agents smarter over time — **no model fine-tuning required**:
 
 ```text
-┌───────────────────────────────────────────────────────────────────────────────┐
-│  1. Agent executes using current knowledge (KB + golden paths)         │
-│  2. Human reviews (HITL) or customer reacts (CSAT, ticket resolved)   │
-│  3. Feedback captured → golden path in Pinecone + graph node           │
-│  4. Next execution retrieves proven resolutions + playbook suggestions │
-│  5. Repeated patterns auto-generate playbooks (3+ similar successes)   │
-└───────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│  1. Agent executes using current knowledge (KB + golden paths)     │
+│  2. Human reviews (HITL) or customer reacts (CSAT, resolved)       │
+│  3. Feedback captured → golden path in Pinecone + graph node       │
+│  4. Next execution retrieves proven resolutions + playbooks        │
+│  5. Repeated patterns auto-generate playbooks (3+ successes)       │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 | Layer | Technology | Purpose |
-|---|---|---|
-| **Feedback Loop** | Pinecone | HITL outcomes → golden paths for future RAG retrieval |
-| **Activity Stream** | Redis Streams | Durable event sourcing for all internal + webhook events |
-| **Activity Graph** | Apache AGE (Postgres) | Knowledge graph: Customer→Ticket→Resolution→Article→Agent |
-| **Playbook Engine** | LangGraph | Auto-generated resolution workflows from successful traces |
+|-------|-----------|---------|
+| **Feedback Loop** | Pinecone | HITL outcomes → golden paths for future RAG |
+| **Activity Stream** | Redis Streams | Durable event sourcing for all events |
+| **Activity Graph** | Apache AGE | Knowledge graph: Customer→Ticket→Resolution→Agent |
+| **Playbook Engine** | LangGraph | Auto-generated resolution workflows |
 
-**Graceful degradation:** Every layer falls back silently when its dependency is unavailable (no Redis → in-memory buffer, no AGE → in-memory graph, no LangGraph → sequential execution).
-
-See [Agent Framework README](packages/agent_framework/README.md) for detailed usage examples.
+**Graceful degradation:** Every layer falls back silently (no Redis → memory, no AGE → memory, no LangGraph → sequential).
 
 ### Validated Performance
-
-The feedback loop has been validated with `FeedbackLoopValidator` — a built-in tool that proves golden paths measurably improve agent performance:
 
 ```text
 $ python -m packages.agent_framework.learning.feedback_validator --mock
@@ -347,127 +343,76 @@ $ python -m packages.agent_framework.learning.feedback_validator --mock
 VALIDATION REPORT
 ─────────────────────────────────────────────────────
   Golden paths stored:        6 (top 60% by confidence)
-  Golden path usage rate:     100%
-  Avg confidence before:      0.798
   Avg confidence after:       0.836  (+4.8%)
-  Avg response time before:   58.8ms
   Avg response time after:    0.2ms  (-99.6%)
   VALIDATION PASSED
 ```
-
-Run with `--mock` for CI (no API keys needed) or without for live Pinecone + LLM validation.
 
 ---
 
 ## EvalAI Integration
 
-The agent framework integrates with the [EvalAI Platform](https://ai-evaluation-platform.vercel.app) (`@pauly4010/evalai-sdk`) for workflow tracing, decision auditing, cost tracking, and governance.
-
-### Architecture
+Integrates with [EvalAI Platform](https://ai-evaluation-platform.vercel.app) for workflow tracing, decision auditing, and governance.
 
 ```text
 ┌──────────────────┐  REST API   ┌──────────────┐  npm SDK   ┌──────────────────┐
 │ Python Agent     │ ──────────→ │  EvalAI      │ ←───────── │ JS/TS Frontend   │
-│ Framework        │  POST       │  Platform    │  import    │ (governance,     │
-│ (FastAPI)        │  /api/*     │  (Vercel)    │            │  DAG viz, costs) │
+│ Framework        │  httpx      │  Platform    │  import    │ (governance,     │
+│ (FastAPI)        │  async      │  (Vercel)    │            │  DAG viz, costs) │
 └──────────────────┘             └──────────────┘            └──────────────────┘
 ```
 
-- **Python backend** → calls EvalAI REST API via `httpx` (async, with retry + backoff)
-- **JS frontends** → import `@pauly4010/evalai-sdk` directly for type-safe SDK access
-
-### Setup
-
-1. Add env vars to your `.env`:
-   ```
-   EVALAI_API_KEY=your-evalai-api-key
-   EVALAI_BASE_URL=https://ai-evaluation-platform.vercel.app
-   EVALAI_ORGANIZATION_ID=123
-   ```
-
-2. The tracer auto-activates when env vars are set. No code changes needed — `AgentFramework` initializes it automatically.
-
-### Python Usage
-
-```python
-from packages.agent_framework import (
-    AgentFramework,
-    EvalAITracer,
-    EvalAIDecision,
-    EvalAICostRecord,
-    check_governance,
-    COMPLIANCE_PRESETS,
-)
-
-# Framework auto-traces all agent executions
-framework = AgentFramework()
-result = await framework.execute(agent, {"query": "Help me reset my password"})
-# → Workflow trace, agent spans, and timing sent to EvalAI automatically
-
-# Direct tracer usage for custom workflows
-tracer = EvalAITracer()
-async with tracer.workflow("Custom Pipeline"):
-    span = await tracer.start_agent_span("RouterAgent", {"query": "..."})
-    await tracer.record_decision(EvalAIDecision(
-        agent="RouterAgent",
-        type="route",
-        chosen="technical_support",
-        alternatives=[{"action": "billing", "confidence": 20}],
-        confidence=85,
-    ))
-    await tracer.record_cost(EvalAICostRecord(
-        provider="openai", model="gpt-4o", input_tokens=500, output_tokens=200
-    ))
-    await tracer.end_agent_span(span, {"result": "routed"})
-
-# Governance checks (mirrors EvalAI compliance presets)
-gov_result = check_governance(decision, COMPLIANCE_PRESETS["SOC2"])
-if gov_result["blocked"]:
-    raise RuntimeError(f"Blocked: {gov_result['reasons']}")
-```
-
-### What Gets Traced
-
-| Event | EvalAI Endpoint | Automatic? |
-|-------|----------------|------------|
-| Workflow start/end | `POST /api/traces` | Yes (via `framework.execute()`) |
-| Agent execution spans | `POST /api/traces/{id}/spans` | Yes (via `AgentExecutor`) |
-| Agent decisions | `POST /api/decisions` | Manual (call `tracer.record_decision()`) |
-| LLM token costs | `POST /api/costs` | Manual (call `tracer.record_cost()`) |
-| Agent handoffs | `POST /api/traces/{id}/spans` | Manual (call `tracer.record_handoff()`) |
-| Workflow DAG definitions | `POST /api/workflows` | Manual (pass `definition` to `start_workflow()`) |
-
-### Graceful Degradation
-
-The tracer silently no-ops when:
-- `httpx` is not installed
-- Any of the 3 env vars are missing
-- The EvalAI API is unreachable (errors are logged, never raised)
+Auto-activates when `EVALAI_API_KEY`, `EVALAI_BASE_URL`, and `EVALAI_ORGANIZATION_ID` are set. Silently no-ops when unavailable.
 
 ---
 
-## Developer Notes
-See individual app README.mds for dev details
+## Testing
 
-Uses Turborepo for task orchestration
+```bash
+# Backend integration tests
+pytest tests/ -v
 
-Docker support in docker-compose.yml (coming soon)
+# Frontend unit tests
+pnpm --filter customer-bot test
+pnpm --filter agent-copilot test
 
-Add new chains or document loaders in packages/llm-engine
+# Cypress E2E
+pnpm --filter customer-bot exec cypress run
 
-Extend observability in packages/observability
+# Lint (Biome for JS/TS, Ruff for Python)
+pnpm --filter customer-bot lint
+ruff check packages/ apps/backend/
 
-🚀 Deployment
- Railway, Render, or AWS-compatible with Docker
+# Feedback loop validation
+python -m packages.agent_framework.learning.feedback_validator --mock
+```
 
- Add CI via GitHub Actions (lint/test/build)
+---
 
- Staging + production config via env vars
+## Deployment
 
-📐 Resources
-DESIGN_SYSTEM.md: Shared UI guidelines + tokens
+### Docker Compose (Production)
 
-packages/shared: Source of truth for all models/types
+```bash
+docker compose -f docker-compose.prod.yml up -d
+```
 
-turbo.json: Task graph for multi-app orchestration
+Includes: PostgreSQL 16, Redis 7, backend (2 workers), customer-bot, agent-copilot — all with healthchecks, resource limits, and restart policies.
+
+### Manual
+
+- **Backend:** Railway, Render, or any Docker host
+- **Frontend:** Vercel (Next.js) or static hosting
+- **CI:** GitHub Actions (lint → test → build)
+
+---
+
+## Resources
+
+- [`docs/openapi.yaml`](docs/openapi.yaml) — OpenAPI 3.0 spec (80+ endpoints)
+- [`packages/agent_framework/README.md`](packages/agent_framework/README.md) — Agent framework docs
+- [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) — Shared UI guidelines
+- [`mcp-config.json`](mcp-config.json) — MCP client configuration
+- [`biome.json`](biome.json) — Biome linter/formatter config
+- [`pyproject.toml`](pyproject.toml) — Python project config (uv-compatible)
 
