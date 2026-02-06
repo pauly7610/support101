@@ -20,6 +20,8 @@
     "next": "^14.0.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
+    "ai": "^4.1.0",
+    "@ai-sdk/openai": "^1.1.0",
     "recharts": "^2.15.0",
     "sentiment": "^5.0.2",
     "tailwind-merge": "^2.6.0",
