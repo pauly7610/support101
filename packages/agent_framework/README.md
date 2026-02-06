@@ -183,6 +183,76 @@ app.include_router(hitl_router, prefix="/v1")
 app.include_router(tenants_router, prefix="/v1")
 ```
 
+### 5. Continuous Learning System
+
+Agents get smarter over time through a 4-layer learning loop — no model fine-tuning required:
+
+```text
+Agent Executes → Human Reviews → Feedback Captured → Knowledge Updated → Next Execution Smarter
+```
+
+#### Feedback Loop
+Every HITL outcome (approve/reject/edit) is captured as a "golden path" in Pinecone:
+
+```python
+# Automatic — happens inside HITLManager.provide_response()
+# When a reviewer approves, the full trace becomes a golden path
+# that future RAG queries can retrieve.
+
+# Manual — record external signals
+await framework.record_feedback(
+    ticket_id="T-123",
+    score=5.0,  # CSAT score
+    trace={"input_query": "How to reset password?", ...},
+    tenant_id="acme",
+)
+
+# Search proven resolutions
+paths = await framework.search_golden_paths(
+    query="password reset",
+    tenant_id="acme",
+    top_k=3,
+)
+```
+
+#### Activity Stream (Redis Streams)
+All events (internal + external webhooks) flow into durable Redis Streams:
+
+```python
+# Internal events are bridged automatically via EventBus
+# External events arrive via webhook endpoints:
+#   POST /v1/webhooks/zendesk
+#   POST /v1/webhooks/slack
+#   POST /v1/webhooks/jira
+#   POST /v1/webhooks/generic
+```
+
+#### Activity Graph (Apache AGE on Postgres)
+A knowledge graph links customers, tickets, resolutions, articles, and agents:
+
+```python
+# Automatic — resolutions are recorded when golden paths are created
+# Query the graph directly:
+journey = await framework.activity_graph.get_customer_journey("customer_123")
+similar = await framework.activity_graph.find_similar_resolutions(category="billing")
+```
+
+#### Playbook Engine (LangGraph)
+Auto-generated resolution workflows derived from successful traces:
+
+```python
+# Suggest a playbook for a category
+suggestions = await framework.suggest_playbook("billing", tenant_id="acme")
+
+# Extract new playbooks from graph patterns
+new_playbooks = await framework.extract_playbooks("billing", tenant_id="acme")
+
+# Playbooks are also suggested automatically before agent execution
+# via AgentExecutor when input_data contains a "category" key
+```
+
+**Graceful degradation:** No Redis → in-memory buffer. No AGE → in-memory graph. No LangGraph → sequential execution. No Pinecone → golden paths in memory only.
+
 ## Architecture
 
 ```
@@ -191,9 +261,28 @@ packages/agent_framework/
 │   ├── base_agent.py       # BaseAgent abstract class
 │   ├── agent_registry.py   # Blueprint & instance registry
 │   └── agent_executor.py   # Execution with lifecycle management
-├── templates/               # Agent blueprints
-│   ├── support_agent.py    # RAG-powered support agent (DI-enabled)
-│   └── triage_agent.py     # Ticket routing agent
+├── templates/               # Agent blueprints (9 built-in)
+│   ├── support_agent.py    # RAG-powered support agent
+│   ├── triage_agent.py     # Ticket routing agent
+│   ├── data_analyst_agent.py
+│   ├── code_review_agent.py
+│   ├── qa_test_agent.py
+│   ├── knowledge_manager_agent.py
+│   ├── sentiment_monitor_agent.py
+│   ├── onboarding_agent.py
+│   └── compliance_auditor_agent.py
+├── learning/                # Continuous learning system
+│   ├── feedback_loop.py    # Golden path capture from HITL outcomes
+│   ├── activity_stream.py  # Redis Streams event sourcing
+│   ├── graph.py            # Apache AGE knowledge graph
+│   ├── graph_models.py     # Node/edge type definitions
+│   ├── playbook_engine.py  # LangGraph playbook compilation
+│   └── playbook_models.py  # Playbook data models
+├── services/                # Shared service clients
+│   ├── database.py         # Async Postgres (SQLAlchemy)
+│   ├── vector_store.py     # Pinecone vector store
+│   ├── external_api.py     # External HTTP client
+│   └── llm_helpers.py      # LLM retry + cost tracking
 ├── governance/              # Permissions & audit
 │   ├── permissions.py      # RBAC system
 │   └── audit.py            # Audit logging
@@ -207,17 +296,18 @@ packages/agent_framework/
 │   └── circuit_breaker.py  # Circuit breaker pattern
 ├── observability/           # Monitoring & tracing
 │   ├── metrics.py          # Prometheus metrics
-│   └── tracing.py          # OpenTelemetry spans
+│   ├── tracing.py          # OpenTelemetry spans
+│   └── evalai_tracer.py    # EvalAI platform integration
 ├── realtime/                # Real-time updates
 │   ├── websocket.py        # WebSocket manager
-│   └── events.py           # Event bus (pub/sub)
+│   └── events.py           # Event bus (pub/sub + Redis bridge)
 ├── validation/              # Config validation
 │   ├── blueprint.py        # Blueprint validator
 │   └── config.py           # Pydantic schemas
 ├── hitl/                    # Human-in-the-loop
 │   ├── queue.py            # HITL request queue
 │   ├── escalation.py       # Escalation policies
-│   └── manager.py          # HITL orchestration
+│   └── manager.py          # HITL orchestration + feedback loop
 ├── multitenancy/            # Multi-tenant support
 │   ├── tenant.py           # Tenant model
 │   ├── tenant_manager.py   # Tenant lifecycle
@@ -226,16 +316,30 @@ packages/agent_framework/
 │   ├── agents.py
 │   ├── governance.py
 │   ├── hitl.py
-│   └── tenants.py
+│   ├── tenants.py
+│   └── webhooks.py         # Inbound webhooks (Zendesk/Slack/Jira)
 └── sdk.py                   # Main SDK entry point
 ```
 
 ## Configuration
 
 Environment variables:
-- `OPENAI_API_KEY` - For LLM calls
-- `PINECONE_API_KEY` - For vector store
-- `PINECONE_INDEX_NAME` - Vector index name
+
+| Variable | Required | Description |
+|---|---|---|
+| `OPENAI_API_KEY` | Yes | For LLM calls |
+| `PINECONE_API_KEY` | No | Vector store (golden paths + KB search) |
+| `PINECONE_INDEX_NAME` | No | Vector index name (default: `support-docs`) |
+| `DATABASE_URL` | No | Postgres for persistence + AGE graph |
+| `REDIS_URL` | No | Redis for activity stream |
+| `ACTIVITY_GRAPH_NAME` | No | AGE graph name (default: `support101`) |
+| `PLAYBOOK_MIN_SAMPLES` | No | Min traces to create playbook (default: `3`) |
+| `PLAYBOOK_MIN_SUCCESS_RATE` | No | Min success rate to suggest (default: `0.7`) |
+| `EVALAI_API_KEY` | No | EvalAI platform tracing |
+| `EVALAI_BASE_URL` | No | EvalAI platform URL |
+| `EVALAI_ORGANIZATION_ID` | No | EvalAI org ID |
+
+All components gracefully degrade when their env vars are not set.
 
 ## Testing
 

@@ -64,6 +64,13 @@
   - **sentiment_monitor** — Real-time sentiment tracking with escalation triggers
   - **onboarding** — Customer onboarding with personalized checklists and guided setup
   - **compliance_auditor** — PII scanning, policy checks (GDPR/HIPAA/SOC2/CCPA), remediation
+- **🧠 Continuous Learning System:** 4-layer learning loop that makes agents smarter over time without model fine-tuning:
+  - **Feedback Loop** — HITL outcomes (approve/reject/edit) captured as "golden paths" in Pinecone for future RAG
+  - **Activity Stream** — Redis Streams-backed event sourcing for all internal + external activity
+  - **Activity Graph** — Apache AGE knowledge graph on Postgres linking customers → tickets → resolutions → articles → agents
+  - **Playbook Engine** — LangGraph-based auto-generated resolution workflows from successful traces
+  - See [Continuous Learning](#continuous-learning) below.
+- **🔗 Inbound Webhooks:** FastAPI endpoints for Zendesk, Slack, Jira, and generic webhooks with HMAC signature verification
 - **🖥️ HITL Approval Queue UI:** React component with claim/review/approve/reject workflow, SLA indicators, priority badges, filter tabs, and ARIA accessibility (`apps/customer-bot/src/components/ApprovalQueue.tsx`)
 - **📈 Governance Dashboard UI:** React page with agent metrics, HITL stats, SLA compliance, active agents table, and expandable audit log (`apps/customer-bot/src/pages/governance.tsx`)
 - **GDPR/CCPA Compliance:** Endpoints `/gdpr_delete` and `/ccpa_optout` with JWT auth for secure data deletion and opt-out, supporting regulatory compliance.
@@ -85,7 +92,8 @@ support101/
 ├── packages/
 │   ├── shared/            # Pydantic models, constants, utils
 │   ├── llm_engine/        # LangChain chains, vector store, prompts
-│   ├── agent_framework/   # Enterprise Agent SDK (blueprints, HITL, multi-tenant)
+│   ├── agent_framework/   # Enterprise Agent SDK (blueprints, HITL, learning)
+│   │   └── learning/      # Feedback loop, activity stream, graph, playbooks
 │   └── observability/     # LangSmith, PromptLayer, OpenTelemetry hooks
 ├── .env.template
 ├── docker-compose.yml
@@ -292,6 +300,42 @@ npm run dev
 | POST   | `/v1/hitl/queue/{id}/respond`  | Respond to a HITL request                |
 | POST   | `/v1/tenants`                  | Create a new tenant                      |
 | GET    | `/v1/tenants/{id}/usage`       | Get tenant usage statistics              |
+
+### Webhook Endpoints (`/v1/webhooks`)
+| Method | Route                          | Description                              |
+|--------|--------------------------------|------------------------------------------|
+| POST   | `/v1/webhooks/generic`         | Receive generic webhook events           |
+| POST   | `/v1/webhooks/zendesk`         | Receive Zendesk events (tickets, CSAT)   |
+| POST   | `/v1/webhooks/slack`           | Receive Slack events (messages, reactions)|
+| POST   | `/v1/webhooks/jira`            | Receive Jira events (issues, comments)   |
+| GET    | `/v1/webhooks/stats`           | Webhook & activity stream statistics     |
+
+---
+
+## Continuous Learning
+
+The agent framework includes a 4-layer continuous learning system that makes agents smarter over time — **no model fine-tuning required**. Learning happens at the retrieval layer: better context in prompts (golden paths), better routing (graph-informed), and proven step sequences (playbooks).
+
+```text
+┌───────────────────────────────────────────────────────────────────────────────┐
+│  1. Agent executes using current knowledge (KB + golden paths)         │
+│  2. Human reviews (HITL) or customer reacts (CSAT, ticket resolved)   │
+│  3. Feedback captured → golden path in Pinecone + graph node           │
+│  4. Next execution retrieves proven resolutions + playbook suggestions │
+│  5. Repeated patterns auto-generate playbooks (3+ similar successes)   │
+└───────────────────────────────────────────────────────────────────────────────┘
+```
+
+| Layer | Technology | Purpose |
+|---|---|---|
+| **Feedback Loop** | Pinecone | HITL outcomes → golden paths for future RAG retrieval |
+| **Activity Stream** | Redis Streams | Durable event sourcing for all internal + webhook events |
+| **Activity Graph** | Apache AGE (Postgres) | Knowledge graph: Customer→Ticket→Resolution→Article→Agent |
+| **Playbook Engine** | LangGraph | Auto-generated resolution workflows from successful traces |
+
+**Graceful degradation:** Every layer falls back silently when its dependency is unavailable (no Redis → in-memory buffer, no AGE → in-memory graph, no LangGraph → sequential execution).
+
+See [Agent Framework README](packages/agent_framework/README.md) for detailed usage examples.
 
 ---
 
