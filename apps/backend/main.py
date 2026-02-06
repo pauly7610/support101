@@ -27,8 +27,10 @@ from fastapi_limiter.depends import RateLimiter
 from prometheus_client import REGISTRY, Counter, Histogram
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from apps.backend.app.analytics.cost_router import router as cost_router
 from apps.backend.app.analytics.router import router as analytics_router
 from apps.backend.app.websocket.copilot_ws import router as ws_router
+from packages.agent_framework.a2a import a2a_router
 from apps.backend.app.auth.jwt import create_access_token, get_current_user
 from apps.backend.app.auth.users import (
     create_user,
@@ -83,11 +85,13 @@ app = FastAPI(title="Support Intelligence Core API", lifespan=lifespan)
 
 app.include_router(compliance_router, prefix="/v1/compliance")
 app.include_router(analytics_router, prefix="/v1/analytics")
+app.include_router(cost_router, prefix="/v1/analytics")
 app.include_router(agents_router, prefix="/v1")
 app.include_router(governance_router, prefix="/v1")
 app.include_router(hitl_router, prefix="/v1")
 app.include_router(tenants_router, prefix="/v1")
 app.include_router(ws_router)
+app.include_router(a2a_router)
 
 security = HTTPBearer()
 
