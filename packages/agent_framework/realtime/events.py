@@ -216,6 +216,29 @@ class EventBus:
         }
 
 
+    def bridge_to_activity_stream(self, activity_stream: Any) -> None:
+        """Bridge all EventBus events to an ActivityStream for durable persistence."""
+        from ..learning.activity_stream import ActivityEvent
+
+        async def _forward(event: Event) -> None:
+            try:
+                ae = ActivityEvent(
+                    event_id=event.event_id,
+                    event_type=event.event_type.value,
+                    source="internal",
+                    agent_id=event.agent_id,
+                    tenant_id=event.tenant_id or "",
+                    data=event.data,
+                    timestamp=event.timestamp.isoformat(),
+                    metadata=event.metadata,
+                )
+                await activity_stream.publish(ae)
+            except Exception as e:
+                print(f"EventBus→ActivityStream bridge error: {e}")
+
+        self.subscribe_all(_forward)
+
+
 _default_bus: Optional[EventBus] = None
 
 

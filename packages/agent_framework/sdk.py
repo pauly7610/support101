@@ -17,7 +17,13 @@ from .hitl.manager import HITLManager
 from .multitenancy.isolation import TenantIsolator
 from .multitenancy.tenant import Tenant, TenantTier
 from .multitenancy.tenant_manager import TenantManager
+from .learning.activity_stream import ActivityStream
+from .learning.feedback_loop import FeedbackCollector
+from .learning.graph import ActivityGraph
+from .learning.playbook_engine import PlaybookEngine
 from .observability.evalai_tracer import EvalAITracer
+from .realtime.events import get_event_bus
+from .services.vector_store import get_vector_store_service
 from .templates.code_review_agent import CodeReviewBlueprint
 from .templates.compliance_auditor_agent import ComplianceAuditorBlueprint
 from .templates.data_analyst_agent import DataAnalystBlueprint
@@ -76,16 +82,29 @@ class AgentFramework:
             enabled=evalai_enabled,
         )
 
+        self.activity_graph = ActivityGraph()
+        self.playbook_engine = PlaybookEngine(activity_graph=self.activity_graph)
+
         self.executor = AgentExecutor(
             self.registry,
             evalai_tracer=self.evalai_tracer,
+            playbook_engine=self.playbook_engine,
         )
         self.executor.set_audit_callback(self._audit_execution_event)
+
+        self.feedback_collector = FeedbackCollector(
+            vector_store=get_vector_store_service(),
+            audit_logger=self.audit_logger,
+            activity_graph=self.activity_graph,
+        )
 
         self.hitl_manager = HITLManager(
             registry=self.registry,
             audit_logger=self.audit_logger,
+            feedback_collector=self.feedback_collector,
         )
+
+        self.activity_stream = ActivityStream()
 
         self.isolator = TenantIsolator(self.tenant_manager)
 
@@ -390,8 +409,45 @@ class AgentFramework:
             "tenants": self.tenant_manager.get_stats() if not tenant_id else None,
         }
 
+    def record_feedback(self, *args, **kwargs):
+        """Proxy to FeedbackCollector for external feedback signals."""
+        return self.feedback_collector.record_csat(*args, **kwargs)
+
+    def search_golden_paths(self, *args, **kwargs):
+        """Search for proven resolution paths."""
+        return self.feedback_collector.search_golden_paths(*args, **kwargs)
+
+    def get_learning_stats(self) -> Dict[str, Any]:
+        """Get continuous learning statistics."""
+        return {
+            "feedback": self.feedback_collector.get_stats(),
+            "graph": self.activity_graph.get_stats(),
+            "playbooks": self.playbook_engine.get_stats(),
+            "activity_stream": self.activity_stream.get_stats(),
+        }
+
+    async def suggest_playbook(self, category: str, tenant_id: str = "", top_k: int = 3):
+        """Suggest playbooks for a given category."""
+        return await self.playbook_engine.suggest(category, tenant_id, top_k=top_k)
+
+    async def extract_playbooks(self, category: str, tenant_id: str = ""):
+        """Extract new playbooks from successful resolution patterns."""
+        return await self.playbook_engine.extract_playbooks(category, tenant_id)
+
     async def start(self) -> None:
         """Start background services."""
+        await self.activity_stream.connect()
+        await self.activity_graph.initialize()
+        await self.playbook_engine.initialize()
+
+        # Bridge internal EventBus to durable ActivityStream
+        event_bus = get_event_bus()
+        event_bus.bridge_to_activity_stream(self.activity_stream)
+
+        # Pass activity stream to feedback collector for graph updates
+        self.feedback_collector._event_bus = event_bus
+
+        await self.feedback_collector.start()
         await self.hitl_manager.start()
         await self.tenant_manager.start_rate_limit_reset()
 
@@ -399,6 +455,7 @@ class AgentFramework:
         """Stop background services and close connections."""
         self.hitl_manager.stop()
         self.tenant_manager.stop_rate_limit_reset()
+        await self.activity_stream.disconnect()
         await self.evalai_tracer.close()
 
 

@@ -72,6 +72,7 @@ class AgentExecutor:
         max_concurrent: int = 10,
         default_timeout: int = 300,
         evalai_tracer: Optional["EvalAITracer"] = None,
+        playbook_engine: Optional[Any] = None,
     ) -> None:
         self.registry = registry or AgentRegistry()
         self.max_concurrent = max_concurrent
@@ -80,6 +81,7 @@ class AgentExecutor:
         self._running_executions: Dict[str, asyncio.Task] = {}
         self._audit_callback: Optional[Callable] = None
         self._evalai_tracer = evalai_tracer
+        self._playbook_engine = playbook_engine
 
     def set_audit_callback(self, callback: Callable) -> None:
         """Set callback for audit logging."""
@@ -124,6 +126,28 @@ class AgentExecutor:
         """
         timeout = timeout or agent.config.timeout_seconds or self.default_timeout
         start_time = datetime.utcnow()
+
+        # Check for matching playbook before agent plans from scratch
+        playbook_result = None
+        if self._playbook_engine and self._playbook_engine.available:
+            try:
+                category = input_data.get("category", "")
+                if category:
+                    suggestions = await self._playbook_engine.suggest(
+                        category=category,
+                        tenant_id=agent.tenant_id,
+                    )
+                    if suggestions:
+                        best = suggestions[0]
+                        logger.info(
+                            "Playbook suggested for %s: %s (score=%.2f)",
+                            category,
+                            best.playbook.name,
+                            best.relevance_score,
+                        )
+                        input_data["_playbook_suggestion"] = best.to_dict()
+            except Exception as e:
+                logger.debug("Playbook suggestion failed: %s", e)
 
         await self._log_audit(
             "execution_started",

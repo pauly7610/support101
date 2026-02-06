@@ -8,8 +8,11 @@ Provides a unified interface for:
 - Analytics and reporting
 """
 
+import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 from ..core.agent_registry import AgentRegistry
 from ..core.base_agent import AgentStatus, BaseAgent
@@ -27,15 +30,18 @@ class HITLManager:
     - Agent Registry (agent state)
     - Escalation Manager (escalation policies)
     - Audit Logger (compliance)
+    - Feedback Collector (continuous learning)
     """
 
     def __init__(
         self,
         registry: Optional[AgentRegistry] = None,
         audit_logger: Optional[AuditLogger] = None,
+        feedback_collector: Optional[Any] = None,
     ) -> None:
         self.registry = registry or AgentRegistry()
         self.audit_logger = audit_logger or AuditLogger()
+        self.feedback_collector = feedback_collector
         self.queue = HITLQueue()
         self.escalation_manager = EscalationManager(self.queue)
 
@@ -286,11 +292,57 @@ class HITLManager:
             },
         )
 
+        # Feed outcome to continuous learning system
+        if self.feedback_collector is not None:
+            try:
+                await self._send_to_feedback_collector(
+                    request=request, response=response, reviewer_id=reviewer_id
+                )
+            except Exception as e:
+                logger.debug("FeedbackCollector call failed: %s", e)
+
         agent = self.registry.get_agent(request.agent_id)
         if agent and agent.state and agent.state.status == AgentStatus.AWAITING_HUMAN:
             await agent.provide_human_feedback(response)
 
         return True
+
+    async def _send_to_feedback_collector(
+        self,
+        request: HITLRequest,
+        response: Dict[str, Any],
+        reviewer_id: str,
+    ) -> None:
+        """Route HITL outcome to the FeedbackCollector for learning."""
+        trace = {
+            "input_query": request.context.get("input_data", {}).get("query", ""),
+            "steps": [
+                s.get("action", "")
+                for s in request.agent_state_snapshot.get("intermediate_steps", [])
+            ],
+            "output": request.context.get("output_data", {}),
+            "agent_blueprint": request.metadata.get("blueprint", ""),
+            "category": request.metadata.get("category", "general"),
+            "articles_used": request.context.get("sources", []),
+            "confidence": request.context.get("confidence", 0.0),
+        }
+
+        decision = response.get("decision", "")
+        if decision == "approve":
+            await self.feedback_collector.record_success(
+                trace=trace, approved_by=reviewer_id, tenant_id=request.tenant_id
+            )
+        elif decision == "reject":
+            await self.feedback_collector.record_failure(
+                trace=trace, reason=response.get("reason", ""), tenant_id=request.tenant_id
+            )
+        elif decision in ("modify", "edit"):
+            await self.feedback_collector.record_correction(
+                original_trace=trace,
+                corrected_output=response.get("edited_response", response.get("response", "")),
+                corrected_by=reviewer_id,
+                tenant_id=request.tenant_id,
+            )
 
     async def escalate(
         self,
