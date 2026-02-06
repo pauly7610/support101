@@ -8,7 +8,8 @@ Provides REST API for:
 - State management
 """
 
-from typing import Any, Dict, List, Optional
+import contextlib
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
@@ -22,10 +23,10 @@ from ..multitenancy.tenant_manager import TenantManager
 router = APIRouter(prefix="/agents", tags=["Agents"])
 
 
-_registry: Optional[AgentRegistry] = None
-_executor: Optional[AgentExecutor] = None
-_tenant_manager: Optional[TenantManager] = None
-_audit_logger: Optional[AuditLogger] = None
+_registry: AgentRegistry | None = None
+_executor: AgentExecutor | None = None
+_tenant_manager: TenantManager | None = None
+_audit_logger: AuditLogger | None = None
 
 
 def get_registry() -> AgentRegistry:
@@ -62,15 +63,15 @@ class CreateAgentRequest(BaseModel):
     blueprint_name: str
     tenant_id: str
     name: str
-    description: Optional[str] = None
-    config_overrides: Optional[Dict[str, Any]] = None
+    description: str | None = None
+    config_overrides: dict[str, Any] | None = None
 
 
 class ExecuteAgentRequest(BaseModel):
     """Request to execute an agent."""
 
-    input_data: Dict[str, Any]
-    timeout: Optional[int] = None
+    input_data: dict[str, Any]
+    timeout: int | None = None
 
 
 class AgentResponse(BaseModel):
@@ -82,7 +83,7 @@ class AgentResponse(BaseModel):
     blueprint: str
     status: str
     created_at: str
-    config: Dict[str, Any]
+    config: dict[str, Any]
 
 
 class ExecutionResponse(BaseModel):
@@ -91,10 +92,10 @@ class ExecutionResponse(BaseModel):
     agent_id: str
     execution_id: str
     status: str
-    output: Dict[str, Any]
+    output: dict[str, Any]
     steps_count: int
     duration_ms: int
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class BlueprintResponse(BaseModel):
@@ -103,14 +104,14 @@ class BlueprintResponse(BaseModel):
     name: str
     description: str
     version: str
-    required_tools: List[str]
-    default_config: Dict[str, Any]
+    required_tools: list[str]
+    default_config: dict[str, Any]
 
 
-@router.get("/blueprints", response_model=List[BlueprintResponse])
+@router.get("/blueprints", response_model=list[BlueprintResponse])
 async def list_blueprints(
     registry: AgentRegistry = Depends(get_registry),
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """List all available agent blueprints."""
     return registry.list_blueprints()
 
@@ -119,7 +120,7 @@ async def list_blueprints(
 async def get_blueprint(
     blueprint_name: str,
     registry: AgentRegistry = Depends(get_registry),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get a specific blueprint by name."""
     blueprint = registry.get_blueprint(blueprint_name)
     if not blueprint:
@@ -136,7 +137,7 @@ async def create_agent(
     registry: AgentRegistry = Depends(get_registry),
     tenant_manager: TenantManager = Depends(get_tenant_manager),
     audit_logger: AuditLogger = Depends(get_audit_logger),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a new agent from a blueprint."""
     tenant = tenant_manager.get_tenant(request.tenant_id)
     if not tenant:
@@ -191,25 +192,23 @@ async def create_agent(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
-        )
+        ) from e
 
 
-@router.get("", response_model=List[AgentResponse])
+@router.get("", response_model=list[AgentResponse])
 async def list_agents(
-    tenant_id: Optional[str] = Query(None),
-    blueprint_name: Optional[str] = Query(None),
-    status_filter: Optional[str] = Query(None, alias="status"),
+    tenant_id: str | None = Query(None),
+    blueprint_name: str | None = Query(None),
+    status_filter: str | None = Query(None, alias="status"),
     limit: int = Query(50, le=100),
     offset: int = Query(0, ge=0),
     registry: AgentRegistry = Depends(get_registry),
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """List agents with optional filters."""
     agent_status = None
     if status_filter:
-        try:
+        with contextlib.suppress(ValueError):
             agent_status = AgentStatus(status_filter)
-        except ValueError:
-            pass
 
     agents = registry.list_agents(
         tenant_id=tenant_id,
@@ -224,7 +223,7 @@ async def list_agents(
 async def get_agent(
     agent_id: str,
     registry: AgentRegistry = Depends(get_registry),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get a specific agent by ID."""
     agent = registry.get_agent(agent_id)
     if not agent:
@@ -286,7 +285,7 @@ async def execute_agent(
     executor: AgentExecutor = Depends(get_executor),
     tenant_manager: TenantManager = Depends(get_tenant_manager),
     registry: AgentRegistry = Depends(get_registry),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Execute an agent with the given input."""
     agent = registry.get_agent(agent_id)
     if not agent:
@@ -336,7 +335,7 @@ async def execute_agent(
 async def get_agent_state(
     agent_id: str,
     registry: AgentRegistry = Depends(get_registry),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get the current state of an agent."""
     agent = registry.get_agent(agent_id)
     if not agent:
@@ -356,9 +355,9 @@ async def get_agent_state(
 
 @router.get("/stats/overview")
 async def get_agent_stats(
-    tenant_id: Optional[str] = Query(None),
+    tenant_id: str | None = Query(None),
     registry: AgentRegistry = Depends(get_registry),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get agent statistics."""
     stats = registry.get_stats()
 

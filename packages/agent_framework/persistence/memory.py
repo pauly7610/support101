@@ -5,7 +5,7 @@ Useful for development, testing, and single-instance deployments.
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .base import StateStore
 
@@ -18,10 +18,10 @@ class InMemoryStateStore(StateStore):
     """
 
     def __init__(self) -> None:
-        self._agent_states: Dict[str, Dict[str, Any]] = {}
-        self._hitl_requests: Dict[str, Dict[str, Any]] = {}
-        self._audit_events: List[Dict[str, Any]] = []
-        self._tenants: Dict[str, Dict[str, Any]] = {}
+        self._agent_states: dict[str, dict[str, Any]] = {}
+        self._hitl_requests: dict[str, dict[str, Any]] = {}
+        self._audit_events: list[dict[str, Any]] = []
+        self._tenants: dict[str, dict[str, Any]] = {}
 
     def _state_key(self, agent_id: str, execution_id: str) -> str:
         return f"{agent_id}:{execution_id}"
@@ -30,8 +30,8 @@ class InMemoryStateStore(StateStore):
         self,
         agent_id: str,
         execution_id: str,
-        state: Dict[str, Any],
-        ttl_seconds: Optional[int] = None,
+        state: dict[str, Any],
+        ttl_seconds: int | None = None,
     ) -> bool:
         key = self._state_key(agent_id, execution_id)
         self._agent_states[key] = {
@@ -46,7 +46,7 @@ class InMemoryStateStore(StateStore):
         self,
         agent_id: str,
         execution_id: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         key = self._state_key(agent_id, execution_id)
         data = self._agent_states.get(key)
         return data.get("state") if data else None
@@ -66,7 +66,7 @@ class InMemoryStateStore(StateStore):
         self,
         agent_id: str,
         limit: int = 100,
-    ) -> List[str]:
+    ) -> list[str]:
         executions = [
             data["execution_id"]
             for key, data in self._agent_states.items()
@@ -77,8 +77,8 @@ class InMemoryStateStore(StateStore):
     async def save_hitl_request(
         self,
         request_id: str,
-        request_data: Dict[str, Any],
-        ttl_seconds: Optional[int] = None,
+        request_data: dict[str, Any],
+        ttl_seconds: int | None = None,
     ) -> bool:
         self._hitl_requests[request_id] = {
             **request_data,
@@ -89,13 +89,13 @@ class InMemoryStateStore(StateStore):
     async def get_hitl_request(
         self,
         request_id: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         return self._hitl_requests.get(request_id)
 
     async def update_hitl_request(
         self,
         request_id: str,
-        updates: Dict[str, Any],
+        updates: dict[str, Any],
     ) -> bool:
         if request_id not in self._hitl_requests:
             return False
@@ -105,10 +105,10 @@ class InMemoryStateStore(StateStore):
 
     async def list_hitl_requests(
         self,
-        tenant_id: Optional[str] = None,
-        status: Optional[str] = None,
+        tenant_id: str | None = None,
+        status: str | None = None,
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         results = list(self._hitl_requests.values())
 
         if tenant_id:
@@ -121,7 +121,7 @@ class InMemoryStateStore(StateStore):
     async def save_audit_event(
         self,
         event_id: str,
-        event_data: Dict[str, Any],
+        event_data: dict[str, Any],
     ) -> bool:
         self._audit_events.append(
             {
@@ -133,14 +133,14 @@ class InMemoryStateStore(StateStore):
 
     async def query_audit_events(
         self,
-        tenant_id: Optional[str] = None,
-        agent_id: Optional[str] = None,
-        event_type: Optional[str] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        tenant_id: str | None = None,
+        agent_id: str | None = None,
+        event_type: str | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         results = self._audit_events.copy()
 
         if tenant_id:
@@ -156,7 +156,7 @@ class InMemoryStateStore(StateStore):
     async def save_tenant(
         self,
         tenant_id: str,
-        tenant_data: Dict[str, Any],
+        tenant_data: dict[str, Any],
     ) -> bool:
         self._tenants[tenant_id] = tenant_data
         return True
@@ -164,14 +164,14 @@ class InMemoryStateStore(StateStore):
     async def get_tenant(
         self,
         tenant_id: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         return self._tenants.get(tenant_id)
 
     async def list_tenants(
         self,
-        status: Optional[str] = None,
+        status: str | None = None,
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         results = list(self._tenants.values())
         if status:
             results = [t for t in results if t.get("status") == status]

@@ -10,10 +10,11 @@ Provides comprehensive audit trails for:
 """
 
 import asyncio
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Optional
 from uuid import uuid4
 
 
@@ -61,22 +62,22 @@ class AuditEvent:
     event_type: AuditEventType = AuditEventType.AGENT_CREATED
     timestamp: datetime = field(default_factory=datetime.utcnow)
 
-    agent_id: Optional[str] = None
-    tenant_id: Optional[str] = None
-    user_id: Optional[str] = None
-    execution_id: Optional[str] = None
+    agent_id: str | None = None
+    tenant_id: str | None = None
+    user_id: str | None = None
+    execution_id: str | None = None
 
-    resource: Optional[str] = None
-    action: Optional[str] = None
-    outcome: Optional[str] = None
+    resource: str | None = None
+    action: str | None = None
+    outcome: str | None = None
 
-    details: Dict[str, Any] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
+    ip_address: str | None = None
+    user_agent: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize event for storage."""
         return {
             "event_id": self.event_id,
@@ -121,10 +122,10 @@ class AuditLogger:
         if self._initialized:
             return
 
-        self._events: List[AuditEvent] = []
+        self._events: list[AuditEvent] = []
         self._max_events: int = 10000
-        self._storage_backends: List[Callable[[AuditEvent], Any]] = []
-        self._event_handlers: Dict[AuditEventType, List[Callable]] = {}
+        self._storage_backends: list[Callable[[AuditEvent], Any]] = []
+        self._event_handlers: dict[AuditEventType, list[Callable]] = {}
         self._retention_days: int = 90
         self._initialized = True
 
@@ -181,8 +182,8 @@ class AuditLogger:
         event_type: AuditEventType,
         agent_id: str,
         tenant_id: str,
-        details: Optional[Dict[str, Any]] = None,
-        user_id: Optional[str] = None,
+        details: dict[str, Any] | None = None,
+        user_id: str | None = None,
     ) -> str:
         """Convenience method for logging agent-related events."""
         event = AuditEvent(
@@ -200,7 +201,7 @@ class AuditLogger:
         agent_id: str,
         tenant_id: str,
         execution_id: str,
-        details: Optional[Dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ) -> str:
         """Convenience method for logging execution events."""
         event = AuditEvent(
@@ -221,7 +222,7 @@ class AuditLogger:
         execution_id: str,
         action: str,
         outcome: str,
-        details: Optional[Dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ) -> str:
         """Log human-in-the-loop interactions."""
         event = AuditEvent(
@@ -239,13 +240,13 @@ class AuditLogger:
     async def log_security_event(
         self,
         event_type: AuditEventType,
-        agent_id: Optional[str],
+        agent_id: str | None,
         tenant_id: str,
         resource: str,
         action: str,
         outcome: str,
-        ip_address: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
+        ip_address: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> str:
         """Log security-related events."""
         event = AuditEvent(
@@ -262,15 +263,15 @@ class AuditLogger:
 
     def query(
         self,
-        tenant_id: Optional[str] = None,
-        agent_id: Optional[str] = None,
-        event_type: Optional[AuditEventType] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-        user_id: Optional[str] = None,
+        tenant_id: str | None = None,
+        agent_id: str | None = None,
+        event_type: AuditEventType | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        user_id: str | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[AuditEvent]:
+    ) -> list[AuditEvent]:
         """
         Query audit events with filters.
 
@@ -315,7 +316,7 @@ class AuditLogger:
         self,
         agent_id: str,
         limit: int = 50,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get complete history for an agent."""
         events = self.query(agent_id=agent_id, limit=limit)
         return [e.to_dict() for e in events]
@@ -323,7 +324,7 @@ class AuditLogger:
     def get_execution_trail(
         self,
         execution_id: str,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get complete audit trail for an execution."""
         events = [e for e in self._events if e.execution_id == execution_id]
         events = sorted(events, key=lambda e: e.timestamp)
@@ -331,10 +332,10 @@ class AuditLogger:
 
     def get_human_interactions(
         self,
-        tenant_id: Optional[str] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-    ) -> List[Dict[str, Any]]:
+        tenant_id: str | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+    ) -> list[dict[str, Any]]:
         """Get all human-in-the-loop interactions."""
         human_event_types = {
             AuditEventType.HUMAN_FEEDBACK_REQUESTED,
@@ -358,9 +359,9 @@ class AuditLogger:
 
     def get_security_events(
         self,
-        tenant_id: Optional[str] = None,
+        tenant_id: str | None = None,
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get security-related events."""
         security_types = {
             AuditEventType.SECURITY_VIOLATION,
@@ -379,14 +380,14 @@ class AuditLogger:
 
     def get_stats(
         self,
-        tenant_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        tenant_id: str | None = None,
+    ) -> dict[str, Any]:
         """Get audit statistics."""
         events = self._events
         if tenant_id:
             events = [e for e in events if e.tenant_id == tenant_id]
 
-        event_counts: Dict[str, int] = {}
+        event_counts: dict[str, int] = {}
         for event in events:
             event_type = event.event_type.value
             event_counts[event_type] = event_counts.get(event_type, 0) + 1
@@ -401,7 +402,7 @@ class AuditLogger:
     def export(
         self,
         format: str = "json",
-        tenant_id: Optional[str] = None,
+        tenant_id: str | None = None,
     ) -> Any:
         """Export audit events."""
         events = self._events
@@ -424,7 +425,7 @@ class AuditLogger:
         else:
             raise ValueError(f"Unsupported export format: {format}")
 
-    def clear(self, tenant_id: Optional[str] = None) -> int:
+    def clear(self, tenant_id: str | None = None) -> int:
         """Clear audit events (for testing or retention)."""
         if tenant_id:
             original_count = len(self._events)

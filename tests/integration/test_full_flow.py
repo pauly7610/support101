@@ -113,16 +113,20 @@ class TestActivityStream(unittest.TestCase):
 
         stream = ActivityStream()
 
-        stream.add_event({
-            "event_type": "ticket_created",
-            "tenant_id": "tenant-a",
-            "data": {"ticket_id": "A-001"},
-        })
-        stream.add_event({
-            "event_type": "ticket_created",
-            "tenant_id": "tenant-b",
-            "data": {"ticket_id": "B-001"},
-        })
+        stream.add_event(
+            {
+                "event_type": "ticket_created",
+                "tenant_id": "tenant-a",
+                "data": {"ticket_id": "A-001"},
+            }
+        )
+        stream.add_event(
+            {
+                "event_type": "ticket_created",
+                "tenant_id": "tenant-b",
+                "data": {"ticket_id": "B-001"},
+            }
+        )
 
         # Both events should be stored (tenant isolation is at query level)
         self.assertTrue(True)  # Stream doesn't crash with multiple tenants
@@ -311,12 +315,14 @@ class TestMCPServer(unittest.TestCase):
         from packages.agent_framework.mcp_server import server
 
         response = asyncio.get_event_loop().run_until_complete(
-            server.handle_request({
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "initialize",
-                "params": {},
-            })
+            server.handle_request(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "initialize",
+                    "params": {},
+                }
+            )
         )
         self.assertEqual(response["id"], 1)
         self.assertIn("protocolVersion", response["result"])
@@ -328,12 +334,14 @@ class TestMCPServer(unittest.TestCase):
         from packages.agent_framework.mcp_server import server
 
         response = asyncio.get_event_loop().run_until_complete(
-            server.handle_request({
-                "jsonrpc": "2.0",
-                "id": 2,
-                "method": "tools/list",
-                "params": {},
-            })
+            server.handle_request(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "tools/list",
+                    "params": {},
+                }
+            )
         )
         tools = response["result"]["tools"]
         self.assertEqual(len(tools), 8)
@@ -343,12 +351,14 @@ class TestMCPServer(unittest.TestCase):
         from packages.agent_framework.mcp_server import server
 
         response = asyncio.get_event_loop().run_until_complete(
-            server.handle_request({
-                "jsonrpc": "2.0",
-                "id": 3,
-                "method": "ping",
-                "params": {},
-            })
+            server.handle_request(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 3,
+                    "method": "ping",
+                    "params": {},
+                }
+            )
         )
         self.assertEqual(response["id"], 3)
 
@@ -357,12 +367,14 @@ class TestMCPServer(unittest.TestCase):
         from packages.agent_framework.mcp_server import server
 
         response = asyncio.get_event_loop().run_until_complete(
-            server.handle_request({
-                "jsonrpc": "2.0",
-                "id": 4,
-                "method": "unknown/method",
-                "params": {},
-            })
+            server.handle_request(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 4,
+                    "method": "unknown/method",
+                    "params": {},
+                }
+            )
         )
         self.assertIn("error", response)
 

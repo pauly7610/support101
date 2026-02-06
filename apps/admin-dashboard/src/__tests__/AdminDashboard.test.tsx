@@ -1,6 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import React from 'react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AdminDashboard from '../pages/index';
 
 const mockCostData = {
@@ -87,15 +86,11 @@ describe('AdminDashboard', () => {
       expect(globalThis.fetch).toHaveBeenCalledTimes(3);
     });
 
-    expect(globalThis.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/v1/analytics/costs'),
-    );
+    expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('/v1/analytics/costs'));
     expect(globalThis.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/v1/governance/dashboard'),
     );
-    expect(globalThis.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/v1/voice/status'),
-    );
+    expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('/v1/voice/status'));
   });
 
   it('should display overview metrics after data loads', async () => {

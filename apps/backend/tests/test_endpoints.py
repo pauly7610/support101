@@ -30,7 +30,10 @@ async def test_protected_endpoint_expired_token(async_client):
     from apps.backend.app.auth.jwt import ALGORITHM, SECRET_KEY
 
     expired = jwt.encode(
-        {"sub": "protecteduser", "exp": datetime.datetime.utcnow() - datetime.timedelta(seconds=1)},
+        {
+            "sub": "protecteduser",
+            "exp": datetime.datetime.utcnow() - datetime.timedelta(seconds=1),
+        },
         SECRET_KEY,
         algorithm=ALGORITHM,
     )

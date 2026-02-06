@@ -14,7 +14,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
 logger = logging.getLogger(__name__)
@@ -41,11 +41,11 @@ class GoldenPath:
     category: str = ""
     input_query: str = ""
     resolution: str = ""
-    steps_taken: List[str] = field(default_factory=list)
-    articles_used: List[str] = field(default_factory=list)
+    steps_taken: list[str] = field(default_factory=list)
+    articles_used: list[str] = field(default_factory=list)
     confidence: float = 0.0
     outcome: FeedbackOutcome = FeedbackOutcome.APPROVED
-    approved_by: Optional[str] = None
+    approved_by: str | None = None
     tenant_id: str = ""
     success_count: int = 1
     failure_count: int = 0
@@ -57,7 +57,7 @@ class GoldenPath:
         total = self.success_count + self.failure_count
         return self.success_count / total if total > 0 else 0.0
 
-    def to_document(self) -> Dict[str, Any]:
+    def to_document(self) -> dict[str, Any]:
         """Convert to a document suitable for vector store upsert."""
         content = (
             f"Resolution for: {self.input_query}\n\n"
@@ -113,16 +113,16 @@ class FeedbackCollector:
 
     def __init__(
         self,
-        vector_store: Optional[Any] = None,
-        event_bus: Optional[Any] = None,
-        audit_logger: Optional[Any] = None,
-        activity_graph: Optional[Any] = None,
+        vector_store: Any | None = None,
+        event_bus: Any | None = None,
+        audit_logger: Any | None = None,
+        activity_graph: Any | None = None,
     ) -> None:
         self._vs = vector_store
         self._event_bus = event_bus
         self._audit_logger = audit_logger
         self._activity_graph = activity_graph
-        self._golden_paths: Dict[str, GoldenPath] = {}
+        self._golden_paths: dict[str, GoldenPath] = {}
         self._started = False
 
     @property
@@ -136,9 +136,7 @@ class FeedbackCollector:
         try:
             from ..realtime.events import EventType
 
-            self._event_bus.subscribe(
-                EventType.HITL_REQUEST_RESPONDED, self._on_hitl_responded
-            )
+            self._event_bus.subscribe(EventType.HITL_REQUEST_RESPONDED, self._on_hitl_responded)
             self._started = True
             logger.info("FeedbackCollector: subscribed to HITL events")
         except Exception as e:
@@ -174,15 +172,13 @@ class FeedbackCollector:
                 tenant_id=tenant_id,
             )
 
-    def _extract_trace(self, request_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_trace(self, request_data: dict[str, Any]) -> dict[str, Any]:
         """Extract execution trace from HITL request data."""
         context = request_data.get("context", {})
         agent_state = request_data.get("agent_state_snapshot", {})
         return {
             "input_query": context.get("input_data", {}).get("query", ""),
-            "steps": [
-                s.get("action", "") for s in agent_state.get("intermediate_steps", [])
-            ],
+            "steps": [s.get("action", "") for s in agent_state.get("intermediate_steps", [])],
             "output": context.get("output_data", {}),
             "agent_blueprint": request_data.get("metadata", {}).get("blueprint", ""),
             "category": request_data.get("metadata", {}).get("category", "general"),
@@ -192,10 +188,10 @@ class FeedbackCollector:
 
     async def record_success(
         self,
-        trace: Dict[str, Any],
+        trace: dict[str, Any],
         approved_by: str = "",
         tenant_id: str = "",
-    ) -> Optional[GoldenPath]:
+    ) -> GoldenPath | None:
         """Record a successful resolution as a golden path."""
         output = trace.get("output", {})
         resolution = output.get("response", "") if isinstance(output, dict) else str(output)
@@ -237,10 +233,10 @@ class FeedbackCollector:
 
     async def record_failure(
         self,
-        trace: Dict[str, Any],
+        trace: dict[str, Any],
         reason: str = "",
         tenant_id: str = "",
-    ) -> Optional[GoldenPath]:
+    ) -> GoldenPath | None:
         """Record a failed resolution to downrank or flag gaps."""
         output = trace.get("output", {})
         resolution = output.get("response", "") if isinstance(output, dict) else str(output)
@@ -282,11 +278,11 @@ class FeedbackCollector:
 
     async def record_correction(
         self,
-        original_trace: Dict[str, Any],
+        original_trace: dict[str, Any],
         corrected_output: str,
         corrected_by: str = "",
         tenant_id: str = "",
-    ) -> Optional[GoldenPath]:
+    ) -> GoldenPath | None:
         """Record a human-corrected resolution as the golden path."""
         gp = GoldenPath(
             agent_blueprint=original_trace.get("agent_blueprint", ""),
@@ -327,9 +323,9 @@ class FeedbackCollector:
         self,
         ticket_id: str,
         score: float,
-        trace: Dict[str, Any],
+        trace: dict[str, Any],
         tenant_id: str = "",
-    ) -> Optional[GoldenPath]:
+    ) -> GoldenPath | None:
         """Record customer satisfaction signal."""
         if score >= 4.0:
             return await self.record_success(trace=trace, tenant_id=tenant_id)
@@ -345,7 +341,7 @@ class FeedbackCollector:
         tenant_id: str = "",
         top_k: int = 3,
         min_success_rate: float = 0.5,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search for relevant golden paths for a query."""
         if not self.available:
             return []
@@ -353,9 +349,11 @@ class FeedbackCollector:
         results = await self._vs.search(
             query=query,
             top_k=top_k * 2,
-            filter_metadata={"type": "golden_path", "tenant_id": tenant_id}
-            if tenant_id
-            else {"type": "golden_path"},
+            filter_metadata=(
+                {"type": "golden_path", "tenant_id": tenant_id}
+                if tenant_id
+                else {"type": "golden_path"}
+            ),
         )
 
         filtered = []
@@ -369,7 +367,7 @@ class FeedbackCollector:
 
         return filtered
 
-    def _find_existing(self, gp: GoldenPath) -> Optional[GoldenPath]:
+    def _find_existing(self, gp: GoldenPath) -> GoldenPath | None:
         """Find an existing golden path by fingerprint."""
         return self._golden_paths.get(gp.fingerprint())
 
@@ -411,9 +409,7 @@ class FeedbackCollector:
         except Exception as e:
             logger.debug("FeedbackCollector: graph update failed: %s", e)
 
-    async def _log_feedback(
-        self, gp: GoldenPath, outcome_type: str, reason: str = ""
-    ) -> None:
+    async def _log_feedback(self, gp: GoldenPath, outcome_type: str, reason: str = "") -> None:
         """Log feedback event to audit logger."""
         if self._audit_logger is None:
             return
@@ -438,16 +434,20 @@ class FeedbackCollector:
         except Exception as e:
             logger.debug("FeedbackCollector: audit log failed: %s", e)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get feedback loop statistics."""
         total = len(self._golden_paths)
-        approved = sum(1 for gp in self._golden_paths.values() if gp.outcome == FeedbackOutcome.APPROVED)
-        corrected = sum(1 for gp in self._golden_paths.values() if gp.outcome == FeedbackOutcome.CORRECTED)
-        rejected = sum(1 for gp in self._golden_paths.values() if gp.outcome == FeedbackOutcome.REJECTED)
+        approved = sum(
+            1 for gp in self._golden_paths.values() if gp.outcome == FeedbackOutcome.APPROVED
+        )
+        corrected = sum(
+            1 for gp in self._golden_paths.values() if gp.outcome == FeedbackOutcome.CORRECTED
+        )
+        rejected = sum(
+            1 for gp in self._golden_paths.values() if gp.outcome == FeedbackOutcome.REJECTED
+        )
         avg_rate = (
-            sum(gp.success_rate for gp in self._golden_paths.values()) / total
-            if total > 0
-            else 0.0
+            sum(gp.success_rate for gp in self._golden_paths.values()) / total if total > 0 else 0.0
         )
         return {
             "total_golden_paths": total,

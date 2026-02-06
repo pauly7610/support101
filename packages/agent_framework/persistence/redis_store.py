@@ -6,7 +6,7 @@ Provides distributed, persistent state storage with TTL support.
 
 import json
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .base import StateStore
 
@@ -26,11 +26,11 @@ class RedisStateStore(StateStore):
     def __init__(
         self,
         redis_url: str = "redis://localhost:6379",
-        key_prefix: Optional[str] = None,
+        key_prefix: str | None = None,
     ) -> None:
         self._redis_url = redis_url
         self._prefix = key_prefix or self.KEY_PREFIX
-        self._client: Optional[Any] = None
+        self._client: Any | None = None
 
     async def _get_client(self) -> Any:
         """Lazy initialization of Redis client."""
@@ -41,8 +41,8 @@ class RedisStateStore(StateStore):
                 self._client = redis.from_url(self._redis_url, decode_responses=True)
             except ImportError:
                 raise ImportError(
-                    "redis package required for RedisStateStore. " "Install with: pip install redis"
-                )
+                    "redis package required for RedisStateStore. Install with: pip install redis"
+                ) from None
         return self._client
 
     def _key(self, *parts: str) -> str:
@@ -53,8 +53,8 @@ class RedisStateStore(StateStore):
         self,
         agent_id: str,
         execution_id: str,
-        state: Dict[str, Any],
-        ttl_seconds: Optional[int] = None,
+        state: dict[str, Any],
+        ttl_seconds: int | None = None,
     ) -> bool:
         client = await self._get_client()
         key = self._key("state", agent_id, execution_id)
@@ -79,7 +79,7 @@ class RedisStateStore(StateStore):
         self,
         agent_id: str,
         execution_id: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         client = await self._get_client()
         key = self._key("state", agent_id, execution_id)
         data = await client.get(key)
@@ -104,7 +104,7 @@ class RedisStateStore(StateStore):
         self,
         agent_id: str,
         limit: int = 100,
-    ) -> List[str]:
+    ) -> list[str]:
         client = await self._get_client()
         key = self._key("agent_executions", agent_id)
         members = await client.smembers(key)
@@ -113,8 +113,8 @@ class RedisStateStore(StateStore):
     async def save_hitl_request(
         self,
         request_id: str,
-        request_data: Dict[str, Any],
-        ttl_seconds: Optional[int] = None,
+        request_data: dict[str, Any],
+        ttl_seconds: int | None = None,
     ) -> bool:
         client = await self._get_client()
         key = self._key("hitl", request_id)
@@ -141,7 +141,7 @@ class RedisStateStore(StateStore):
     async def get_hitl_request(
         self,
         request_id: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         client = await self._get_client()
         key = self._key("hitl", request_id)
         data = await client.get(key)
@@ -150,7 +150,7 @@ class RedisStateStore(StateStore):
     async def update_hitl_request(
         self,
         request_id: str,
-        updates: Dict[str, Any],
+        updates: dict[str, Any],
     ) -> bool:
         client = await self._get_client()
         key = self._key("hitl", request_id)
@@ -178,10 +178,10 @@ class RedisStateStore(StateStore):
 
     async def list_hitl_requests(
         self,
-        tenant_id: Optional[str] = None,
-        status: Optional[str] = None,
+        tenant_id: str | None = None,
+        status: str | None = None,
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         client = await self._get_client()
 
         if tenant_id and status:
@@ -212,7 +212,7 @@ class RedisStateStore(StateStore):
     async def save_audit_event(
         self,
         event_id: str,
-        event_data: Dict[str, Any],
+        event_data: dict[str, Any],
     ) -> bool:
         client = await self._get_client()
         key = self._key("audit", event_id)
@@ -235,14 +235,14 @@ class RedisStateStore(StateStore):
 
     async def query_audit_events(
         self,
-        tenant_id: Optional[str] = None,
-        agent_id: Optional[str] = None,
-        event_type: Optional[str] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        tenant_id: str | None = None,
+        agent_id: str | None = None,
+        event_type: str | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         client = await self._get_client()
 
         if tenant_id:
@@ -279,7 +279,7 @@ class RedisStateStore(StateStore):
     async def save_tenant(
         self,
         tenant_id: str,
-        tenant_data: Dict[str, Any],
+        tenant_data: dict[str, Any],
     ) -> bool:
         client = await self._get_client()
         key = self._key("tenant", tenant_id)
@@ -294,7 +294,7 @@ class RedisStateStore(StateStore):
     async def get_tenant(
         self,
         tenant_id: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         client = await self._get_client()
         key = self._key("tenant", tenant_id)
         data = await client.get(key)
@@ -302,9 +302,9 @@ class RedisStateStore(StateStore):
 
     async def list_tenants(
         self,
-        status: Optional[str] = None,
+        status: str | None = None,
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         client = await self._get_client()
 
         if status:
@@ -333,7 +333,7 @@ class RedisStateStore(StateStore):
             await self._client.close()
             self._client = None
 
-    async def publish(self, channel: str, message: Dict[str, Any]) -> int:
+    async def publish(self, channel: str, message: dict[str, Any]) -> int:
         """Publish a message to a Redis channel (for real-time updates)."""
         client = await self._get_client()
         return await client.publish(

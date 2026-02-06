@@ -8,7 +8,6 @@ Endpoints:
 """
 
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
@@ -31,8 +30,8 @@ router = APIRouter(prefix="/v1/voice", tags=["Voice I/O"])
 @router.post("/transcribe")
 async def transcribe_audio(
     file: UploadFile = File(..., description="Audio file to transcribe"),
-    language: Optional[str] = Form(None, description="ISO-639-1 language hint"),
-    prompt: Optional[str] = Form(None, description="Transcription style prompt"),
+    language: str | None = Form(None, description="ISO-639-1 language hint"),
+    prompt: str | None = Form(None, description="Transcription style prompt"),
     _user=Depends(get_current_user),
     _limiter: None = Depends(RateLimiter(times=10, seconds=60)),
 ):
@@ -61,9 +60,9 @@ async def transcribe_audio(
             "processing_time_ms": round(result.processing_time_ms, 1),
         }
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except RuntimeError as e:
-        raise HTTPException(status_code=502, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e)) from e
 
 
 @router.post("/synthesize")
@@ -110,15 +109,15 @@ async def synthesize_speech(
             },
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except RuntimeError as e:
-        raise HTTPException(status_code=502, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e)) from e
 
 
 @router.post("/chat")
 async def voice_chat(
     file: UploadFile = File(..., description="Audio file with customer question"),
-    language: Optional[str] = Form(None, description="ISO-639-1 language hint"),
+    language: str | None = Form(None, description="ISO-639-1 language hint"),
     voice: str = Form("nova", description="TTS voice for response"),
     text_only: bool = Form(False, description="Return text only (no audio synthesis)"),
     _user=Depends(get_current_user),
@@ -192,9 +191,9 @@ async def voice_chat(
         }
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except RuntimeError as e:
-        raise HTTPException(status_code=502, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e)) from e
 
 
 @router.get("/status")

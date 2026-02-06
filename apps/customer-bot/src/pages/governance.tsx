@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
@@ -96,7 +96,9 @@ function SeverityBadge({ type }: { type: string }) {
   };
   const c = config[type] || { bg: 'bg-gray-100', text: 'text-gray-800' };
   return (
-    <span className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${c.bg} ${c.text}`}>
+    <span
+      className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${c.bg} ${c.text}`}
+    >
       {type.replace(/_/g, ' ')}
     </span>
   );
@@ -240,8 +242,7 @@ export default function GovernanceDashboard() {
                 resolved
               </div>
               <div>
-                <span className="font-semibold text-red-600">{dashboard.hitl.expired}</span>{' '}
-                expired
+                <span className="font-semibold text-red-600">{dashboard.hitl.expired}</span> expired
               </div>
             </div>
           </div>
@@ -249,7 +250,11 @@ export default function GovernanceDashboard() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-4 border-b border-gray-200" role="tablist" aria-label="Dashboard sections">
+      <div
+        className="flex gap-1 mb-4 border-b border-gray-200"
+        role="tablist"
+        aria-label="Dashboard sections"
+      >
         {(['overview', 'agents', 'audit'] as const).map((tab) => (
           <button
             key={tab}
@@ -281,9 +286,7 @@ export default function GovernanceDashboard() {
                 </div>
                 <div>
                   <div className="text-xs text-gray-500">Active Tenants</div>
-                  <div className="text-lg font-bold text-green-600">
-                    {dashboard.tenants.active}
-                  </div>
+                  <div className="text-lg font-bold text-green-600">{dashboard.tenants.active}</div>
                 </div>
               </div>
             </div>
@@ -315,7 +318,7 @@ export default function GovernanceDashboard() {
           {agents.length === 0 ? (
             <div className="text-center py-12 text-gray-400 text-sm">No agents registered</div>
           ) : (
-            <table className="w-full text-sm" role="table" aria-label="Active agents">
+            <table className="w-full text-sm" aria-label="Active agents">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">

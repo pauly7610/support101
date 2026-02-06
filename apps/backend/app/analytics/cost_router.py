@@ -7,7 +7,7 @@ Endpoints:
 - POST /v1/analytics/costs/record   — Record a usage event (internal)
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from fastapi_limiter.depends import RateLimiter
@@ -22,7 +22,7 @@ router = APIRouter(prefix="/costs", tags=["Cost Tracking"])
 async def get_cost_dashboard(
     _user=Depends(get_current_user),
     _limiter: None = Depends(RateLimiter(times=30, seconds=60)),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get the LLM cost dashboard with spend, budget, and breakdowns."""
     tracker = get_cost_tracker()
     return tracker.get_dashboard()
@@ -33,7 +33,7 @@ async def get_tenant_costs(
     tenant_id: str = Query(..., description="Tenant ID to get costs for"),
     _user=Depends(get_current_user),
     _limiter: None = Depends(RateLimiter(times=30, seconds=60)),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get cost breakdown for a specific tenant."""
     tracker = get_cost_tracker()
     return tracker.get_tenant_usage(tenant_id)
@@ -50,7 +50,7 @@ async def record_usage(
     agent_id: str = Query("", description="Agent ID"),
     _user=Depends(get_current_user),
     _limiter: None = Depends(RateLimiter(times=60, seconds=60)),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Record an LLM usage event. Typically called internally by the RAG chain."""
     tracker = get_cost_tracker()
     record = tracker.record_usage(

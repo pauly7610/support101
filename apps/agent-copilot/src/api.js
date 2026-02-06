@@ -43,7 +43,7 @@ export async function adminGdprDelete(user_id) {
  */
 export async function getEscalationAnalytics(params = {}) {
   const q = new URLSearchParams(params).toString();
-  const res = await fetch(`${BACKEND_URL}/v1/analytics/escalations${q ? '?' + q : ''}`, {
+  const res = await fetch(`${BACKEND_URL}/v1/analytics/escalations${q ? `?${q}` : ''}`, {
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
   });
@@ -58,7 +58,7 @@ export async function getEscalationAnalytics(params = {}) {
  */
 export async function getEscalationsByAgent(params = {}) {
   const q = new URLSearchParams(params).toString();
-  const res = await fetch(`${BACKEND_URL}/v1/analytics/escalations/by-agent${q ? '?' + q : ''}`, {
+  const res = await fetch(`${BACKEND_URL}/v1/analytics/escalations/by-agent${q ? `?${q}` : ''}`, {
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
   });
@@ -73,10 +73,13 @@ export async function getEscalationsByAgent(params = {}) {
  */
 export async function getEscalationsByCategory(params = {}) {
   const q = new URLSearchParams(params).toString();
-  const res = await fetch(`${BACKEND_URL}/v1/analytics/escalations/by-category${q ? '?' + q : ''}`, {
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-  });
+  const res = await fetch(
+    `${BACKEND_URL}/v1/analytics/escalations/by-category${q ? `?${q}` : ''}`,
+    {
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    },
+  );
   if (!res.ok) throw new Error('Failed to fetch escalations by category');
   return res.json();
 }

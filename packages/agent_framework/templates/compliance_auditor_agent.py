@@ -6,9 +6,10 @@ regulatory non-compliance, and security issues. Generates compliance
 reports and triggers remediation workflows.
 """
 
+import contextlib
 import json
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
@@ -135,9 +136,9 @@ class ComplianceAuditorAgent(BaseAgent):
     def __init__(
         self,
         config: AgentConfig,
-        llm: Optional[Any] = None,
-        policies: Optional[List[str]] = None,
-        evalai_tracer: Optional[Any] = None,
+        llm: Any | None = None,
+        policies: list[str] | None = None,
+        evalai_tracer: Any | None = None,
     ) -> None:
         super().__init__(config)
         self._llm = llm
@@ -151,14 +152,12 @@ class ComplianceAuditorAgent(BaseAgent):
         if self._initialized:
             return
         if self._llm is None:
-            try:
+            with contextlib.suppress(Exception):
                 self._llm = ChatOpenAI(temperature=0.1)
-            except Exception:
-                pass
         self._initialized = True
 
     @property
-    def llm(self) -> Optional[Any]:
+    def llm(self) -> Any | None:
         self._lazy_init()
         return self._llm
 
@@ -194,56 +193,76 @@ class ComplianceAuditorAgent(BaseAgent):
         )
 
     @llm_retry(max_attempts=3)
-    async def _scan_pii(self, content: str) -> Dict[str, Any]:
+    async def _scan_pii(self, content: str) -> dict[str, Any]:
         validated = ScanPIIInput(content=content)
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.PII_SCAN_PROMPT | self.llm
             result = await chain.ainvoke({"content": validated.content[:5000]})
-            timer.set_tokens(input_tokens=len(validated.content) // 4, output_tokens=len(result.content) // 4)
+            timer.set_tokens(
+                input_tokens=len(validated.content) // 4,
+                output_tokens=len(result.content) // 4,
+            )
         try:
             return json.loads(result.content)
         except json.JSONDecodeError:
-            return {"pii_found": False, "findings": [], "risk_score": 0, "data_categories": []}
+            return {
+                "pii_found": False,
+                "findings": [],
+                "risk_score": 0,
+                "data_categories": [],
+            }
 
     @llm_retry(max_attempts=3)
     async def _check_policy(
         self,
         action: str,
         response: str,
-        policies: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+        policies: list[str] | None = None,
+    ) -> dict[str, Any]:
         validated = CheckPolicyInput(action=action, response=response, policies=policies)
         active_policies = validated.policies or self._policies
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.POLICY_CHECK_PROMPT | self.llm
-            result = await chain.ainvoke({
-                "action": validated.action[:2000],
-                "response": validated.response[:3000],
-                "policies": ", ".join(active_policies),
-            })
-            timer.set_tokens(input_tokens=(len(validated.action) + len(validated.response)) // 4, output_tokens=len(result.content) // 4)
+            result = await chain.ainvoke(
+                {
+                    "action": validated.action[:2000],
+                    "response": validated.response[:3000],
+                    "policies": ", ".join(active_policies),
+                }
+            )
+            timer.set_tokens(
+                input_tokens=(len(validated.action) + len(validated.response)) // 4,
+                output_tokens=len(result.content) // 4,
+            )
         try:
             return json.loads(result.content)
         except json.JSONDecodeError:
-            return {"compliant": True, "violations": [], "warnings": [], "compliance_score": 50}
+            return {
+                "compliant": True,
+                "violations": [],
+                "warnings": [],
+                "compliance_score": 50,
+            }
 
     @llm_retry(max_attempts=3)
     async def _generate_report(
         self,
-        pii_results: Dict[str, Any],
-        policy_results: Dict[str, Any],
+        pii_results: dict[str, Any],
+        policy_results: dict[str, Any],
         scope: str = "",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         validated = GenerateReportInput(
             pii_results=pii_results, policy_results=policy_results, scope=scope
         )
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.REPORT_PROMPT | self.llm
-            result = await chain.ainvoke({
-                "pii_results": json.dumps(validated.pii_results, indent=2),
-                "policy_results": json.dumps(validated.policy_results, indent=2),
-                "scope": validated.scope or "Full agent interaction audit",
-            })
+            result = await chain.ainvoke(
+                {
+                    "pii_results": json.dumps(validated.pii_results, indent=2),
+                    "policy_results": json.dumps(validated.policy_results, indent=2),
+                    "scope": validated.scope or "Full agent interaction audit",
+                }
+            )
             timer.set_tokens(input_tokens=400, output_tokens=len(result.content) // 4)
         try:
             report = json.loads(result.content)
@@ -270,12 +289,14 @@ class ComplianceAuditorAgent(BaseAgent):
         self,
         violation_type: str,
         severity: str,
-        details: Dict[str, Any],
+        details: dict[str, Any],
         required_action: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         validated = TriggerRemediationInput(
-            violation_type=violation_type, severity=severity,
-            details=details, required_action=required_action,
+            violation_type=violation_type,
+            severity=severity,
+            details=details,
+            required_action=required_action,
         )
         await self._api.send_notification(
             channel="compliance",
@@ -300,7 +321,7 @@ class ComplianceAuditorAgent(BaseAgent):
             "timestamp": datetime.utcnow().isoformat(),
         }
 
-    async def plan(self, state: AgentState) -> Dict[str, Any]:
+    async def plan(self, state: AgentState) -> dict[str, Any]:
         step = state.current_step
 
         if step == 0:
@@ -325,7 +346,9 @@ class ComplianceAuditorAgent(BaseAgent):
             }
         elif step == 2:
             pii_results = state.intermediate_steps[0] if len(state.intermediate_steps) > 0 else {}
-            policy_results = state.intermediate_steps[1] if len(state.intermediate_steps) > 1 else {}
+            policy_results = (
+                state.intermediate_steps[1] if len(state.intermediate_steps) > 1 else {}
+            )
             return {
                 "action": "generate_report",
                 "action_input": {
@@ -336,16 +359,25 @@ class ComplianceAuditorAgent(BaseAgent):
             }
         elif step == 3:
             report = state.intermediate_steps[-1] if state.intermediate_steps else {}
-            if report.get("critical_findings", 0) > 0 or report.get("overall_status") == "non_compliant":
+            if (
+                report.get("critical_findings", 0) > 0
+                or report.get("overall_status") == "non_compliant"
+            ):
                 actions = report.get("required_actions", [])
                 immediate = [a for a in actions if a.get("deadline") == "immediate"]
                 return {
                     "action": "trigger_remediation",
                     "action_input": {
                         "violation_type": "compliance_breach",
-                        "severity": "critical" if report.get("critical_findings", 0) > 0 else "high",
+                        "severity": (
+                            "critical" if report.get("critical_findings", 0) > 0 else "high"
+                        ),
                         "details": report,
-                        "required_action": immediate[0].get("action", "Review and remediate") if immediate else "Review compliance report",
+                        "required_action": (
+                            immediate[0].get("action", "Review and remediate")
+                            if immediate
+                            else "Review compliance report"
+                        ),
                     },
                     "requires_approval": True,
                 }
@@ -353,7 +385,7 @@ class ComplianceAuditorAgent(BaseAgent):
 
         return {"action": "complete", "action_input": {}}
 
-    async def execute_step(self, state: AgentState, action: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute_step(self, state: AgentState, action: dict[str, Any]) -> dict[str, Any]:
         action_name = action.get("action")
         action_input = action.get("action_input", {})
 
@@ -397,11 +429,15 @@ class ComplianceAuditorAgent(BaseAgent):
     def should_continue(self, state: AgentState) -> bool:
         if state.current_step >= self.config.max_iterations:
             return False
-        if state.status in [AgentStatus.COMPLETED, AgentStatus.FAILED, AgentStatus.AWAITING_HUMAN]:
+        if state.status in [
+            AgentStatus.COMPLETED,
+            AgentStatus.FAILED,
+            AgentStatus.AWAITING_HUMAN,
+        ]:
             return False
-        if state.intermediate_steps and state.intermediate_steps[-1].get("action") == "complete":
-            return False
-        return True
+        return not (
+            state.intermediate_steps and state.intermediate_steps[-1].get("action") == "complete"
+        )
 
 
 ComplianceAuditorBlueprint = AgentBlueprint(

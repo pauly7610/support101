@@ -9,7 +9,7 @@ Falls back to stub responses when DB is unavailable.
 import logging
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,16 @@ _engine = None
 _session_factory = None
 
 try:
-    from sqlalchemy import Column, DateTime, Integer, String, Text, select, func, Boolean
+    from sqlalchemy import (
+        Boolean,
+        Column,
+        DateTime,
+        Integer,
+        String,
+        Text,
+        func,
+        select,
+    )
     from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
     from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -70,6 +79,7 @@ if _AVAILABLE:
         last_reviewed_at = Column(DateTime, nullable=True)
         created_at = Column(DateTime, default=datetime.utcnow)
         updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 else:
     Base = None
     TicketModel = None
@@ -131,8 +141,8 @@ class DatabaseService:
         subject: str,
         description: str = "",
         priority: str = "medium",
-        category: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        category: str | None = None,
+    ) -> dict[str, Any]:
         if not self.available:
             return {
                 "ticket_created": True,
@@ -164,7 +174,7 @@ class DatabaseService:
                 "timestamp": datetime.utcnow().isoformat(),
             }
 
-    async def get_ticket(self, ticket_id: str) -> Optional[Dict[str, Any]]:
+    async def get_ticket(self, ticket_id: str) -> dict[str, Any] | None:
         if not self.available:
             return None
         await self.initialize()
@@ -188,9 +198,7 @@ class DatabaseService:
                 "created_at": row.created_at.isoformat() if row.created_at else None,
             }
 
-    async def assign_ticket(
-        self, ticket_id: str, agent_id: str
-    ) -> Dict[str, Any]:
+    async def assign_ticket(self, ticket_id: str, agent_id: str) -> dict[str, Any]:
         if not self.available:
             return {
                 "assigned": True,
@@ -220,7 +228,7 @@ class DatabaseService:
 
     # ── Customers ────────────────────────────────────────────────────
 
-    async def get_customer_history(self, customer_id: str) -> Dict[str, Any]:
+    async def get_customer_history(self, customer_id: str) -> dict[str, Any]:
         if not self.available:
             return {
                 "customer_id": customer_id,
@@ -239,14 +247,16 @@ class DatabaseService:
             customer = customer_result.scalar_one_or_none()
 
             total_q = await session.execute(
-                select(func.count()).select_from(TicketModel).where(
-                    TicketModel.customer_id == customer_id
-                )
+                select(func.count())
+                .select_from(TicketModel)
+                .where(TicketModel.customer_id == customer_id)
             )
             total_tickets = total_q.scalar() or 0
 
             open_q = await session.execute(
-                select(func.count()).select_from(TicketModel).where(
+                select(func.count())
+                .select_from(TicketModel)
+                .where(
                     TicketModel.customer_id == customer_id,
                     TicketModel.status.in_(["open", "assigned", "in_progress"]),
                 )
@@ -269,8 +279,8 @@ class DatabaseService:
     # ── Knowledge Articles ───────────────────────────────────────────
 
     async def list_articles(
-        self, tenant_id: Optional[str] = None, limit: int = 50
-    ) -> List[Dict[str, Any]]:
+        self, tenant_id: str | None = None, limit: int = 50
+    ) -> list[dict[str, Any]]:
         if not self.available:
             return []
         await self.initialize()
@@ -288,23 +298,23 @@ class DatabaseService:
                     "content": r.content[:500],
                     "tags": r.tags,
                     "status": r.status,
-                    "last_reviewed_at": r.last_reviewed_at.isoformat() if r.last_reviewed_at else None,
+                    "last_reviewed_at": (
+                        r.last_reviewed_at.isoformat() if r.last_reviewed_at else None
+                    ),
                     "updated_at": r.updated_at.isoformat() if r.updated_at else None,
                 }
                 for r in rows
             ]
 
     async def update_article(
-        self, article_id: str, title: Optional[str] = None, content: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, article_id: str, title: str | None = None, content: str | None = None
+    ) -> dict[str, Any]:
         if not self.available:
             return {"updated": False, "article_id": article_id, "source": "stub"}
         await self.initialize()
         async with self._session() as session:
             result = await session.execute(
-                select(KnowledgeArticleModel).where(
-                    KnowledgeArticleModel.article_id == article_id
-                )
+                select(KnowledgeArticleModel).where(KnowledgeArticleModel.article_id == article_id)
             )
             article = result.scalar_one_or_none()
             if article:
@@ -325,7 +335,7 @@ class DatabaseService:
             await self._engine.dispose()
 
 
-_db_service: Optional[DatabaseService] = None
+_db_service: DatabaseService | None = None
 
 
 def get_database_service() -> DatabaseService:

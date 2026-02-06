@@ -10,13 +10,14 @@ list when Redis is unavailable.
 """
 
 import asyncio
+import contextlib
 import json
 import logging
 import os
-import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
 logger = logging.getLogger(__name__)
@@ -43,13 +44,13 @@ class ActivityEvent:
     event_id: str = field(default_factory=lambda: str(uuid4()))
     event_type: str = ""
     source: str = "internal"  # "internal" | "webhook" | "agent" | "system"
-    agent_id: Optional[str] = None
+    agent_id: str | None = None
     tenant_id: str = ""
-    data: Dict[str, Any] = field(default_factory=dict)
+    data: dict[str, Any] = field(default_factory=dict)
     timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_stream_entry(self) -> Dict[str, str]:
+    def to_stream_entry(self) -> dict[str, str]:
         """Serialize for Redis XADD (all values must be strings)."""
         return {
             "event_id": self.event_id,
@@ -63,8 +64,9 @@ class ActivityEvent:
         }
 
     @classmethod
-    def from_stream_entry(cls, entry: Dict[bytes, bytes]) -> "ActivityEvent":
+    def from_stream_entry(cls, entry: dict[bytes, bytes]) -> "ActivityEvent":
         """Deserialize from Redis XREAD result."""
+
         def _d(key: str) -> str:
             val = entry.get(key.encode(b"utf-8") if isinstance(key, str) else key, b"")
             return val.decode("utf-8") if isinstance(val, bytes) else str(val)
@@ -83,7 +85,7 @@ class ActivityEvent:
             metadata=json.loads(meta_str) if meta_str else {},
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "event_id": self.event_id,
             "event_type": self.event_type,
@@ -120,18 +122,18 @@ class ActivityStream:
 
     def __init__(
         self,
-        redis_url: Optional[str] = None,
+        redis_url: str | None = None,
         max_len: int = DEFAULT_MAX_LEN,
         group_name: str = DEFAULT_GROUP,
     ) -> None:
         self._redis_url = redis_url or os.getenv("REDIS_URL")
         self._max_len = max_len
         self._group_name = group_name
-        self._redis: Optional[Any] = None
+        self._redis: Any | None = None
         self._connected = False
-        self._fallback: List[ActivityEvent] = []
+        self._fallback: list[ActivityEvent] = []
         self._fallback_max = 5000
-        self._consumers: Dict[str, List[Callable]] = {}
+        self._consumers: dict[str, list[Callable]] = {}
 
     @property
     def available(self) -> bool:
@@ -165,10 +167,8 @@ class ActivityStream:
     async def disconnect(self) -> None:
         """Close Redis connection."""
         if self._redis is not None:
-            try:
+            with contextlib.suppress(Exception):
                 await self._redis.close()
-            except Exception:
-                pass
             self._redis = None
             self._connected = False
 
@@ -181,7 +181,7 @@ class ActivityStream:
         if not self.available:
             self._fallback.append(event)
             if len(self._fallback) > self._fallback_max:
-                self._fallback = self._fallback[-self._fallback_max:]
+                self._fallback = self._fallback[-self._fallback_max :]
             await self._notify_consumers(event)
             return event.event_id
 
@@ -200,7 +200,7 @@ class ActivityStream:
             self._fallback.append(event)
             return event.event_id
 
-    async def publish_many(self, events: List[ActivityEvent]) -> int:
+    async def publish_many(self, events: list[ActivityEvent]) -> int:
         """Publish multiple events. Returns count published."""
         count = 0
         for event in events:
@@ -214,7 +214,7 @@ class ActivityStream:
         count: int = 100,
         start: str = "0-0",
         end: str = "+",
-    ) -> List[ActivityEvent]:
+    ) -> list[ActivityEvent]:
         """Read events from a tenant's stream."""
         if not self.available:
             events = [e for e in self._fallback if e.tenant_id == tenant_id]
@@ -228,7 +228,7 @@ class ActivityStream:
             logger.warning("ActivityStream: read failed: %s", e)
             return []
 
-    async def read_latest(self, tenant_id: str, count: int = 50) -> List[ActivityEvent]:
+    async def read_latest(self, tenant_id: str, count: int = 50) -> list[ActivityEvent]:
         """Read the most recent events from a tenant's stream."""
         if not self.available:
             events = [e for e in self._fallback if e.tenant_id == tenant_id]
@@ -251,9 +251,7 @@ class ActivityStream:
 
         stream_key = self._stream_key(tenant_id)
         try:
-            await self._redis.xgroup_create(
-                stream_key, self._group_name, id="0", mkstream=True
-            )
+            await self._redis.xgroup_create(stream_key, self._group_name, id="0", mkstream=True)
             return True
         except Exception:
             return True  # group already exists
@@ -264,7 +262,7 @@ class ActivityStream:
         consumer_name: str = DEFAULT_CONSUMER,
         count: int = 10,
         block_ms: int = 0,
-    ) -> List[ActivityEvent]:
+    ) -> list[ActivityEvent]:
         """Read events via consumer group (for parallel processing)."""
         if not self.available:
             return []
@@ -298,7 +296,7 @@ class ActivityStream:
         except Exception:
             return 0
 
-    async def trim(self, tenant_id: str, max_len: Optional[int] = None) -> int:
+    async def trim(self, tenant_id: str, max_len: int | None = None) -> int:
         """Trim stream to max length."""
         if not self.available:
             return 0
@@ -337,9 +335,7 @@ class ActivityStream:
 
     async def _notify_consumers(self, event: ActivityEvent) -> None:
         """Notify registered consumers of a new event."""
-        callbacks = self._consumers.get("__all__", []) + self._consumers.get(
-            event.event_type, []
-        )
+        callbacks = self._consumers.get("__all__", []) + self._consumers.get(event.event_type, [])
         for cb in callbacks:
             try:
                 result = cb(event)
@@ -348,7 +344,7 @@ class ActivityStream:
             except Exception as e:
                 logger.debug("ActivityStream consumer error: %s", e)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get activity stream statistics."""
         return {
             "connected": self._connected,

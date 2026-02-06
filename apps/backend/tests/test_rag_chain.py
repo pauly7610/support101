@@ -1,4 +1,3 @@
-import asyncio
 import sys
 from unittest.mock import AsyncMock, patch
 
@@ -19,19 +18,27 @@ class TestRAGChain:
 
     @pytest.fixture
     def rag(self):
-        with patch(
-            "packages.llm_engine.chains.rag_chain.get_fastembed_model", return_value=AsyncMock()
-        ), patch("packages.llm_engine.chains.rag_chain.ChatOpenAI", return_value=AsyncMock()):
+        with (
+            patch(
+                "packages.llm_engine.chains.rag_chain.get_fastembed_model",
+                return_value=AsyncMock(),
+            ),
+            patch(
+                "packages.llm_engine.chains.rag_chain.ChatOpenAI",
+                return_value=AsyncMock(),
+            ),
+        ):
             yield RAGChain()
 
     @pytest.mark.xfail(reason="Requires complex LangChain chain mocking")
     @patch(
-        "packages.llm_engine.chains.rag_chain.RAGChain._safe_query_pinecone", new_callable=AsyncMock
+        "packages.llm_engine.chains.rag_chain.RAGChain._safe_query_pinecone",
+        new_callable=AsyncMock,
     )
     @patch("packages.llm_engine.chains.rag_chain.ChatOpenAI")
     async def test_llm_timeout(self, mock_llm, mock_query, rag):
         # Simulate LLM timeout
-        mock_llm().ainvoke.side_effect = asyncio.TimeoutError()
+        mock_llm().ainvoke.side_effect = TimeoutError()
         result = await rag.generate("timeout test")
         assert result["error_type"] == "llm_timeout"
         assert result["retryable"] is True
@@ -40,7 +47,8 @@ class TestRAGChain:
 
     @pytest.mark.xfail(reason="Requires complex LangChain chain mocking")
     @patch(
-        "packages.llm_engine.chains.rag_chain.RAGChain._safe_query_pinecone", new_callable=AsyncMock
+        "packages.llm_engine.chains.rag_chain.RAGChain._safe_query_pinecone",
+        new_callable=AsyncMock,
     )
     @patch("packages.llm_engine.chains.rag_chain.ChatOpenAI")
     async def test_pinecone_api_error(self, mock_llm, mock_query, rag):
@@ -53,7 +61,8 @@ class TestRAGChain:
 
     @pytest.mark.xfail(reason="Requires complex LangChain chain mocking")
     @patch(
-        "packages.llm_engine.chains.rag_chain.RAGChain._safe_query_pinecone", new_callable=AsyncMock
+        "packages.llm_engine.chains.rag_chain.RAGChain._safe_query_pinecone",
+        new_callable=AsyncMock,
     )
     @patch("packages.llm_engine.chains.rag_chain.ChatOpenAI")
     async def test_citation_filtering(self, mock_llm, mock_query, rag):
@@ -85,7 +94,8 @@ class TestRAGChain:
 
     @pytest.mark.xfail(reason="Requires complex LangChain chain mocking")
     @patch(
-        "packages.llm_engine.chains.rag_chain.RAGChain._safe_query_pinecone", new_callable=AsyncMock
+        "packages.llm_engine.chains.rag_chain.RAGChain._safe_query_pinecone",
+        new_callable=AsyncMock,
     )
     @patch("packages.llm_engine.chains.rag_chain.ChatOpenAI")
     async def test_empty_context(self, mock_llm, mock_query, rag):
@@ -97,7 +107,8 @@ class TestRAGChain:
 
     @pytest.mark.xfail(reason="Requires complex LangChain chain mocking")
     @patch(
-        "packages.llm_engine.chains.rag_chain.RAGChain._safe_query_pinecone", new_callable=AsyncMock
+        "packages.llm_engine.chains.rag_chain.RAGChain._safe_query_pinecone",
+        new_callable=AsyncMock,
     )
     @patch("packages.llm_engine.chains.rag_chain.ChatOpenAI")
     async def test_malformed_pinecone_response(self, mock_llm, mock_query, rag):

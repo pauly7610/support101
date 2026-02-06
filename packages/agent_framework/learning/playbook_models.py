@@ -9,7 +9,7 @@ sequences that agents can follow instead of planning from scratch.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
 
@@ -42,14 +42,14 @@ class PlaybookStep:
     description: str = ""
     step_type: StepType = StepType.TOOL_CALL
     tool_name: str = ""
-    input_template: Dict[str, Any] = field(default_factory=dict)
-    expected_output_keys: List[str] = field(default_factory=list)
+    input_template: dict[str, Any] = field(default_factory=dict)
+    expected_output_keys: list[str] = field(default_factory=list)
     timeout_seconds: int = 60
     requires_approval: bool = False
-    fallback_step_id: Optional[str] = None
-    condition: Optional[str] = None  # for conditional branching
+    fallback_step_id: str | None = None
+    condition: str | None = None  # for conditional branching
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
@@ -71,10 +71,10 @@ class PlaybookEdge:
 
     from_step_id: str = ""
     to_step_id: str = ""
-    condition: Optional[str] = None
+    condition: str | None = None
     label: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "from_step_id": self.from_step_id,
             "to_step_id": self.to_step_id,
@@ -98,17 +98,17 @@ class Playbook:
     category: str = ""
     agent_blueprint: str = ""
     status: PlaybookStatus = PlaybookStatus.DRAFT
-    steps: List[PlaybookStep] = field(default_factory=list)
-    edges: List[PlaybookEdge] = field(default_factory=list)
+    steps: list[PlaybookStep] = field(default_factory=list)
+    edges: list[PlaybookEdge] = field(default_factory=list)
     entry_step_id: str = ""
     success_rate: float = 0.0
     execution_count: int = 0
     success_count: int = 0
     failure_count: int = 0
     sample_count: int = 0
-    created_from: List[str] = field(default_factory=list)  # resolution IDs
+    created_from: list[str] = field(default_factory=list)  # resolution IDs
     tenant_id: str = ""
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
     created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
     updated_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
 
@@ -117,7 +117,7 @@ class Playbook:
         total = self.success_count + self.failure_count
         return self.success_count / total if total > 0 else self.success_rate
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
@@ -140,14 +140,14 @@ class Playbook:
             "updated_at": self.updated_at,
         }
 
-    def get_step(self, step_id: str) -> Optional[PlaybookStep]:
+    def get_step(self, step_id: str) -> PlaybookStep | None:
         """Get a step by ID."""
         for step in self.steps:
             if step.id == step_id:
                 return step
         return None
 
-    def get_next_steps(self, step_id: str) -> List[PlaybookStep]:
+    def get_next_steps(self, step_id: str) -> list[PlaybookStep]:
         """Get the next steps after a given step."""
         next_ids = [e.to_step_id for e in self.edges if e.from_step_id == step_id]
         return [s for s in self.steps if s.id in next_ids]
@@ -170,7 +170,7 @@ class PlaybookSuggestion:
     relevance_score: float = 0.0
     reason: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "playbook": self.playbook.to_dict(),
             "relevance_score": self.relevance_score,

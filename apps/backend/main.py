@@ -3,7 +3,6 @@ import mimetypes
 import os
 import uuid
 from contextlib import asynccontextmanager
-from typing import List
 
 import pdfplumber
 from dotenv import load_dotenv
@@ -29,9 +28,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.backend.app.analytics.cost_router import router as cost_router
 from apps.backend.app.analytics.router import router as analytics_router
-from apps.backend.app.voice.router import router as voice_router
-from apps.backend.app.websocket.copilot_ws import router as ws_router
-from packages.agent_framework.a2a import a2a_router
 from apps.backend.app.auth.jwt import create_access_token, get_current_user
 from apps.backend.app.auth.users import (
     create_user,
@@ -41,6 +37,9 @@ from apps.backend.app.auth.users import (
 from apps.backend.app.compliance.router import router as compliance_router
 from apps.backend.app.core.cache import init_redis
 from apps.backend.app.core.db import get_db
+from apps.backend.app.voice.router import router as voice_router
+from apps.backend.app.websocket.copilot_ws import router as ws_router
+from packages.agent_framework.a2a import a2a_router
 from packages.agent_framework.api import (
     agents_router,
     governance_router,
@@ -94,12 +93,17 @@ if _sentry_dsn:
 def _scrub_sentry_event(event: dict) -> dict:
     """Remove sensitive data from Sentry events before sending."""
     import re
+
     if "exception" in event:
         for exc in event.get("exception", {}).get("values", []):
             value = exc.get("value", "")
             if isinstance(value, str):
                 exc["value"] = re.sub(r"sk-[a-zA-Z0-9]+", "sk-***REDACTED***", value)
-                for key_name in ("PINECONE_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"):
+                for key_name in (
+                    "PINECONE_API_KEY",
+                    "OPENAI_API_KEY",
+                    "ANTHROPIC_API_KEY",
+                ):
                     key_val = os.getenv(key_name, "")
                     if key_val:
                         exc["value"] = exc["value"].replace(key_val, "***REDACTED***")
@@ -114,7 +118,7 @@ async def lifespan(app):
     except HTTPException as he:
         raise he
     except Exception as e:
-        print("Warning: Rate limiter not initialized: {}".format(e))
+        print(f"Warning: Rate limiter not initialized: {e}")
     # Initialize Redis cache for fastapi-cache2
     try:
         await init_redis()
@@ -124,6 +128,7 @@ async def lifespan(app):
     # Hydrate cost tracker from DB
     try:
         from packages.llm_engine.cost_tracker import get_cost_tracker
+
         tracker = get_cost_tracker()
         await tracker.hydrate_from_db()
         print("Cost tracker hydrated from DB.")
@@ -306,7 +311,7 @@ async def health_check():
 
 def chunk_page_content(
     page_content: str, chunk_size: int = 1000, chunk_overlap: int = 100
-) -> List[str]:
+) -> list[str]:
     return [
         page_content[i : i + chunk_size]
         for i in range(0, len(page_content), chunk_size - chunk_overlap)
@@ -344,7 +349,7 @@ async def ingest_documentation_endpoint(
             },
         )
 
-    documents_to_upsert: List[DocumentPayload] = []
+    documents_to_upsert: list[DocumentPayload] = []
     try:
         contents = await file.read()
         file_ext = os.path.splitext(file.filename)[1].lower()
@@ -445,7 +450,7 @@ async def generate_reply_endpoint(
             content={
                 "error_type": "generate_reply_exception",
                 "message": mask_api_keys(
-                    f"Failed to generate reply due to an unexpected error: " f"{str(e)}"
+                    f"Failed to generate reply due to an unexpected error: {str(e)}"
                 ),
                 "retryable": False,  # Usually false for unexpected server errors
                 "documentation": "https://api.support101/errors#E500",

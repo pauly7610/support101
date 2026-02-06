@@ -21,18 +21,18 @@ import json
 import logging
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from ..learning.feedback_loop import FeedbackCollector, GoldenPath
+from ..learning.feedback_loop import FeedbackCollector
 from ..services.vector_store import VectorStoreService
 
 logger = logging.getLogger(__name__)
 
 # ── Test Queries ────────────────────────────────────────────────────────────
 
-DEFAULT_TEST_QUERIES: List[str] = [
+DEFAULT_TEST_QUERIES: list[str] = [
     "How do I reset my password?",
     "My account is locked, what should I do?",
     "How can I upgrade my subscription plan?",
@@ -47,7 +47,7 @@ DEFAULT_TEST_QUERIES: List[str] = [
 
 # ── Mock Responses (for CI / no-API-key mode) ──────────────────────────────
 
-MOCK_RESPONSES: Dict[str, Dict[str, Any]] = {
+MOCK_RESPONSES: dict[str, dict[str, Any]] = {
     "How do I reset my password?": {
         "response": "Go to Settings > Security > Reset Password. Enter your current password, then your new password twice. Click Save.",
         "confidence": 0.88,
@@ -103,17 +103,18 @@ MOCK_RESPONSES: Dict[str, Dict[str, Any]] = {
 
 # ── In-Memory Vector Store (for mock mode) ─────────────────────────────────
 
+
 class InMemoryVectorStore:
     """Minimal vector store that uses string matching for mock validation."""
 
     def __init__(self) -> None:
-        self._documents: Dict[str, Dict[str, Any]] = {}
+        self._documents: dict[str, dict[str, Any]] = {}
 
     @property
     def available(self) -> bool:
         return True
 
-    async def upsert(self, documents: List[Dict[str, Any]], **kwargs: Any) -> int:
+    async def upsert(self, documents: list[dict[str, Any]], **kwargs: Any) -> int:
         for doc in documents:
             self._documents[doc["id"]] = doc
         return len(documents)
@@ -123,15 +124,14 @@ class InMemoryVectorStore:
         query: str,
         top_k: int = 5,
         min_score: float = 0.0,
-        filter_metadata: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
+        filter_metadata: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         results = []
         query_lower = query.lower()
         for doc_id, doc in self._documents.items():
             meta = doc.get("metadata", {})
-            if filter_metadata:
-                if not all(meta.get(k) == v for k, v in filter_metadata.items()):
-                    continue
+            if filter_metadata and not all(meta.get(k) == v for k, v in filter_metadata.items()):
+                continue
             content = doc.get("content", "").lower()
             input_query = meta.get("input_query", "").lower()
             # Simple word overlap scoring
@@ -140,22 +140,25 @@ class InMemoryVectorStore:
             overlap = len(query_words & content_words)
             score = overlap / max(len(query_words), 1)
             if score > 0.3:
-                results.append({
-                    "id": doc_id,
-                    "content": doc.get("content", ""),
-                    "score": min(score, 0.95),
-                    "metadata": meta,
-                })
+                results.append(
+                    {
+                        "id": doc_id,
+                        "content": doc.get("content", ""),
+                        "score": min(score, 0.95),
+                        "metadata": meta,
+                    }
+                )
         results.sort(key=lambda x: x["score"], reverse=True)
         return results[:top_k]
 
-    async def delete(self, ids: List[str]) -> bool:
+    async def delete(self, ids: list[str]) -> bool:
         for doc_id in ids:
             self._documents.pop(doc_id, None)
         return True
 
 
 # ── Result Dataclass ────────────────────────────────────────────────────────
+
 
 @dataclass
 class QueryResult:
@@ -172,6 +175,7 @@ class QueryResult:
 
 # ── Validator ───────────────────────────────────────────────────────────────
 
+
 class FeedbackLoopValidator:
     """
     Validates that the continuous learning feedback loop improves agent
@@ -186,23 +190,27 @@ class FeedbackLoopValidator:
             self._vs = VectorStoreService()
 
         self.feedback_collector = FeedbackCollector(vector_store=self._vs)
-        self.baseline_results: List[QueryResult] = []
-        self.improved_results: List[QueryResult] = []
+        self.baseline_results: list[QueryResult] = []
+        self.improved_results: list[QueryResult] = []
 
-    async def _execute_query(self, query: str) -> Dict[str, Any]:
+    async def _execute_query(self, query: str) -> dict[str, Any]:
         """Execute a query — mock or live."""
         if self.mock:
-            mock = MOCK_RESPONSES.get(query, {
-                "response": f"Generic answer for: {query}",
-                "confidence": 0.60,
-                "sources": [],
-            })
+            mock = MOCK_RESPONSES.get(
+                query,
+                {
+                    "response": f"Generic answer for: {query}",
+                    "confidence": 0.60,
+                    "sources": [],
+                },
+            )
             await asyncio.sleep(0.05)  # Simulate latency
             return mock
 
         # Live mode: use the RAG chain
         try:
             from ...llm_engine.chains.rag_chain import RAGChain
+
             chain = RAGChain()
             result = await chain.generate(query)
             return {
@@ -215,15 +223,16 @@ class FeedbackLoopValidator:
             }
         except Exception as e:
             logger.warning("Live query failed, falling back to mock: %s", e)
-            return MOCK_RESPONSES.get(query, {
-                "response": f"Fallback answer for: {query}",
-                "confidence": 0.50,
-                "sources": [],
-            })
+            return MOCK_RESPONSES.get(
+                query,
+                {
+                    "response": f"Fallback answer for: {query}",
+                    "confidence": 0.50,
+                    "sources": [],
+                },
+            )
 
-    async def run_validation(
-        self, test_queries: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
+    async def run_validation(self, test_queries: list[str] | None = None) -> dict[str, Any]:
         """
         Full validation flow:
         1. Baseline: Run queries, check golden paths (should be empty)
@@ -245,9 +254,7 @@ class FeedbackLoopValidator:
             print(f"\n  Query {i}/{len(queries)}: {query}")
 
             # Check golden paths — should be empty
-            gp_results = await self.feedback_collector.search_golden_paths(
-                query=query, top_k=3
-            )
+            gp_results = await self.feedback_collector.search_golden_paths(query=query, top_k=3)
 
             start = time.perf_counter()
             result = await self._execute_query(query)
@@ -337,12 +344,10 @@ class FeedbackLoopValidator:
                 # No golden path — full LLM call
                 exec_start = time.perf_counter()
                 result = await self._execute_query(query)
-                elapsed_ms = round(
-                    (time.perf_counter() - exec_start) * 1000 + gp_elapsed_ms, 1
-                )
+                elapsed_ms = round((time.perf_counter() - exec_start) * 1000 + gp_elapsed_ms, 1)
                 response = result.get("response", "")
                 confidence = result.get("confidence", 0.0)
-                print(f"    No golden path match")
+                print("    No golden path match")
 
             qr = QueryResult(
                 query=query,
@@ -361,19 +366,21 @@ class FeedbackLoopValidator:
         # ── Phase 4: Report ─────────────────────────────────────────────
         return self._generate_report()
 
-    def _generate_report(self) -> Dict[str, Any]:
+    def _generate_report(self) -> dict[str, Any]:
         """Compare baseline vs improved metrics."""
         total = len(self.baseline_results)
         if total == 0:
             return {"error": "No results to report"}
 
         golden_paths_stored = sum(
-            1 for r in self.baseline_results
-            if r in sorted(
+            1
+            for r in self.baseline_results
+            if r
+            in sorted(
                 self.baseline_results,
                 key=lambda x: x.confidence,
                 reverse=True,
-            )[:max(1, int(total * 0.6))]
+            )[: max(1, int(total * 0.6))]
         )
         golden_paths_used = sum(1 for r in self.improved_results if r.used_golden_path)
 
@@ -394,9 +401,7 @@ class FeedbackLoopValidator:
         # 2. Confidence maintained (no more than 5% regression)
         # 3. Response time improved (golden paths are faster)
         validation_passed = (
-            golden_paths_used >= total * 0.4
-            and conf_improvement >= -0.05
-            and time_improvement >= 0
+            golden_paths_used >= total * 0.4 and conf_improvement >= -0.05 and time_improvement >= 0
         )
 
         report = {
@@ -409,11 +414,9 @@ class FeedbackLoopValidator:
             "avg_confidence_before": round(avg_conf_before, 3),
             "avg_confidence_after": round(avg_conf_after, 3),
             "confidence_improvement": round(conf_improvement, 3),
-            "confidence_improvement_pct": round(
-                (conf_improvement / avg_conf_before) * 100, 1
-            )
-            if avg_conf_before > 0
-            else 0,
+            "confidence_improvement_pct": (
+                round((conf_improvement / avg_conf_before) * 100, 1) if avg_conf_before > 0 else 0
+            ),
             "avg_time_before_ms": round(avg_time_before, 1),
             "avg_time_after_ms": round(avg_time_after, 1),
             "time_improvement_ms": round(time_improvement, 1),
@@ -432,7 +435,8 @@ class FeedbackLoopValidator:
 
 # ── CLI Entry Point ─────────────────────────────────────────────────────────
 
-async def main() -> Dict[str, Any]:
+
+async def main() -> dict[str, Any]:
     """Run validation with default test queries."""
     mock = "--mock" in sys.argv
 

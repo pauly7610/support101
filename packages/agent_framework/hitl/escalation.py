@@ -8,10 +8,11 @@ Provides configurable escalation policies and rules for:
 - Sentiment-based escalation
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
 from .queue import HITLPriority, HITLQueue, HITLRequestType
@@ -52,14 +53,14 @@ class EscalationRule:
     target_level: EscalationLevel = EscalationLevel.L2
     priority: HITLPriority = HITLPriority.MEDIUM
 
-    conditions: Dict[str, Any] = field(default_factory=dict)
+    conditions: dict[str, Any] = field(default_factory=dict)
 
     enabled: bool = True
-    tenant_ids: List[str] = field(default_factory=list)
+    tenant_ids: list[str] = field(default_factory=list)
 
     created_at: datetime = field(default_factory=datetime.utcnow)
 
-    def matches(self, context: Dict[str, Any]) -> bool:
+    def matches(self, context: dict[str, Any]) -> bool:
         """Check if context matches rule conditions."""
         if not self.enabled:
             return False
@@ -81,7 +82,7 @@ class EscalationRule:
 
         return True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "rule_id": self.rule_id,
             "name": self.name,
@@ -104,12 +105,12 @@ class EscalationPolicy:
     name: str = ""
     description: str = ""
 
-    rules: List[EscalationRule] = field(default_factory=list)
+    rules: list[EscalationRule] = field(default_factory=list)
 
     default_level: EscalationLevel = EscalationLevel.L1
-    auto_escalate_after: Optional[timedelta] = None
+    auto_escalate_after: timedelta | None = None
 
-    notification_channels: List[str] = field(default_factory=list)
+    notification_channels: list[str] = field(default_factory=list)
 
     enabled: bool = True
     created_at: datetime = field(default_factory=datetime.utcnow)
@@ -129,7 +130,7 @@ class EscalationPolicy:
             return True
         return False
 
-    def evaluate(self, context: Dict[str, Any]) -> Optional[EscalationRule]:
+    def evaluate(self, context: dict[str, Any]) -> EscalationRule | None:
         """
         Evaluate context against all rules.
 
@@ -144,7 +145,7 @@ class EscalationPolicy:
 
         return None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "policy_id": self.policy_id,
             "tenant_id": self.tenant_id,
@@ -169,10 +170,10 @@ class EscalationManager:
 
     def __init__(self, hitl_queue: HITLQueue) -> None:
         self.hitl_queue = hitl_queue
-        self._policies: Dict[str, EscalationPolicy] = {}
-        self._tenant_policies: Dict[str, str] = {}
-        self._escalation_handlers: Dict[EscalationLevel, List[Callable]] = {}
-        self._notification_handlers: List[Callable] = []
+        self._policies: dict[str, EscalationPolicy] = {}
+        self._tenant_policies: dict[str, str] = {}
+        self._escalation_handlers: dict[EscalationLevel, list[Callable]] = {}
+        self._notification_handlers: list[Callable] = []
         self._initialize_default_rules()
 
     def _initialize_default_rules(self) -> None:
@@ -252,11 +253,11 @@ class EscalationManager:
 
         return policy
 
-    def get_policy(self, policy_id: str) -> Optional[EscalationPolicy]:
+    def get_policy(self, policy_id: str) -> EscalationPolicy | None:
         """Get a policy by ID."""
         return self._policies.get(policy_id)
 
-    def get_tenant_policy(self, tenant_id: str) -> Optional[EscalationPolicy]:
+    def get_tenant_policy(self, tenant_id: str) -> EscalationPolicy | None:
         """Get the policy for a tenant."""
         policy_id = self._tenant_policies.get(tenant_id)
         if policy_id:
@@ -279,8 +280,8 @@ class EscalationManager:
 
     async def _notify(
         self,
-        escalation: Dict[str, Any],
-        channels: List[str],
+        escalation: dict[str, Any],
+        channels: list[str],
     ) -> None:
         """Send notifications through registered handlers."""
         for handler in self._notification_handlers:
@@ -296,8 +297,8 @@ class EscalationManager:
         agent_id: str,
         tenant_id: str,
         execution_id: str,
-        context: Dict[str, Any],
-    ) -> Optional[Dict[str, Any]]:
+        context: dict[str, Any],
+    ) -> dict[str, Any] | None:
         """
         Evaluate context against tenant policy and trigger escalation if needed.
 
@@ -332,9 +333,9 @@ class EscalationManager:
         tenant_id: str,
         execution_id: str,
         rule: EscalationRule,
-        context: Dict[str, Any],
-        manual_reason: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        context: dict[str, Any],
+        manual_reason: str | None = None,
+    ) -> dict[str, Any]:
         """
         Trigger an escalation.
 
@@ -360,7 +361,7 @@ class EscalationManager:
             tenant_id=tenant_id,
             execution_id=execution_id,
             title=f"Escalation: {rule.name if rule else 'Manual'}",
-            description=rule.description if rule else manual_reason or "Manual escalation",
+            description=(rule.description if rule else manual_reason or "Manual escalation"),
             priority=rule.priority if rule else HITLPriority.MEDIUM,
             context=context,
             metadata={"escalation": escalation},
@@ -392,8 +393,8 @@ class EscalationManager:
         reason: str,
         level: EscalationLevel = EscalationLevel.L2,
         priority: HITLPriority = HITLPriority.MEDIUM,
-        context: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Manually trigger an escalation."""
         rule = EscalationRule(
             name="Manual Escalation",
@@ -414,8 +415,8 @@ class EscalationManager:
 
     def get_escalation_stats(
         self,
-        tenant_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        tenant_id: str | None = None,
+    ) -> dict[str, Any]:
         """Get escalation statistics from HITL queue."""
         stats = self.hitl_queue.get_queue_stats(tenant_id)
 

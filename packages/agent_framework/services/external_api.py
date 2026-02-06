@@ -9,7 +9,7 @@ Users configure endpoints via environment variables.
 import logging
 import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class ExternalAPIClient:
         self._crm_key = os.getenv("EXTERNAL_CRM_API_KEY")
         self._notification_url = os.getenv("EXTERNAL_NOTIFICATION_URL")
         self._notification_key = os.getenv("EXTERNAL_NOTIFICATION_API_KEY")
-        self._client: Optional[Any] = None
+        self._client: Any | None = None
 
     @property
     def ticketing_available(self) -> bool:
@@ -59,14 +59,14 @@ class ExternalAPIClient:
     def notification_available(self) -> bool:
         return bool(self._notification_url and self._notification_key and _HTTPX_AVAILABLE)
 
-    def _ensure_client(self) -> Optional[Any]:
+    def _ensure_client(self) -> Any | None:
         if not _HTTPX_AVAILABLE:
             return None
         if self._client is None:
             self._client = httpx.AsyncClient(timeout=30.0)
         return self._client
 
-    def _headers(self, api_key: str) -> Dict[str, str]:
+    def _headers(self, api_key: str) -> dict[str, str]:
         return {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
@@ -79,9 +79,9 @@ class ExternalAPIClient:
         subject: str,
         description: str,
         priority: str = "medium",
-        customer_email: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        customer_email: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Create a ticket in the external ticketing system."""
         if not self.ticketing_available:
             return {
@@ -127,8 +127,8 @@ class ExternalAPIClient:
             }
 
     async def update_external_ticket(
-        self, ticket_id: str, updates: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, ticket_id: str, updates: dict[str, Any]
+    ) -> dict[str, Any]:
         """Update a ticket in the external ticketing system."""
         if not self.ticketing_available:
             return {"updated": True, "ticket_id": ticket_id, "source": "stub"}
@@ -140,14 +140,19 @@ class ExternalAPIClient:
                 headers=self._headers(self._ticketing_key),
             )
             resp.raise_for_status()
-            return {"updated": True, "ticket_id": ticket_id, "source": "external", "response": resp.json()}
+            return {
+                "updated": True,
+                "ticket_id": ticket_id,
+                "source": "external",
+                "response": resp.json(),
+            }
         except Exception as e:
             logger.warning("ExternalAPIClient: update_ticket failed: %s", e)
             return {"updated": False, "ticket_id": ticket_id, "error": str(e)}
 
     # ── CRM ──────────────────────────────────────────────────────────
 
-    async def get_customer_profile(self, customer_id: str) -> Dict[str, Any]:
+    async def get_customer_profile(self, customer_id: str) -> dict[str, Any]:
         """Fetch customer profile from external CRM."""
         if not self.crm_available:
             return {
@@ -169,7 +174,11 @@ class ExternalAPIClient:
             return {**data, "source": "external"}
         except Exception as e:
             logger.warning("ExternalAPIClient: get_customer_profile failed: %s", e)
-            return {"customer_id": customer_id, "error": str(e), "source": "external_error"}
+            return {
+                "customer_id": customer_id,
+                "error": str(e),
+                "source": "external_error",
+            }
 
     # ── Notifications ────────────────────────────────────────────────
 
@@ -178,8 +187,8 @@ class ExternalAPIClient:
         channel: str,
         message: str,
         urgency: str = "normal",
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Send a notification via external service (Slack, PagerDuty, etc.)."""
         if not self.notification_available:
             return {
@@ -220,7 +229,7 @@ class ExternalAPIClient:
             self._client = None
 
 
-_api_client: Optional[ExternalAPIClient] = None
+_api_client: ExternalAPIClient | None = None
 
 
 def get_external_api_client() -> ExternalAPIClient:

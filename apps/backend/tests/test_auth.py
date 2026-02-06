@@ -34,7 +34,10 @@ async def test_protected_route_expired_token(async_client, monkeypatch):
     from apps.backend.app.auth.jwt import ALGORITHM, SECRET_KEY
 
     expired = jwt.encode(
-        {"sub": "admin", "exp": datetime.datetime.utcnow() - datetime.timedelta(seconds=1)},
+        {
+            "sub": "admin",
+            "exp": datetime.datetime.utcnow() - datetime.timedelta(seconds=1),
+        },
         SECRET_KEY,
         algorithm=ALGORITHM,
     )

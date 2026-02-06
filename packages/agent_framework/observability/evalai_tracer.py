@@ -23,10 +23,11 @@ import asyncio
 import logging
 import os
 import time
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, AsyncIterator, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -48,10 +49,10 @@ class EvalAIDecision:
     agent: str
     type: str  # 'action' | 'tool' | 'delegate' | 'respond' | 'route'
     chosen: str
-    alternatives: List[Dict[str, Any]]
-    reasoning: Optional[str] = None
-    confidence: Optional[int] = None  # 0-100
-    input_context: Optional[Dict[str, Any]] = None
+    alternatives: list[dict[str, Any]]
+    reasoning: str | None = None
+    confidence: int | None = None  # 0-100
+    input_context: dict[str, Any] | None = None
 
 
 @dataclass
@@ -74,7 +75,7 @@ class EvalAIWorkflowNode:
     id: str
     type: str  # 'agent' | 'tool' | 'decision' | 'parallel' | 'human' | 'llm'
     name: str
-    config: Optional[Dict[str, Any]] = None
+    config: dict[str, Any] | None = None
 
 
 @dataclass
@@ -83,20 +84,20 @@ class EvalAIWorkflowEdge:
 
     from_node: str
     to_node: str
-    condition: Optional[str] = None
-    label: Optional[str] = None
+    condition: str | None = None
+    label: str | None = None
 
 
 @dataclass
 class EvalAIWorkflowDefinition:
     """Complete workflow DAG definition for EvalAI visualization."""
 
-    nodes: List[EvalAIWorkflowNode]
-    edges: List[EvalAIWorkflowEdge]
+    nodes: list[EvalAIWorkflowNode]
+    edges: list[EvalAIWorkflowEdge]
     entrypoint: str
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "nodes": [
                 {"id": n.id, "type": n.type, "name": n.name, "config": n.config or {}}
@@ -123,8 +124,8 @@ class EvalAISpanContext:
     span_id: int
     agent_name: str
     start_time: float
-    parent_span_id: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
+    parent_span_id: str | None = None
+    metadata: dict[str, Any] | None = None
 
 
 @dataclass
@@ -132,10 +133,10 @@ class EvalAIWorkflowContext:
     """Context for an active workflow trace."""
 
     trace_id: int
-    workflow_id: Optional[int]
+    workflow_id: int | None
     name: str
     started_at: str
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 # ── Governance ──────────────────────────────────────────────────
@@ -149,12 +150,12 @@ class EvalAIGovernanceConfig:
     amount_threshold: float = 500.0
     require_approval_for_sensitive_data: bool = True
     require_approval_for_pii: bool = True
-    allowed_models: List[str] = field(default_factory=list)
+    allowed_models: list[str] = field(default_factory=list)
     max_cost_per_run: float = 10.0
     audit_level: str = "SOC2"  # 'BASIC' | 'SOC2' | 'GDPR' | 'HIPAA' | 'FINRA_4511' | 'PCI_DSS'
 
 
-COMPLIANCE_PRESETS: Dict[str, EvalAIGovernanceConfig] = {
+COMPLIANCE_PRESETS: dict[str, EvalAIGovernanceConfig] = {
     "BASIC": EvalAIGovernanceConfig(
         confidence_threshold=0.6,
         amount_threshold=1000.0,
@@ -203,8 +204,8 @@ COMPLIANCE_PRESETS: Dict[str, EvalAIGovernanceConfig] = {
 def check_governance(
     decision: EvalAIDecision,
     config: EvalAIGovernanceConfig,
-    context: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """
     Evaluate a decision against governance rules.
 
@@ -212,7 +213,7 @@ def check_governance(
     Mirrors the JS GovernanceEngine.evaluate() interface.
     """
     ctx = context or {}
-    reasons: List[str] = []
+    reasons: list[str] = []
     requires_approval = False
     blocked = False
 
@@ -233,9 +234,7 @@ def check_governance(
     amount = ctx.get("amount")
     if amount is not None and amount > config.amount_threshold:
         requires_approval = True
-        reasons.append(
-            f"Amount ${amount} exceeds threshold ${config.amount_threshold}"
-        )
+        reasons.append(f"Amount ${amount} exceeds threshold ${config.amount_threshold}")
 
     # Sensitive data / PII
     if config.require_approval_for_sensitive_data and ctx.get("sensitiveData"):
@@ -252,7 +251,9 @@ def check_governance(
         alt_confidence = alt.get("confidence", 0)
         if "fraud" in action and alt_confidence > 30:
             blocked = True
-            reasons.append(f"Fraud-related alternative '{action}' with confidence {alt_confidence}%")
+            reasons.append(
+                f"Fraud-related alternative '{action}' with confidence {alt_confidence}%"
+            )
         if "security" in action and alt_confidence > 40:
             blocked = True
             reasons.append(
@@ -264,7 +265,7 @@ def check_governance(
         "blocked": blocked,
         "reasons": reasons,
         "audit_level": config.audit_level,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 
@@ -297,17 +298,15 @@ class EvalAITracer:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        base_url: Optional[str] = None,
-        organization_id: Optional[int] = None,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        organization_id: int | None = None,
         enabled: bool = True,
         timeout: float = 30.0,
         max_retries: int = 3,
     ) -> None:
         self._api_key = api_key or os.environ.get("EVALAI_API_KEY", "")
-        self._base_url = (
-            base_url or os.environ.get("EVALAI_BASE_URL", "")
-        ).rstrip("/")
+        self._base_url = (base_url or os.environ.get("EVALAI_BASE_URL", "")).rstrip("/")
 
         raw_org_id = organization_id or os.environ.get("EVALAI_ORGANIZATION_ID", "0")
         try:
@@ -326,13 +325,13 @@ class EvalAITracer:
             and self._organization_id > 0
         )
 
-        self._client: Optional["httpx.AsyncClient"] = None
-        self._current_trace_id: Optional[int] = None
-        self._current_workflow_id: Optional[int] = None
-        self._workflow_start_time: Optional[float] = None
-        self._costs: List[Dict[str, Any]] = []
-        self._decisions: List[Dict[str, Any]] = []
-        self._handoffs: List[Dict[str, Any]] = []
+        self._client: httpx.AsyncClient | None = None
+        self._current_trace_id: int | None = None
+        self._current_workflow_id: int | None = None
+        self._workflow_start_time: float | None = None
+        self._costs: list[dict[str, Any]] = []
+        self._decisions: list[dict[str, Any]] = []
+        self._handoffs: list[dict[str, Any]] = []
 
         if not self._enabled:
             if not HTTPX_AVAILABLE:
@@ -355,11 +354,11 @@ class EvalAITracer:
         return self._enabled
 
     @property
-    def current_trace_id(self) -> Optional[int]:
+    def current_trace_id(self) -> int | None:
         return self._current_trace_id
 
     @property
-    def current_workflow_id(self) -> Optional[int]:
+    def current_workflow_id(self) -> int | None:
         return self._current_workflow_id
 
     # ── HTTP client ─────────────────────────────────────────────
@@ -376,13 +375,11 @@ class EvalAITracer:
             )
         return self._client
 
-    async def _post(
-        self, path: str, json: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+    async def _post(self, path: str, json: dict[str, Any]) -> dict[str, Any] | None:
         if not self._enabled:
             return None
         client = await self._get_client()
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
         for attempt in range(self._max_retries):
             try:
                 resp = await client.post(path, json=json)
@@ -434,16 +431,16 @@ class EvalAITracer:
 
     @staticmethod
     def _iso_now() -> str:
-        return datetime.now(timezone.utc).isoformat()
+        return datetime.now(UTC).isoformat()
 
     # ── Workflow lifecycle ──────────────────────────────────────
 
     async def start_workflow(
         self,
         name: str,
-        definition: Optional[EvalAIWorkflowDefinition] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Optional[EvalAIWorkflowContext]:
+        definition: EvalAIWorkflowDefinition | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> EvalAIWorkflowContext | None:
         """
         Start a new workflow trace.
 
@@ -474,7 +471,7 @@ class EvalAITracer:
         else:
             return None
 
-        workflow_id: Optional[int] = None
+        workflow_id: int | None = None
         if definition:
             wf = await self._post(
                 "/api/workflows",
@@ -499,7 +496,7 @@ class EvalAITracer:
 
     async def end_workflow(
         self,
-        output: Optional[Dict[str, Any]] = None,
+        output: dict[str, Any] | None = None,
         status: str = "completed",
     ) -> None:
         """
@@ -512,9 +509,7 @@ class EvalAITracer:
         if not self._enabled or self._current_trace_id is None:
             return
 
-        duration_ms = int(
-            (time.time() - (self._workflow_start_time or time.time())) * 1000
-        )
+        duration_ms = int((time.time() - (self._workflow_start_time or time.time())) * 1000)
 
         evalai_status = "success" if status == "completed" else "error"
 
@@ -548,9 +543,9 @@ class EvalAITracer:
     async def start_agent_span(
         self,
         agent_name: str,
-        input_data: Optional[Dict[str, Any]] = None,
-        parent_span_id: Optional[str] = None,
-    ) -> Optional[EvalAISpanContext]:
+        input_data: dict[str, Any] | None = None,
+        parent_span_id: str | None = None,
+    ) -> EvalAISpanContext | None:
         """
         Start a span for an agent's execution within the current workflow.
 
@@ -592,9 +587,9 @@ class EvalAITracer:
 
     async def end_agent_span(
         self,
-        span: Optional[EvalAISpanContext],
-        output: Optional[Dict[str, Any]] = None,
-        error: Optional[str] = None,
+        span: EvalAISpanContext | None,
+        output: dict[str, Any] | None = None,
+        error: str | None = None,
     ) -> None:
         """
         End an agent span, recording output or error.
@@ -628,8 +623,8 @@ class EvalAITracer:
     async def record_decision(
         self,
         decision: EvalAIDecision,
-        span_id: Optional[int] = None,
-    ) -> Optional[Dict[str, Any]]:
+        span_id: int | None = None,
+    ) -> dict[str, Any] | None:
         """
         Record an agent decision with alternatives and confidence.
 
@@ -643,7 +638,7 @@ class EvalAITracer:
         if not self._enabled:
             return None
 
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "spanId": span_id or self._current_trace_id or 0,
             "agentName": decision.agent,
             "decisionType": decision.type,
@@ -669,8 +664,8 @@ class EvalAITracer:
     async def record_cost(
         self,
         cost: EvalAICostRecord,
-        span_id: Optional[int] = None,
-    ) -> Optional[Dict[str, Any]]:
+        span_id: int | None = None,
+    ) -> dict[str, Any] | None:
         """
         Record LLM token usage and cost.
 
@@ -686,7 +681,7 @@ class EvalAITracer:
         if not self._enabled:
             return None
 
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "spanId": span_id or self._current_trace_id or 0,
             "provider": cost.provider,
             "model": cost.model,
@@ -708,9 +703,9 @@ class EvalAITracer:
 
     async def record_handoff(
         self,
-        from_agent: Optional[str],
+        from_agent: str | None,
         to_agent: str,
-        context: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
         handoff_type: str = "delegation",
     ) -> None:
         """
@@ -751,9 +746,9 @@ class EvalAITracer:
         """Get total cost across all recorded cost entries."""
         return sum(float(c.get("totalCost", 0)) for c in self._costs)
 
-    def get_cost_breakdown(self) -> Dict[str, float]:
+    def get_cost_breakdown(self) -> dict[str, float]:
         """Get cost breakdown by category."""
-        breakdown: Dict[str, float] = {
+        breakdown: dict[str, float] = {
             "llm": 0.0,
             "tool": 0.0,
             "embedding": 0.0,
@@ -761,20 +756,18 @@ class EvalAITracer:
         }
         for c in self._costs:
             category = c.get("category", "other")
-            breakdown[category] = breakdown.get(category, 0.0) + float(
-                c.get("totalCost", 0)
-            )
+            breakdown[category] = breakdown.get(category, 0.0) + float(c.get("totalCost", 0))
         return breakdown
 
-    def get_decisions(self) -> List[Dict[str, Any]]:
+    def get_decisions(self) -> list[dict[str, Any]]:
         """Get all recorded decisions for the current workflow."""
         return list(self._decisions)
 
-    def get_handoffs(self) -> List[Dict[str, Any]]:
+    def get_handoffs(self) -> list[dict[str, Any]]:
         """Get all recorded handoffs for the current workflow."""
         return list(self._handoffs)
 
-    def get_costs(self) -> List[Dict[str, Any]]:
+    def get_costs(self) -> list[dict[str, Any]]:
         """Get all recorded cost entries for the current workflow."""
         return list(self._costs)
 
@@ -788,8 +781,8 @@ class EvalAITracer:
     async def workflow(
         self,
         name: str,
-        definition: Optional[EvalAIWorkflowDefinition] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        definition: EvalAIWorkflowDefinition | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> AsyncIterator["EvalAITracer"]:
         """
         Context manager for workflow tracing.

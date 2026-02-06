@@ -85,7 +85,11 @@ def mock_db():
 
 @pytest.mark.parametrize(
     "endpoint,params",
-    [("/escalations", {}), ("/escalations/by-agent", {}), ("/escalations/by-category", {})],
+    [
+        ("/escalations", {}),
+        ("/escalations/by-agent", {}),
+        ("/escalations/by-category", {}),
+    ],
 )
 def test_permission_denied(client, non_admin_user, mock_db, endpoint, params):
     app.dependency_overrides = {}
@@ -120,7 +124,10 @@ def test_admin_access_success(client, admin_user, mock_db, endpoint):
 @pytest.mark.parametrize(
     "endpoint,params",
     [
-        ("/escalations", {"user_id": "u1", "start_time": 1700000000, "end_time": 1700001000}),
+        (
+            "/escalations",
+            {"user_id": "u1", "start_time": 1700000000, "end_time": 1700001000},
+        ),
         ("/escalations/by-agent", {"agent_id": "a1"}),
         ("/escalations/by-category", {"category": "compliance"}),
     ],

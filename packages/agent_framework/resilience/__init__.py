@@ -1,6 +1,6 @@
 """Resilience patterns for agent framework."""
 
-from .circuit_breaker import CircuitBreaker, CircuitBreakerOpen, CircuitState
+from .circuit_breaker import CircuitBreaker, CircuitBreakerOpenError, CircuitState
 from .retry import ExponentialBackoff, RetryPolicy, retry_with_policy
 
 __all__ = [
@@ -9,5 +9,5 @@ __all__ = [
     "ExponentialBackoff",
     "CircuitBreaker",
     "CircuitState",
-    "CircuitBreakerOpen",
+    "CircuitBreakerOpenError",
 ]

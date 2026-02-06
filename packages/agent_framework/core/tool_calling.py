@@ -35,8 +35,9 @@ import asyncio
 import inspect
 import json
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ class ToolParameter:
     type: str
     description: str = ""
     required: bool = True
-    enum: Optional[List[str]] = None
+    enum: list[str] | None = None
     default: Any = None
 
 
@@ -59,17 +60,17 @@ class ToolDefinition:
 
     name: str
     description: str
-    parameters: Dict[str, Dict[str, Any]]
-    required_params: List[str] = field(default_factory=list)
-    handler: Optional[Callable] = None
+    parameters: dict[str, dict[str, Any]]
+    required_params: list[str] = field(default_factory=list)
+    handler: Callable | None = None
 
-    def to_openai_schema(self) -> Dict[str, Any]:
+    def to_openai_schema(self) -> dict[str, Any]:
         """Convert to OpenAI function calling format."""
         properties = {}
         required = []
 
         for param_name, param_schema in self.parameters.items():
-            prop: Dict[str, Any] = {"type": param_schema.get("type", "string")}
+            prop: dict[str, Any] = {"type": param_schema.get("type", "string")}
             if "description" in param_schema:
                 prop["description"] = param_schema["description"]
             if "enum" in param_schema:
@@ -92,13 +93,13 @@ class ToolDefinition:
             },
         }
 
-    def to_anthropic_schema(self) -> Dict[str, Any]:
+    def to_anthropic_schema(self) -> dict[str, Any]:
         """Convert to Anthropic tool use format."""
         properties = {}
         required = []
 
         for param_name, param_schema in self.parameters.items():
-            prop: Dict[str, Any] = {"type": param_schema.get("type", "string")}
+            prop: dict[str, Any] = {"type": param_schema.get("type", "string")}
             if "description" in param_schema:
                 prop["description"] = param_schema["description"]
             if "enum" in param_schema:
@@ -125,7 +126,7 @@ class ToolCall:
 
     id: str
     name: str
-    arguments: Dict[str, Any]
+    arguments: dict[str, Any]
 
 
 @dataclass
@@ -147,16 +148,17 @@ class ToolRegistry:
     """
 
     def __init__(self) -> None:
-        self._tools: Dict[str, ToolDefinition] = {}
+        self._tools: dict[str, ToolDefinition] = {}
 
     def tool(
         self,
         name: str,
         description: str,
-        parameters: Dict[str, Dict[str, Any]],
-        required: Optional[List[str]] = None,
+        parameters: dict[str, dict[str, Any]],
+        required: list[str] | None = None,
     ) -> Callable:
         """Decorator to register a function as a structured tool."""
+
         def decorator(func: Callable) -> Callable:
             # Auto-detect required params from function signature
             sig = inspect.signature(func)
@@ -174,29 +176,30 @@ class ToolRegistry:
             )
             self._tools[name] = tool_def
             return func
+
         return decorator
 
     def register(self, tool_def: ToolDefinition) -> None:
         """Register a pre-built ToolDefinition."""
         self._tools[tool_def.name] = tool_def
 
-    def get(self, name: str) -> Optional[ToolDefinition]:
+    def get(self, name: str) -> ToolDefinition | None:
         """Get a tool by name."""
         return self._tools.get(name)
 
-    def list_tools(self) -> List[ToolDefinition]:
+    def list_tools(self) -> list[ToolDefinition]:
         """List all registered tools."""
         return list(self._tools.values())
 
-    def to_openai_tools(self) -> List[Dict[str, Any]]:
+    def to_openai_tools(self) -> list[dict[str, Any]]:
         """Convert all tools to OpenAI function calling format."""
         return [t.to_openai_schema() for t in self._tools.values()]
 
-    def to_anthropic_tools(self) -> List[Dict[str, Any]]:
+    def to_anthropic_tools(self) -> list[dict[str, Any]]:
         """Convert all tools to Anthropic tool use format."""
         return [t.to_anthropic_schema() for t in self._tools.values()]
 
-    def to_langchain_tools(self) -> List[Dict[str, Any]]:
+    def to_langchain_tools(self) -> list[dict[str, Any]]:
         """Convert to LangChain tool format (same as OpenAI)."""
         return self.to_openai_tools()
 
@@ -220,10 +223,12 @@ async def execute_tool_call(
         return ToolResult(
             tool_call_id=tool_call.id,
             name=tool_call.name,
-            content=json.dumps({
-                "error": f"Unknown tool: {tool_call.name}",
-                "available_tools": [t.name for t in registry.list_tools()],
-            }),
+            content=json.dumps(
+                {
+                    "error": f"Unknown tool: {tool_call.name}",
+                    "available_tools": [t.name for t in registry.list_tools()],
+                }
+            ),
             is_error=True,
         )
 
@@ -245,11 +250,13 @@ async def execute_tool_call(
         return ToolResult(
             tool_call_id=tool_call.id,
             name=tool_call.name,
-            content=json.dumps({
-                "error": f"Invalid arguments for {tool_call.name}: {e}",
-                "provided_args": list(tool_call.arguments.keys()),
-                "expected_params": list(tool_def.parameters.keys()),
-            }),
+            content=json.dumps(
+                {
+                    "error": f"Invalid arguments for {tool_call.name}: {e}",
+                    "provided_args": list(tool_call.arguments.keys()),
+                    "expected_params": list(tool_def.parameters.keys()),
+                }
+            ),
             is_error=True,
         )
     except Exception as e:
@@ -257,20 +264,22 @@ async def execute_tool_call(
         return ToolResult(
             tool_call_id=tool_call.id,
             name=tool_call.name,
-            content=json.dumps({
-                "error_type": "tool_execution_error",
-                "message": str(e)[:500],
-                "retryable": True,
-            }),
+            content=json.dumps(
+                {
+                    "error_type": "tool_execution_error",
+                    "message": str(e)[:500],
+                    "retryable": True,
+                }
+            ),
             is_error=True,
         )
 
 
 async def execute_tool_calls(
     registry: ToolRegistry,
-    tool_calls: List[ToolCall],
+    tool_calls: list[ToolCall],
     parallel: bool = True,
-) -> List[ToolResult]:
+) -> list[ToolResult]:
     """
     Execute multiple tool calls, optionally in parallel.
 
@@ -296,7 +305,7 @@ async def execute_tool_calls(
         return results
 
 
-def parse_openai_tool_calls(response_message: Dict[str, Any]) -> List[ToolCall]:
+def parse_openai_tool_calls(response_message: dict[str, Any]) -> list[ToolCall]:
     """
     Parse tool calls from an OpenAI API response message.
 
@@ -313,17 +322,19 @@ def parse_openai_tool_calls(response_message: Dict[str, Any]) -> List[ToolCall]:
             args = tc.get("function", {}).get("arguments", "{}")
             if isinstance(args, str):
                 args = json.loads(args)
-            calls.append(ToolCall(
-                id=tc.get("id", ""),
-                name=tc.get("function", {}).get("name", ""),
-                arguments=args,
-            ))
+            calls.append(
+                ToolCall(
+                    id=tc.get("id", ""),
+                    name=tc.get("function", {}).get("name", ""),
+                    arguments=args,
+                )
+            )
         except json.JSONDecodeError:
             logger.warning("Failed to parse tool call arguments: %s", tc)
     return calls
 
 
-def parse_anthropic_tool_calls(content_blocks: List[Dict[str, Any]]) -> List[ToolCall]:
+def parse_anthropic_tool_calls(content_blocks: list[dict[str, Any]]) -> list[ToolCall]:
     """
     Parse tool calls from an Anthropic API response.
 
@@ -336,15 +347,18 @@ def parse_anthropic_tool_calls(content_blocks: List[Dict[str, Any]]) -> List[Too
     calls = []
     for block in content_blocks:
         if block.get("type") == "tool_use":
-            calls.append(ToolCall(
-                id=block.get("id", ""),
-                name=block.get("name", ""),
-                arguments=block.get("input", {}),
-            ))
+            calls.append(
+                ToolCall(
+                    id=block.get("id", ""),
+                    name=block.get("name", ""),
+                    arguments=block.get("input", {}),
+                )
+            )
     return calls
 
 
 # ── Built-in Support Tools ───────────────────────────────────────
+
 
 def create_support_tool_registry() -> ToolRegistry:
     """
@@ -359,13 +373,17 @@ def create_support_tool_registry() -> ToolRegistry:
         description="Search the knowledge base for documents relevant to a customer query. Returns matching excerpts with confidence scores.",
         parameters={
             "query": {"type": "string", "description": "The search query"},
-            "top_k": {"type": "integer", "description": "Number of results to return (1-20, default: 5)"},
+            "top_k": {
+                "type": "integer",
+                "description": "Number of results to return (1-20, default: 5)",
+            },
         },
     )
-    async def search_kb(query: str, top_k: int = 5) -> Dict[str, Any]:
+    async def search_kb(query: str, top_k: int = 5) -> dict[str, Any]:
         try:
-            from packages.llm_engine.vector_store import query_pinecone
             from packages.llm_engine.embeddings import get_fastembed_model
+            from packages.llm_engine.vector_store import query_pinecone
+
             model = get_fastembed_model()
             results = await query_pinecone(query_text=query, embedding_model=model, top_k=top_k)
             return {
@@ -394,7 +412,9 @@ def create_support_tool_registry() -> ToolRegistry:
             "ticket_id": {"type": "string", "description": "The ticket ID to escalate"},
         },
     )
-    async def escalate(reason: str, priority: str = "medium", ticket_id: str = "") -> Dict[str, Any]:
+    async def escalate(
+        reason: str, priority: str = "medium", ticket_id: str = ""
+    ) -> dict[str, Any]:
         return {
             "status": "escalated",
             "reason": reason,
@@ -408,10 +428,13 @@ def create_support_tool_registry() -> ToolRegistry:
         description="Retrieve context about a customer including their recent tickets, account status, and interaction history.",
         parameters={
             "customer_id": {"type": "string", "description": "The customer's ID"},
-            "include_history": {"type": "boolean", "description": "Whether to include interaction history (default: true)"},
+            "include_history": {
+                "type": "boolean",
+                "description": "Whether to include interaction history (default: true)",
+            },
         },
     )
-    async def get_customer(customer_id: str, include_history: bool = True) -> Dict[str, Any]:
+    async def get_customer(customer_id: str, include_history: bool = True) -> dict[str, Any]:
         return {
             "customer_id": customer_id,
             "status": "active",
@@ -431,12 +454,15 @@ def create_support_tool_registry() -> ToolRegistry:
                 "description": "Desired tone",
                 "enum": ["professional", "friendly", "empathetic", "technical"],
             },
-            "include_sources": {"type": "boolean", "description": "Whether to include source citations"},
+            "include_sources": {
+                "type": "boolean",
+                "description": "Whether to include source citations",
+            },
         },
     )
     async def draft_response(
         content: str, tone: str = "professional", include_sources: bool = True
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "draft": content,
             "tone": tone,

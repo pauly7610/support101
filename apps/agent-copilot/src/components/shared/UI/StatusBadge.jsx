@@ -1,5 +1,3 @@
-import React from 'react';
-
 const colorMap = {
   success: 'bg-success-green text-white',
   warning: 'bg-warning-orange text-white',
@@ -10,7 +8,9 @@ const colorMap = {
 
 export default function StatusBadge({ status = 'default', children }) {
   return (
-    <span className={`inline-block px-3 py-1 text-xs rounded-full font-semibold ${colorMap[status] || colorMap.default}`}>
+    <span
+      className={`inline-block px-3 py-1 text-xs rounded-full font-semibold ${colorMap[status] || colorMap.default}`}
+    >
       {children}
     </span>
   );

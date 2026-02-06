@@ -5,7 +5,7 @@ Main entry point for using the agent framework.
 Provides a unified interface for all framework capabilities.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .core.agent_executor import AgentExecutor
 from .core.agent_registry import AgentBlueprint, AgentRegistry
@@ -14,13 +14,13 @@ from .governance.audit import AuditEventType, AuditLogger
 from .governance.permissions import AgentPermissions, Permission, PermissionLevel
 from .hitl.escalation import EscalationLevel
 from .hitl.manager import HITLManager
-from .multitenancy.isolation import TenantIsolator
-from .multitenancy.tenant import Tenant, TenantTier
-from .multitenancy.tenant_manager import TenantManager
 from .learning.activity_stream import ActivityStream
 from .learning.feedback_loop import FeedbackCollector
 from .learning.graph import ActivityGraph
 from .learning.playbook_engine import PlaybookEngine
+from .multitenancy.isolation import TenantIsolator
+from .multitenancy.tenant import Tenant, TenantTier
+from .multitenancy.tenant_manager import TenantManager
 from .observability.evalai_tracer import EvalAITracer
 from .realtime.events import get_event_bus
 from .services.vector_store import get_vector_store_service
@@ -65,9 +65,9 @@ class AgentFramework:
 
     def __init__(
         self,
-        evalai_api_key: Optional[str] = None,
-        evalai_base_url: Optional[str] = None,
-        evalai_organization_id: Optional[int] = None,
+        evalai_api_key: str | None = None,
+        evalai_base_url: str | None = None,
+        evalai_organization_id: int | None = None,
         evalai_enabled: bool = True,
     ) -> None:
         self.registry = AgentRegistry()
@@ -125,7 +125,7 @@ class AgentFramework:
         self.registry.register_blueprint(OnboardingBlueprint)
         self.registry.register_blueprint(ComplianceAuditorBlueprint)
 
-    async def _audit_execution_event(self, event: Dict[str, Any]) -> None:
+    async def _audit_execution_event(self, event: dict[str, Any]) -> None:
         """Callback for execution audit events."""
         event_type_map = {
             "execution_started": AuditEventType.EXECUTION_STARTED,
@@ -153,7 +153,7 @@ class AgentFramework:
         """Register a custom agent blueprint."""
         self.registry.register_blueprint(blueprint)
 
-    def list_blueprints(self) -> List[Dict[str, Any]]:
+    def list_blueprints(self) -> list[dict[str, Any]]:
         """List all available blueprints."""
         return self.registry.list_blueprints()
 
@@ -161,7 +161,7 @@ class AgentFramework:
         self,
         name: str,
         tier: str = "starter",
-        owner_id: Optional[str] = None,
+        owner_id: str | None = None,
         auto_activate: bool = True,
     ) -> Tenant:
         """Create a new tenant."""
@@ -173,7 +173,7 @@ class AgentFramework:
             auto_activate=auto_activate,
         )
 
-    def get_tenant(self, tenant_id: str) -> Optional[Tenant]:
+    def get_tenant(self, tenant_id: str) -> Tenant | None:
         """Get a tenant by ID."""
         return self.tenant_manager.get_tenant(tenant_id)
 
@@ -182,7 +182,7 @@ class AgentFramework:
         blueprint: str,
         tenant_id: str,
         name: str,
-        config_overrides: Optional[Dict[str, Any]] = None,
+        config_overrides: dict[str, Any] | None = None,
     ) -> BaseAgent:
         """
         Create a new agent from a blueprint.
@@ -219,24 +219,24 @@ class AgentFramework:
 
         return agent
 
-    def get_agent(self, agent_id: str) -> Optional[BaseAgent]:
+    def get_agent(self, agent_id: str) -> BaseAgent | None:
         """Get an agent by ID."""
         return self.registry.get_agent(agent_id)
 
     def list_agents(
         self,
-        tenant_id: Optional[str] = None,
-        status: Optional[AgentStatus] = None,
-    ) -> List[Dict[str, Any]]:
+        tenant_id: str | None = None,
+        status: AgentStatus | None = None,
+    ) -> list[dict[str, Any]]:
         """List agents with optional filters."""
         return self.registry.list_agents(tenant_id=tenant_id, status=status)
 
     async def execute(
         self,
         agent: BaseAgent,
-        input_data: Dict[str, Any],
-        timeout: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        input_data: dict[str, Any],
+        timeout: int | None = None,
+    ) -> dict[str, Any]:
         """
         Execute an agent with tenant isolation and EvalAI workflow tracing.
 
@@ -276,7 +276,7 @@ class AgentFramework:
 
                 await self.evalai_tracer.end_workflow(
                     output=result.to_dict(),
-                    status="completed" if result.status == AgentStatus.COMPLETED else "failed",
+                    status=("completed" if result.status == AgentStatus.COMPLETED else "failed"),
                 )
 
                 return result.to_dict()
@@ -293,9 +293,9 @@ class AgentFramework:
     async def execute_by_id(
         self,
         agent_id: str,
-        input_data: Dict[str, Any],
-        timeout: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        input_data: dict[str, Any],
+        timeout: int | None = None,
+    ) -> dict[str, Any]:
         """Execute an agent by its ID."""
         agent = self.get_agent(agent_id)
         if not agent:
@@ -306,7 +306,7 @@ class AgentFramework:
         self,
         agent: BaseAgent,
         action: str,
-        context: Dict[str, Any],
+        context: dict[str, Any],
     ) -> str:
         """
         Request human approval for an agent action.
@@ -320,7 +320,7 @@ class AgentFramework:
     async def provide_human_response(
         self,
         request_id: str,
-        response: Dict[str, Any],
+        response: dict[str, Any],
         reviewer_id: str,
     ) -> bool:
         """Provide a response to a HITL request."""
@@ -332,8 +332,8 @@ class AgentFramework:
 
     def get_pending_hitl_requests(
         self,
-        tenant_id: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        tenant_id: str | None = None,
+    ) -> list[dict[str, Any]]:
         """Get pending HITL requests."""
         return self.hitl_manager.get_pending_requests(tenant_id=tenant_id)
 
@@ -342,7 +342,7 @@ class AgentFramework:
         agent: BaseAgent,
         reason: str,
         level: str = "l2",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Escalate an agent's task."""
         esc_level = EscalationLevel(level)
         return await self.hitl_manager.escalate(agent, reason, esc_level)
@@ -352,7 +352,7 @@ class AgentFramework:
         agent_id: str,
         resource: str,
         level: str,
-        tenant_id: Optional[str] = None,
+        tenant_id: str | None = None,
     ) -> None:
         """Grant a permission to an agent."""
         perm_level = PermissionLevel(level)
@@ -364,7 +364,7 @@ class AgentFramework:
         agent_id: str,
         resource: str,
         level: str,
-        tenant_id: Optional[str] = None,
+        tenant_id: str | None = None,
     ) -> bool:
         """Check if an agent has a permission."""
         perm_level = PermissionLevel(level)
@@ -377,10 +377,10 @@ class AgentFramework:
 
     def get_audit_history(
         self,
-        agent_id: Optional[str] = None,
-        tenant_id: Optional[str] = None,
+        agent_id: str | None = None,
+        tenant_id: str | None = None,
         limit: int = 50,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get audit history."""
         if agent_id:
             return self.audit_logger.get_agent_history(agent_id, limit)
@@ -390,8 +390,8 @@ class AgentFramework:
 
     def get_governance_dashboard(
         self,
-        tenant_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        tenant_id: str | None = None,
+    ) -> dict[str, Any]:
         """Get governance dashboard data."""
         agents = self.list_agents(tenant_id=tenant_id)
 
@@ -417,7 +417,7 @@ class AgentFramework:
         """Search for proven resolution paths."""
         return self.feedback_collector.search_golden_paths(*args, **kwargs)
 
-    def get_learning_stats(self) -> Dict[str, Any]:
+    def get_learning_stats(self) -> dict[str, Any]:
         """Get continuous learning statistics."""
         return {
             "feedback": self.feedback_collector.get_stats(),

@@ -11,7 +11,7 @@ Provides fine-grained access control for agents:
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 
 class PermissionLevel(str, Enum):
@@ -29,10 +29,10 @@ class Permission:
 
     resource: str
     level: PermissionLevel
-    conditions: Dict[str, Any] = field(default_factory=dict)
+    conditions: dict[str, Any] = field(default_factory=dict)
     granted_at: datetime = field(default_factory=datetime.utcnow)
-    granted_by: Optional[str] = None
-    expires_at: Optional[datetime] = None
+    granted_by: str | None = None
+    expires_at: datetime | None = None
 
     def is_expired(self) -> bool:
         """Check if permission has expired."""
@@ -40,7 +40,7 @@ class Permission:
             return False
         return datetime.utcnow() > self.expires_at
 
-    def matches_conditions(self, context: Dict[str, Any]) -> bool:
+    def matches_conditions(self, context: dict[str, Any]) -> bool:
         """Check if context matches permission conditions."""
         for key, value in self.conditions.items():
             if key not in context:
@@ -59,8 +59,8 @@ class Role:
 
     name: str
     description: str
-    permissions: List[Permission] = field(default_factory=list)
-    inherits_from: List[str] = field(default_factory=list)
+    permissions: list[Permission] = field(default_factory=list)
+    inherits_from: list[str] = field(default_factory=list)
 
 
 class AgentPermissions:
@@ -75,10 +75,10 @@ class AgentPermissions:
     """
 
     def __init__(self) -> None:
-        self._agent_permissions: Dict[str, List[Permission]] = {}
-        self._agent_roles: Dict[str, Set[str]] = {}
-        self._roles: Dict[str, Role] = {}
-        self._tenant_permissions: Dict[str, Dict[str, List[Permission]]] = {}
+        self._agent_permissions: dict[str, list[Permission]] = {}
+        self._agent_roles: dict[str, set[str]] = {}
+        self._roles: dict[str, Role] = {}
+        self._tenant_permissions: dict[str, dict[str, list[Permission]]] = {}
         self._initialize_default_roles()
 
     def _initialize_default_roles(self) -> None:
@@ -133,7 +133,7 @@ class AgentPermissions:
             raise ValueError(f"Role '{role.name}' already exists")
         self._roles[role.name] = role
 
-    def get_role(self, role_name: str) -> Optional[Role]:
+    def get_role(self, role_name: str) -> Role | None:
         """Get a role by name."""
         return self._roles.get(role_name)
 
@@ -157,7 +157,7 @@ class AgentPermissions:
         self,
         agent_id: str,
         permission: Permission,
-        tenant_id: Optional[str] = None,
+        tenant_id: str | None = None,
     ) -> None:
         """Grant a permission to an agent."""
         if tenant_id:
@@ -175,7 +175,7 @@ class AgentPermissions:
         self,
         agent_id: str,
         resource: str,
-        tenant_id: Optional[str] = None,
+        tenant_id: str | None = None,
     ) -> bool:
         """Revoke a permission from an agent."""
         permissions_list = None
@@ -193,8 +193,8 @@ class AgentPermissions:
         return False
 
     def _get_role_permissions(
-        self, role_name: str, visited: Optional[Set[str]] = None
-    ) -> List[Permission]:
+        self, role_name: str, visited: set[str] | None = None
+    ) -> list[Permission]:
         """Get all permissions for a role, including inherited ones."""
         if visited is None:
             visited = set()
@@ -217,10 +217,10 @@ class AgentPermissions:
     def get_agent_permissions(
         self,
         agent_id: str,
-        tenant_id: Optional[str] = None,
-    ) -> List[Permission]:
+        tenant_id: str | None = None,
+    ) -> list[Permission]:
         """Get all permissions for an agent."""
-        permissions: List[Permission] = []
+        permissions: list[Permission] = []
 
         permissions.extend(self._agent_permissions.get(agent_id, []))
 
@@ -237,8 +237,8 @@ class AgentPermissions:
         agent_id: str,
         resource: str,
         required_level: PermissionLevel,
-        tenant_id: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None,
+        tenant_id: str | None = None,
+        context: dict[str, Any] | None = None,
     ) -> bool:
         """
         Check if an agent has a specific permission.
@@ -266,10 +266,15 @@ class AgentPermissions:
         required_level_value = level_hierarchy[required_level]
 
         for permission in permissions:
-            if permission.resource == "*" or self._resource_matches(permission.resource, resource):
-                if level_hierarchy[permission.level] >= required_level_value:
-                    if permission.matches_conditions(context):
-                        return True
+            if (
+                (
+                    permission.resource == "*"
+                    or self._resource_matches(permission.resource, resource)
+                )
+                and level_hierarchy[permission.level] >= required_level_value
+                and permission.matches_conditions(context)
+            ):
+                return True
 
         return False
 
@@ -284,7 +289,7 @@ class AgentPermissions:
 
         return False
 
-    def list_roles(self) -> List[Dict[str, Any]]:
+    def list_roles(self) -> list[dict[str, Any]]:
         """List all available roles."""
         return [
             {
@@ -296,6 +301,6 @@ class AgentPermissions:
             for role in self._roles.values()
         ]
 
-    def get_agent_roles(self, agent_id: str) -> List[str]:
+    def get_agent_roles(self, agent_id: str) -> list[str]:
         """Get all roles assigned to an agent."""
         return list(self._agent_roles.get(agent_id, set()))

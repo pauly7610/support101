@@ -1,31 +1,31 @@
-import React from "react";
-import { useCurrentFrame, interpolate, Easing } from "remotion";
-import { FadeIn, AnimatedText } from "../components/AnimatedText";
-import { COLORS, FONTS, gradientBg, gridLines, card, heading2 } from "../styles";
+import type React from 'react';
+import { interpolate, useCurrentFrame } from 'remotion';
+import { FadeIn } from '../components/AnimatedText';
+import { COLORS, FONTS, card, gradientBg, gridLines } from '../styles';
 
 const GRAPH_NODES = [
-  { id: "customer", label: "Customer", emoji: "👤", x: 200, y: 300, color: COLORS.primary },
-  { id: "ticket", label: "Ticket", emoji: "🎫", x: 480, y: 180, color: COLORS.orange },
-  { id: "agent", label: "Agent", emoji: "🤖", x: 760, y: 300, color: COLORS.accent },
-  { id: "resolution", label: "Resolution", emoji: "✅", x: 1040, y: 180, color: COLORS.green },
-  { id: "article", label: "Article", emoji: "📄", x: 1040, y: 420, color: COLORS.primaryLight },
-  { id: "playbook", label: "Playbook", emoji: "📋", x: 1320, y: 300, color: COLORS.yellow },
+  { id: 'customer', label: 'Customer', emoji: '👤', x: 200, y: 300, color: COLORS.primary },
+  { id: 'ticket', label: 'Ticket', emoji: '🎫', x: 480, y: 180, color: COLORS.orange },
+  { id: 'agent', label: 'Agent', emoji: '🤖', x: 760, y: 300, color: COLORS.accent },
+  { id: 'resolution', label: 'Resolution', emoji: '✅', x: 1040, y: 180, color: COLORS.green },
+  { id: 'article', label: 'Article', emoji: '📄', x: 1040, y: 420, color: COLORS.primaryLight },
+  { id: 'playbook', label: 'Playbook', emoji: '📋', x: 1320, y: 300, color: COLORS.yellow },
 ];
 
 const GRAPH_EDGES = [
-  { from: "customer", to: "ticket", label: "FILED" },
-  { from: "ticket", to: "agent", label: "ASSIGNED" },
-  { from: "agent", to: "resolution", label: "RESOLVED" },
-  { from: "resolution", to: "article", label: "USED" },
-  { from: "resolution", to: "playbook", label: "FOLLOWED" },
+  { from: 'customer', to: 'ticket', label: 'FILED' },
+  { from: 'ticket', to: 'agent', label: 'ASSIGNED' },
+  { from: 'agent', to: 'resolution', label: 'RESOLVED' },
+  { from: 'resolution', to: 'article', label: 'USED' },
+  { from: 'resolution', to: 'playbook', label: 'FOLLOWED' },
 ];
 
 const STREAM_EVENTS = [
-  { type: "ticket.created", source: "zendesk", time: "0.2s ago" },
-  { type: "agent.executed", source: "internal", time: "0.8s ago" },
-  { type: "hitl.approved", source: "internal", time: "1.2s ago" },
-  { type: "csat.received", source: "webhook", time: "2.1s ago" },
-  { type: "playbook.suggested", source: "engine", time: "2.3s ago" },
+  { type: 'ticket.created', source: 'zendesk', time: '0.2s ago' },
+  { type: 'agent.executed', source: 'internal', time: '0.8s ago' },
+  { type: 'hitl.approved', source: 'internal', time: '1.2s ago' },
+  { type: 'csat.received', source: 'webhook', time: '2.1s ago' },
+  { type: 'playbook.suggested', source: 'engine', time: '2.3s ago' },
 ];
 
 export const Scene6Learning: React.FC = () => {
@@ -45,11 +45,11 @@ export const Scene6Learning: React.FC = () => {
       <FadeIn startFrame={0} durationFrames={15}>
         <div
           style={{
-            position: "absolute",
+            position: 'absolute',
             top: 48,
             left: 80,
-            display: "flex",
-            alignItems: "center",
+            display: 'flex',
+            alignItems: 'center',
             gap: 12,
           }}
         >
@@ -57,7 +57,7 @@ export const Scene6Learning: React.FC = () => {
             style={{
               width: 8,
               height: 8,
-              borderRadius: "50%",
+              borderRadius: '50%',
               backgroundColor: COLORS.green,
               boxShadow: `0 0 8px ${COLORS.green}`,
             }}
@@ -67,7 +67,7 @@ export const Scene6Learning: React.FC = () => {
               fontSize: 16,
               fontFamily: FONTS.mono,
               color: COLORS.textMuted,
-              textTransform: "uppercase",
+              textTransform: 'uppercase',
               letterSpacing: 2,
             }}
           >
@@ -81,21 +81,21 @@ export const Scene6Learning: React.FC = () => {
         <FadeIn startFrame={5} durationFrames={20}>
           <div
             style={{
-              position: "absolute",
+              position: 'absolute',
               left: 80,
               top: 120,
               width: 420,
               ...card,
               padding: 0,
-              overflow: "hidden",
+              overflow: 'hidden',
             }}
           >
             <div
               style={{
-                padding: "14px 20px",
+                padding: '14px 20px',
                 borderBottom: `1px solid ${COLORS.gray700}`,
-                display: "flex",
-                alignItems: "center",
+                display: 'flex',
+                alignItems: 'center',
                 gap: 10,
                 backgroundColor: COLORS.bgCardLight,
               }}
@@ -104,7 +104,7 @@ export const Scene6Learning: React.FC = () => {
               <span style={{ fontSize: 14, fontWeight: 700 }}>Feedback Loop</span>
               <span
                 style={{
-                  marginLeft: "auto",
+                  marginLeft: 'auto',
                   fontSize: 11,
                   fontFamily: FONTS.mono,
                   color: COLORS.green,
@@ -122,7 +122,7 @@ export const Scene6Learning: React.FC = () => {
                     fontSize: 12,
                     fontWeight: 600,
                     color: COLORS.textDim,
-                    textTransform: "uppercase",
+                    textTransform: 'uppercase',
                     letterSpacing: 1,
                     marginBottom: 10,
                   }}
@@ -162,8 +162,8 @@ export const Scene6Learning: React.FC = () => {
                 <div
                   style={{
                     marginTop: 12,
-                    display: "flex",
-                    alignItems: "center",
+                    display: 'flex',
+                    alignItems: 'center',
                     gap: 8,
                     fontSize: 12,
                     fontFamily: FONTS.mono,
@@ -174,7 +174,7 @@ export const Scene6Learning: React.FC = () => {
                     style={{
                       width: 6,
                       height: 6,
-                      borderRadius: "50%",
+                      borderRadius: '50%',
                       backgroundColor: COLORS.primaryLight,
                       boxShadow: `0 0 6px ${COLORS.primaryLight}`,
                     }}
@@ -187,8 +187,8 @@ export const Scene6Learning: React.FC = () => {
                 <div
                   style={{
                     marginTop: 8,
-                    display: "flex",
-                    alignItems: "center",
+                    display: 'flex',
+                    alignItems: 'center',
                     gap: 8,
                     fontSize: 12,
                     fontFamily: FONTS.mono,
@@ -199,7 +199,7 @@ export const Scene6Learning: React.FC = () => {
                     style={{
                       width: 6,
                       height: 6,
-                      borderRadius: "50%",
+                      borderRadius: '50%',
                       backgroundColor: COLORS.green,
                       boxShadow: `0 0 6px ${COLORS.green}`,
                     }}
@@ -217,21 +217,21 @@ export const Scene6Learning: React.FC = () => {
         <FadeIn startFrame={90} durationFrames={20}>
           <div
             style={{
-              position: "absolute",
+              position: 'absolute',
               right: 80,
               top: 120,
               width: 420,
               ...card,
               padding: 0,
-              overflow: "hidden",
+              overflow: 'hidden',
             }}
           >
             <div
               style={{
-                padding: "14px 20px",
+                padding: '14px 20px',
                 borderBottom: `1px solid ${COLORS.gray700}`,
-                display: "flex",
-                alignItems: "center",
+                display: 'flex',
+                alignItems: 'center',
                 gap: 10,
                 backgroundColor: COLORS.bgCardLight,
               }}
@@ -240,7 +240,7 @@ export const Scene6Learning: React.FC = () => {
               <span style={{ fontSize: 14, fontWeight: 700 }}>Activity Stream</span>
               <span
                 style={{
-                  marginLeft: "auto",
+                  marginLeft: 'auto',
                   fontSize: 11,
                   fontFamily: FONTS.mono,
                   color: COLORS.red,
@@ -250,32 +250,30 @@ export const Scene6Learning: React.FC = () => {
               </span>
             </div>
 
-            <div style={{ padding: "12px 20px" }}>
+            <div style={{ padding: '12px 20px' }}>
               {STREAM_EVENTS.map((evt, i) => (
                 <FadeIn key={i} startFrame={100 + i * 12} durationFrames={10}>
                   <div
                     style={{
-                      display: "flex",
-                      alignItems: "center",
+                      display: 'flex',
+                      alignItems: 'center',
                       gap: 10,
-                      padding: "8px 0",
+                      padding: '8px 0',
                       borderBottom:
-                        i < STREAM_EVENTS.length - 1
-                          ? `1px solid ${COLORS.gray700}44`
-                          : "none",
+                        i < STREAM_EVENTS.length - 1 ? `1px solid ${COLORS.gray700}44` : 'none',
                     }}
                   >
                     <div
                       style={{
                         width: 6,
                         height: 6,
-                        borderRadius: "50%",
+                        borderRadius: '50%',
                         backgroundColor:
-                          evt.source === "webhook"
+                          evt.source === 'webhook'
                             ? COLORS.orange
-                            : evt.source === "engine"
-                            ? COLORS.accent
-                            : COLORS.primary,
+                            : evt.source === 'engine'
+                              ? COLORS.accent
+                              : COLORS.primary,
                         boxShadow: `0 0 4px ${COLORS.primary}`,
                       }}
                     />
@@ -292,7 +290,7 @@ export const Scene6Learning: React.FC = () => {
                     <span
                       style={{
                         fontSize: 11,
-                        padding: "2px 8px",
+                        padding: '2px 8px',
                         borderRadius: 4,
                         backgroundColor: `${COLORS.gray700}`,
                         color: COLORS.textDim,
@@ -314,22 +312,22 @@ export const Scene6Learning: React.FC = () => {
         <FadeIn startFrame={170} durationFrames={20}>
           <div
             style={{
-              position: "absolute",
+              position: 'absolute',
               left: 80,
               top: 520,
               right: 80,
               height: 340,
               ...card,
               padding: 0,
-              overflow: "hidden",
+              overflow: 'hidden',
             }}
           >
             <div
               style={{
-                padding: "14px 20px",
+                padding: '14px 20px',
                 borderBottom: `1px solid ${COLORS.gray700}`,
-                display: "flex",
-                alignItems: "center",
+                display: 'flex',
+                alignItems: 'center',
                 gap: 10,
                 backgroundColor: COLORS.bgCardLight,
               }}
@@ -338,7 +336,7 @@ export const Scene6Learning: React.FC = () => {
               <span style={{ fontSize: 14, fontWeight: 700 }}>Activity Graph</span>
               <span
                 style={{
-                  marginLeft: "auto",
+                  marginLeft: 'auto',
                   fontSize: 11,
                   fontFamily: FONTS.mono,
                   color: COLORS.primaryLight,
@@ -349,22 +347,20 @@ export const Scene6Learning: React.FC = () => {
             </div>
 
             {/* Graph visualization */}
-            <div style={{ position: "relative", height: 280, padding: 20 }}>
+            <div style={{ position: 'relative', height: 280, padding: 20 }}>
               {/* Edges */}
               <svg
-                style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
                 viewBox="0 0 1760 280"
               >
                 {GRAPH_EDGES.map((edge, i) => {
                   const from = GRAPH_NODES.find((n) => n.id === edge.from)!;
                   const to = GRAPH_NODES.find((n) => n.id === edge.to)!;
                   const edgeFrame = 185 + i * 15;
-                  const progress = interpolate(
-                    frame,
-                    [edgeFrame, edgeFrame + 15],
-                    [0, 1],
-                    { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
-                  );
+                  const progress = interpolate(frame, [edgeFrame, edgeFrame + 15], [0, 1], {
+                    extrapolateLeft: 'clamp',
+                    extrapolateRight: 'clamp',
+                  });
                   return (
                     <g key={i}>
                       <line
@@ -398,24 +394,22 @@ export const Scene6Learning: React.FC = () => {
               {/* Nodes */}
               {GRAPH_NODES.map((node, i) => {
                 const nodeFrame = 180 + i * 10;
-                const nodeProgress = interpolate(
-                  frame,
-                  [nodeFrame, nodeFrame + 12],
-                  [0, 1],
-                  { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
-                );
+                const nodeProgress = interpolate(frame, [nodeFrame, nodeFrame + 12], [0, 1], {
+                  extrapolateLeft: 'clamp',
+                  extrapolateRight: 'clamp',
+                });
                 const scale = interpolate(nodeProgress, [0, 1], [0.5, 1]);
                 return (
                   <div
                     key={node.id}
                     style={{
-                      position: "absolute",
+                      position: 'absolute',
                       left: node.x - 40,
                       top: node.y - 210,
                       width: 80,
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
                       gap: 6,
                       opacity: nodeProgress,
                       transform: `scale(${scale})`,
@@ -425,12 +419,12 @@ export const Scene6Learning: React.FC = () => {
                       style={{
                         width: 48,
                         height: 48,
-                        borderRadius: "50%",
+                        borderRadius: '50%',
                         backgroundColor: `${node.color}22`,
                         border: `2px solid ${node.color}`,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                         fontSize: 22,
                         boxShadow: `0 0 16px ${node.color}33`,
                       }}
@@ -460,7 +454,7 @@ export const Scene6Learning: React.FC = () => {
         <FadeIn startFrame={260} durationFrames={20}>
           <div
             style={{
-              position: "absolute",
+              position: 'absolute',
               left: 560,
               top: 120,
               width: 420,
@@ -472,8 +466,8 @@ export const Scene6Learning: React.FC = () => {
           >
             <div
               style={{
-                display: "flex",
-                alignItems: "center",
+                display: 'flex',
+                alignItems: 'center',
                 gap: 10,
                 marginBottom: 14,
               }}
@@ -482,7 +476,7 @@ export const Scene6Learning: React.FC = () => {
               <span style={{ fontSize: 15, fontWeight: 700 }}>Playbook Suggested</span>
               <span
                 style={{
-                  marginLeft: "auto",
+                  marginLeft: 'auto',
                   fontSize: 11,
                   fontFamily: FONTS.mono,
                   color: COLORS.accent,
@@ -510,14 +504,14 @@ export const Scene6Learning: React.FC = () => {
             </div>
 
             {/* Steps */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {["analyze_intent", "search_kb", "calculate_refund", "confirm_action"].map(
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {['analyze_intent', 'search_kb', 'calculate_refund', 'confirm_action'].map(
                 (step, i) => (
                   <FadeIn key={step} startFrame={275 + i * 8} durationFrames={10}>
                     <div
                       style={{
-                        display: "flex",
-                        alignItems: "center",
+                        display: 'flex',
+                        alignItems: 'center',
                         gap: 10,
                         fontSize: 13,
                       }}
@@ -526,12 +520,12 @@ export const Scene6Learning: React.FC = () => {
                         style={{
                           width: 24,
                           height: 24,
-                          borderRadius: "50%",
+                          borderRadius: '50%',
                           backgroundColor: `${COLORS.accent}22`,
                           border: `1px solid ${COLORS.accent}44`,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
                           fontSize: 11,
                           fontWeight: 700,
                           color: COLORS.accentLight,
@@ -540,12 +534,10 @@ export const Scene6Learning: React.FC = () => {
                         {i + 1}
                       </div>
                       <span style={{ fontFamily: FONTS.mono, color: COLORS.text }}>{step}</span>
-                      {i < 3 && (
-                        <span style={{ color: COLORS.textDim, fontSize: 16 }}>→</span>
-                      )}
+                      {i < 3 && <span style={{ color: COLORS.textDim, fontSize: 16 }}>→</span>}
                     </div>
                   </FadeIn>
-                )
+                ),
               )}
             </div>
 
@@ -554,14 +546,12 @@ export const Scene6Learning: React.FC = () => {
               <div
                 style={{
                   marginTop: 14,
-                  display: "flex",
-                  justifyContent: "space-between",
+                  display: 'flex',
+                  justifyContent: 'space-between',
                   fontSize: 13,
                 }}
               >
-                <span style={{ color: COLORS.green, fontWeight: 700 }}>
-                  92% success rate
-                </span>
+                <span style={{ color: COLORS.green, fontWeight: 700 }}>92% success rate</span>
                 <span style={{ color: COLORS.textDim }}>12 samples</span>
               </div>
             </FadeIn>
@@ -574,11 +564,11 @@ export const Scene6Learning: React.FC = () => {
         <FadeIn startFrame={310} durationFrames={20}>
           <div
             style={{
-              position: "absolute",
+              position: 'absolute',
               bottom: 60,
               left: 0,
               right: 0,
-              textAlign: "center",
+              textAlign: 'center',
             }}
           >
             <div
@@ -589,7 +579,7 @@ export const Scene6Learning: React.FC = () => {
                 color: COLORS.text,
               }}
             >
-              Every interaction teaches the system.{" "}
+              Every interaction teaches the system.{' '}
               <span style={{ color: COLORS.primaryLight }}>No fine-tuning required.</span>
             </div>
           </div>

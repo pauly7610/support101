@@ -9,7 +9,8 @@ import asyncio
 import functools
 import logging
 import time
-from typing import Any, Callable, Dict, Optional
+from collections.abc import Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ def llm_retry(
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            last_exception: Optional[Exception] = None
+            last_exception: Exception | None = None
             for attempt in range(1, max_attempts + 1):
                 try:
                     return await func(*args, **kwargs)
@@ -66,12 +67,12 @@ def llm_retry(
 
 
 async def track_llm_cost(
-    tracer: Optional[Any],
+    tracer: Any | None,
     provider: str,
     model: str,
     input_tokens: int,
     output_tokens: int,
-    duration_ms: Optional[int] = None,
+    duration_ms: int | None = None,
 ) -> None:
     """
     Record LLM token cost to EvalAI tracer if available.
@@ -103,11 +104,11 @@ async def track_llm_cost(
 
 
 async def track_agent_decision(
-    tracer: Optional[Any],
+    tracer: Any | None,
     agent_name: str,
     decision_type: str,
     chosen: str,
-    alternatives: Optional[list] = None,
+    alternatives: list | None = None,
     confidence: int = 80,
     reasoning: str = "",
 ) -> None:
@@ -155,7 +156,7 @@ class LLMCallTimer:
 
     def __init__(
         self,
-        tracer: Optional[Any] = None,
+        tracer: Any | None = None,
         provider: str = "openai",
         model: str = "gpt-4o",
     ) -> None:

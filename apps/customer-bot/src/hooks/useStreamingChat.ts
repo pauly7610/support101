@@ -47,7 +47,16 @@ interface UseStreamingChatReturn {
   setMessages: (messages: ChatMessage[]) => void;
 }
 
-const URGENT_WORDS = ['urgent', 'immediately', 'asap', 'help', 'problem', 'angry', 'cancel', 'refund'];
+const URGENT_WORDS = [
+  'urgent',
+  'immediately',
+  'asap',
+  'help',
+  'problem',
+  'angry',
+  'cancel',
+  'refund',
+];
 
 function analyzeSentiment(text: string): 'urgent' | 'normal' {
   const lower = text.toLowerCase();
@@ -127,13 +136,13 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}): UseStre
                   const text = JSON.parse(line.slice(2));
                   fullText += text;
                   setMessages((prev) =>
-                    prev.map((m) => (m.id === assistantMsg.id ? { ...m, content: fullText } : m))
+                    prev.map((m) => (m.id === assistantMsg.id ? { ...m, content: fullText } : m)),
                   );
                 } catch {
                   // Not JSON, append raw
                   fullText += line.slice(2);
                   setMessages((prev) =>
-                    prev.map((m) => (m.id === assistantMsg.id ? { ...m, content: fullText } : m))
+                    prev.map((m) => (m.id === assistantMsg.id ? { ...m, content: fullText } : m)),
                   );
                 }
               }
@@ -165,7 +174,7 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}): UseStre
         abortRef.current = null;
       }
     },
-    [api, messages, onError, onFinish]
+    [api, messages, onError, onFinish],
   );
 
   const handleSubmit = useCallback(
@@ -176,7 +185,7 @@ export function useStreamingChat(options: UseStreamingChatOptions = {}): UseStre
       setInput('');
       await append({ role: 'user', content: text });
     },
-    [input, append]
+    [input, append],
   );
 
   const reload = useCallback(async () => {

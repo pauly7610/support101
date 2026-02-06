@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { adminGdprDelete } from '../../../api';
 import Card from '../../shared/UI/Card';
 
@@ -33,7 +33,7 @@ export default function AdminCompliancePanel() {
           className="border rounded px-2 py-1 text-sm w-64"
           placeholder="User ID (UUID)"
           value={userId}
-          onChange={e => setUserId(e.target.value)}
+          onChange={(e) => setUserId(e.target.value)}
           disabled={loading}
         />
         {!confirm ? (

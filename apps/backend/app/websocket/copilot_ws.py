@@ -13,7 +13,7 @@ import asyncio
 import json
 import os
 import time
-from typing import Any, Dict, Optional, Set
+from typing import Any
 
 import jwt
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
@@ -24,10 +24,10 @@ JWT_SECRET = os.getenv("JWT_SECRET", "dev_secret")
 JWT_ALGORITHM = "HS256"
 
 # Active connections registry
-_connections: Set[WebSocket] = set()
+_connections: set[WebSocket] = set()
 
 
-def _verify_token(token: str) -> Optional[Dict[str, Any]]:
+def _verify_token(token: str) -> dict[str, Any] | None:
     """Verify JWT token and return payload, or None if invalid."""
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
@@ -36,7 +36,7 @@ def _verify_token(token: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-async def _generate_suggestion(ticket_context: Dict[str, Any]) -> Dict[str, Any]:
+async def _generate_suggestion(ticket_context: dict[str, Any]) -> dict[str, Any]:
     """
     Generate a suggested reply for the given ticket context.
     Uses RAG chain if available, falls back to echo response.
@@ -70,7 +70,7 @@ async def _generate_suggestion(ticket_context: Dict[str, Any]) -> Dict[str, Any]
             "generated_at": time.time(),
             "mock": True,
         }
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return {
             "type": "error",
             "error_type": "llm_timeout",
@@ -122,51 +122,61 @@ async def copilot_websocket(websocket: WebSocket):
     _connections.add(websocket)
 
     try:
-        await websocket.send_json({
-            "type": "connected",
-            "message": "Copilot WebSocket connected",
-            "timestamp": time.time(),
-        })
+        await websocket.send_json(
+            {
+                "type": "connected",
+                "message": "Copilot WebSocket connected",
+                "timestamp": time.time(),
+            }
+        )
 
         while True:
             raw = await websocket.receive_text()
             try:
                 message = json.loads(raw)
             except json.JSONDecodeError:
-                await websocket.send_json({
-                    "type": "error",
-                    "error_type": "invalid_json",
-                    "message": "Invalid JSON payload",
-                    "retryable": False,
-                    "documentation": "https://api.support101/errors#E400",
-                })
+                await websocket.send_json(
+                    {
+                        "type": "error",
+                        "error_type": "invalid_json",
+                        "message": "Invalid JSON payload",
+                        "retryable": False,
+                        "documentation": "https://api.support101/errors#E400",
+                    }
+                )
                 continue
 
             msg_type = message.get("type")
 
             if msg_type == "ping":
-                await websocket.send_json({
-                    "type": "pong",
-                    "timestamp": time.time(),
-                })
+                await websocket.send_json(
+                    {
+                        "type": "pong",
+                        "timestamp": time.time(),
+                    }
+                )
 
             elif msg_type == "ticket_context":
                 ticket_data = message.get("data", {})
-                await websocket.send_json({
-                    "type": "processing",
-                    "message": "Generating suggestion...",
-                })
+                await websocket.send_json(
+                    {
+                        "type": "processing",
+                        "message": "Generating suggestion...",
+                    }
+                )
                 suggestion = await _generate_suggestion(ticket_data)
                 await websocket.send_json(suggestion)
 
             else:
-                await websocket.send_json({
-                    "type": "error",
-                    "error_type": "unknown_message_type",
-                    "message": f"Unknown message type: {msg_type}",
-                    "retryable": False,
-                    "documentation": "https://api.support101/errors#E400",
-                })
+                await websocket.send_json(
+                    {
+                        "type": "error",
+                        "error_type": "unknown_message_type",
+                        "message": f"Unknown message type: {msg_type}",
+                        "retryable": False,
+                        "documentation": "https://api.support101/errors#E400",
+                    }
+                )
 
     except WebSocketDisconnect:
         pass
@@ -174,10 +184,10 @@ async def copilot_websocket(websocket: WebSocket):
         _connections.discard(websocket)
 
 
-async def broadcast(message: Dict[str, Any]) -> None:
+async def broadcast(message: dict[str, Any]) -> None:
     """Broadcast a message to all connected copilot clients."""
-    dead: Set[WebSocket] = set()
-    for ws in _connections:
+    dead: set[WebSocket] = set()
+    for ws in _connections:  # noqa: F823
         try:
             await ws.send_json(message)
         except Exception:

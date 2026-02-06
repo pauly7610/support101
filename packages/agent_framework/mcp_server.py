@@ -20,9 +20,8 @@ Usage:
 
 import asyncio
 import json
-import os
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # MCP protocol types — lightweight implementation that follows the spec
 # without requiring the official SDK (which may not be installed)
@@ -35,8 +34,8 @@ class MCPServer:
     """
 
     def __init__(self) -> None:
-        self.tools: Dict[str, Dict[str, Any]] = {}
-        self.handlers: Dict[str, Any] = {}
+        self.tools: dict[str, dict[str, Any]] = {}
+        self.handlers: dict[str, Any] = {}
         self._framework = None
         self._rag_chain = None
 
@@ -44,9 +43,10 @@ class MCPServer:
         self,
         name: str,
         description: str,
-        parameters: Dict[str, Any],
+        parameters: dict[str, Any],
     ):
         """Decorator to register an MCP tool."""
+
         def decorator(func):
             self.tools[name] = {
                 "name": name,
@@ -58,6 +58,7 @@ class MCPServer:
             }
             self.handlers[name] = func
             return func
+
         return decorator
 
     async def _get_framework(self):
@@ -65,6 +66,7 @@ class MCPServer:
         if self._framework is None:
             try:
                 from packages.agent_framework.sdk import AgentFramework
+
                 self._framework = AgentFramework()
                 await self._framework.start()
             except Exception:
@@ -76,36 +78,43 @@ class MCPServer:
         if self._rag_chain is None:
             try:
                 from packages.llm_engine.chains.rag_chain import RAGChain
+
                 self._rag_chain = RAGChain()
             except Exception:
                 self._rag_chain = None
         return self._rag_chain
 
-    async def handle_request(self, request: Dict[str, Any]) -> Dict[str, Any]:
+    async def handle_request(self, request: dict[str, Any]) -> dict[str, Any]:
         """Handle a JSON-RPC 2.0 request."""
         method = request.get("method", "")
         req_id = request.get("id")
         params = request.get("params", {})
 
         if method == "initialize":
-            return self._response(req_id, {
-                "protocolVersion": "2024-11-05",
-                "capabilities": {
-                    "tools": {"listChanged": False},
+            return self._response(
+                req_id,
+                {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {
+                        "tools": {"listChanged": False},
+                    },
+                    "serverInfo": {
+                        "name": "support101-agent-framework",
+                        "version": "1.0.0",
+                    },
                 },
-                "serverInfo": {
-                    "name": "support101-agent-framework",
-                    "version": "1.0.0",
-                },
-            })
+            )
 
         elif method == "notifications/initialized":
             return None  # No response for notifications
 
         elif method == "tools/list":
-            return self._response(req_id, {
-                "tools": list(self.tools.values()),
-            })
+            return self._response(
+                req_id,
+                {
+                    "tools": list(self.tools.values()),
+                },
+            )
 
         elif method == "tools/call":
             tool_name = params.get("name", "")
@@ -115,23 +124,38 @@ class MCPServer:
                 return self._error(req_id, -32601, f"Unknown tool: {tool_name}")
             try:
                 result = await handler(arguments)
-                return self._response(req_id, {
-                    "content": [
-                        {"type": "text", "text": json.dumps(result, indent=2, default=str)},
-                    ],
-                })
+                return self._response(
+                    req_id,
+                    {
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": json.dumps(result, indent=2, default=str),
+                            },
+                        ],
+                    },
+                )
             except Exception as e:
-                return self._response(req_id, {
-                    "content": [
-                        {"type": "text", "text": json.dumps({
-                            "error_type": "tool_execution_error",
-                            "message": str(e)[:500],
-                            "retryable": True,
-                            "documentation": "https://api.support101/errors#E500",
-                        }, indent=2)},
-                    ],
-                    "isError": True,
-                })
+                return self._response(
+                    req_id,
+                    {
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": json.dumps(
+                                    {
+                                        "error_type": "tool_execution_error",
+                                        "message": str(e)[:500],
+                                        "retryable": True,
+                                        "documentation": "https://api.support101/errors#E500",
+                                    },
+                                    indent=2,
+                                ),
+                            },
+                        ],
+                        "isError": True,
+                    },
+                )
 
         elif method == "ping":
             return self._response(req_id, {})
@@ -139,11 +163,15 @@ class MCPServer:
         else:
             return self._error(req_id, -32601, f"Method not found: {method}")
 
-    def _response(self, req_id: Any, result: Any) -> Dict[str, Any]:
+    def _response(self, req_id: Any, result: Any) -> dict[str, Any]:
         return {"jsonrpc": "2.0", "id": req_id, "result": result}
 
-    def _error(self, req_id: Any, code: int, message: str) -> Dict[str, Any]:
-        return {"jsonrpc": "2.0", "id": req_id, "error": {"code": code, "message": message}}
+    def _error(self, req_id: Any, code: int, message: str) -> dict[str, Any]:
+        return {
+            "jsonrpc": "2.0",
+            "id": req_id,
+            "error": {"code": code, "message": message},
+        }
 
     async def run_stdio(self) -> None:
         """Run the MCP server over stdio transport."""
@@ -151,10 +179,15 @@ class MCPServer:
         protocol = asyncio.StreamReaderProtocol(reader)
         await asyncio.get_event_loop().connect_read_pipe(lambda: protocol, sys.stdin.buffer)
 
-        writer_transport, writer_protocol = await asyncio.get_event_loop().connect_write_pipe(
+        (
+            writer_transport,
+            writer_protocol,
+        ) = await asyncio.get_event_loop().connect_write_pipe(
             asyncio.streams.FlowControlMixin, sys.stdout.buffer
         )
-        writer = asyncio.StreamWriter(writer_transport, writer_protocol, None, asyncio.get_event_loop())
+        writer = asyncio.StreamWriter(
+            writer_transport, writer_protocol, None, asyncio.get_event_loop()
+        )
 
         while True:
             try:
@@ -185,14 +218,23 @@ server = MCPServer()
     name="suggest_reply",
     description="Generate a support reply for a customer query using RAG (Retrieval-Augmented Generation). Returns a suggested reply with source citations.",
     parameters={
-        "query": {"type": "string", "description": "The customer's question or support ticket content"},
-        "ticket_id": {"type": "string", "description": "Optional ticket ID for context"},
+        "query": {
+            "type": "string",
+            "description": "The customer's question or support ticket content",
+        },
+        "ticket_id": {
+            "type": "string",
+            "description": "Optional ticket ID for context",
+        },
     },
 )
-async def suggest_reply(args: Dict[str, Any]) -> Dict[str, Any]:
+async def suggest_reply(args: dict[str, Any]) -> dict[str, Any]:
     chain = await server._get_rag_chain()
     if not chain:
-        return {"reply_text": None, "error": "RAG chain not available. Check LLM engine configuration."}
+        return {
+            "reply_text": None,
+            "error": "RAG chain not available. Check LLM engine configuration.",
+        }
     result = await chain.generate(args.get("query", ""))
     return result
 
@@ -202,13 +244,16 @@ async def suggest_reply(args: Dict[str, Any]) -> Dict[str, Any]:
     description="Search the knowledge base (Pinecone vector store) for documents relevant to a query. Returns matching excerpts with confidence scores.",
     parameters={
         "query": {"type": "string", "description": "Search query"},
-        "top_k": {"type": "integer", "description": "Number of results to return (default: 5)"},
+        "top_k": {
+            "type": "integer",
+            "description": "Number of results to return (default: 5)",
+        },
     },
 )
-async def search_knowledge_base(args: Dict[str, Any]) -> Dict[str, Any]:
+async def search_knowledge_base(args: dict[str, Any]) -> dict[str, Any]:
     try:
-        from packages.llm_engine.vector_store import query_pinecone
         from packages.llm_engine.embeddings import get_fastembed_model
+        from packages.llm_engine.vector_store import query_pinecone
 
         model = get_fastembed_model()
         results = await query_pinecone(
@@ -236,15 +281,19 @@ async def search_knowledge_base(args: Dict[str, Any]) -> Dict[str, Any]:
     description="List all registered agents in the framework, optionally filtered by tenant or blueprint.",
     parameters={
         "tenant_id": {"type": "string", "description": "Optional tenant ID filter"},
-        "blueprint_name": {"type": "string", "description": "Optional blueprint name filter"},
+        "blueprint_name": {
+            "type": "string",
+            "description": "Optional blueprint name filter",
+        },
     },
 )
-async def list_agents(args: Dict[str, Any]) -> Dict[str, Any]:
+async def list_agents(args: dict[str, Any]) -> dict[str, Any]:
     framework = await server._get_framework()
     if not framework:
         return {"agents": [], "error": "Agent framework not available"}
     try:
         from packages.agent_framework.core.registry import AgentRegistry
+
         registry = AgentRegistry()
         agents = registry.list_agents(
             tenant_id=args.get("tenant_id"),
@@ -263,7 +312,7 @@ async def list_agents(args: Dict[str, Any]) -> Dict[str, Any]:
         "input_data": {"type": "object", "description": "Input data for the agent"},
     },
 )
-async def execute_agent(args: Dict[str, Any]) -> Dict[str, Any]:
+async def execute_agent(args: dict[str, Any]) -> dict[str, Any]:
     framework = await server._get_framework()
     if not framework:
         return {"error": "Agent framework not available"}
@@ -281,11 +330,14 @@ async def execute_agent(args: Dict[str, Any]) -> Dict[str, Any]:
     name="search_golden_paths",
     description="Search for proven resolution patterns (golden paths) that match a query. Golden paths are successful resolutions stored from HITL feedback.",
     parameters={
-        "query": {"type": "string", "description": "The support query to find golden paths for"},
+        "query": {
+            "type": "string",
+            "description": "The support query to find golden paths for",
+        },
         "top_k": {"type": "integer", "description": "Number of results (default: 3)"},
     },
 )
-async def search_golden_paths(args: Dict[str, Any]) -> Dict[str, Any]:
+async def search_golden_paths(args: dict[str, Any]) -> dict[str, Any]:
     framework = await server._get_framework()
     if not framework:
         return {"golden_paths": [], "error": "Agent framework not available"}
@@ -303,11 +355,14 @@ async def search_golden_paths(args: Dict[str, Any]) -> Dict[str, Any]:
     name="suggest_playbook",
     description="Get playbook suggestions for handling a support ticket. Playbooks are derived from successful resolution patterns in the activity graph.",
     parameters={
-        "ticket_content": {"type": "string", "description": "The ticket content to find playbooks for"},
+        "ticket_content": {
+            "type": "string",
+            "description": "The ticket content to find playbooks for",
+        },
         "category": {"type": "string", "description": "Optional ticket category"},
     },
 )
-async def suggest_playbook(args: Dict[str, Any]) -> Dict[str, Any]:
+async def suggest_playbook(args: dict[str, Any]) -> dict[str, Any]:
     framework = await server._get_framework()
     if not framework:
         return {"playbooks": [], "error": "Agent framework not available"}
@@ -324,13 +379,20 @@ async def suggest_playbook(args: Dict[str, Any]) -> Dict[str, Any]:
     name="get_hitl_queue",
     description="View the human-in-the-loop review queue. Shows pending items that need human review before being sent to customers.",
     parameters={
-        "status_filter": {"type": "string", "description": "Filter by status: pending, assigned, completed"},
-        "limit": {"type": "integer", "description": "Max items to return (default: 20)"},
+        "status_filter": {
+            "type": "string",
+            "description": "Filter by status: pending, assigned, completed",
+        },
+        "limit": {
+            "type": "integer",
+            "description": "Max items to return (default: 20)",
+        },
     },
 )
-async def get_hitl_queue(args: Dict[str, Any]) -> Dict[str, Any]:
+async def get_hitl_queue(args: dict[str, Any]) -> dict[str, Any]:
     try:
         from packages.agent_framework.hitl.manager import HITLManager
+
         manager = HITLManager()
         items = manager.get_queue(
             status_filter=args.get("status_filter"),
@@ -351,10 +413,10 @@ async def get_hitl_queue(args: Dict[str, Any]) -> Dict[str, Any]:
         "tenant_id": {"type": "string", "description": "Optional tenant ID filter"},
     },
 )
-async def get_governance_dashboard(args: Dict[str, Any]) -> Dict[str, Any]:
+async def get_governance_dashboard(args: dict[str, Any]) -> dict[str, Any]:
     try:
-        from packages.agent_framework.governance.audit import AuditLogger
         from packages.agent_framework.core.registry import AgentRegistry
+        from packages.agent_framework.governance.audit import AuditLogger
 
         registry = AgentRegistry()
         audit = AuditLogger()
@@ -370,6 +432,7 @@ async def get_governance_dashboard(args: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # ── Entry Point ──────────────────────────────────────────────────
+
 
 async def main() -> None:
     """Run the MCP server."""

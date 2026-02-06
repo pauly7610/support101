@@ -64,7 +64,7 @@ async def test_escalation_analytics_admin(async_client, async_session):
     # Test with start_time/end_time filter (should not error, even if no data)
     now = int(datetime.utcnow().timestamp())
     resp = await async_client.get(
-        f"/v1/analytics/escalations?start_time={now-10000}&end_time={now}",
+        f"/v1/analytics/escalations?start_time={now - 10000}&end_time={now}",
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200
@@ -89,7 +89,11 @@ async def test_escalation_analytics_permission_denied(async_client, async_sessio
     async_session.add(user)
     await async_session.commit()
 
-    payload = {"sub": user_id, "is_admin": False, "exp": datetime.utcnow() + timedelta(minutes=15)}
+    payload = {
+        "sub": user_id,
+        "is_admin": False,
+        "exp": datetime.utcnow() + timedelta(minutes=15),
+    }
     token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
     # Test all analytics endpoints for 403
     for endpoint in [

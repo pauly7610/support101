@@ -6,10 +6,11 @@ Prevents cascading failures by failing fast when a service is unhealthy.
 
 import asyncio
 import functools
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Callable, Dict, Optional, Tuple, Type, TypeVar
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
@@ -22,7 +23,7 @@ class CircuitState(str, Enum):
     HALF_OPEN = "half_open"
 
 
-class CircuitBreakerOpen(Exception):
+class CircuitBreakerOpenError(Exception):
     """Raised when circuit breaker is open."""
 
     def __init__(self, name: str, until: datetime) -> None:
@@ -39,8 +40,8 @@ class CircuitStats:
     successful_calls: int = 0
     failed_calls: int = 0
     rejected_calls: int = 0
-    last_failure_time: Optional[datetime] = None
-    last_success_time: Optional[datetime] = None
+    last_failure_time: datetime | None = None
+    last_success_time: datetime | None = None
     consecutive_failures: int = 0
     consecutive_successes: int = 0
 
@@ -53,7 +54,7 @@ class CircuitBreakerConfig:
     success_threshold: int = 2
     timeout_seconds: float = 30.0
     half_open_max_calls: int = 3
-    excluded_exceptions: Tuple[Type[Exception], ...] = ()
+    excluded_exceptions: tuple[type[Exception], ...] = ()
 
 
 class CircuitBreaker:
@@ -80,13 +81,13 @@ class CircuitBreaker:
     def __init__(
         self,
         name: str,
-        config: Optional[CircuitBreakerConfig] = None,
+        config: CircuitBreakerConfig | None = None,
     ) -> None:
         self.name = name
         self.config = config or CircuitBreakerConfig()
         self._state = CircuitState.CLOSED
         self._stats = CircuitStats()
-        self._opened_at: Optional[datetime] = None
+        self._opened_at: datetime | None = None
         self._half_open_calls = 0
         self._lock = asyncio.Lock()
 
@@ -158,9 +159,11 @@ class CircuitBreaker:
         self._stats.consecutive_successes += 1
         self._stats.consecutive_failures = 0
 
-        if self._state == CircuitState.HALF_OPEN:
-            if self._stats.consecutive_successes >= self.config.success_threshold:
-                self._transition_to_closed()
+        if (
+            self._state == CircuitState.HALF_OPEN
+            and self._stats.consecutive_successes >= self.config.success_threshold
+        ):
+            self._transition_to_closed()
 
     def _record_failure(self, exception: Exception) -> None:
         """Record a failed call."""
@@ -192,7 +195,7 @@ class CircuitBreaker:
                 self._record_rejection()
                 timeout = timedelta(seconds=self.config.timeout_seconds)
                 until = (self._opened_at or datetime.utcnow()) + timeout
-                raise CircuitBreakerOpen(self.name, until)
+                raise CircuitBreakerOpenError(self.name, until)
 
             if self._state == CircuitState.HALF_OPEN:
                 self._half_open_calls += 1
@@ -201,8 +204,8 @@ class CircuitBreaker:
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[Exception]],
-        exc_val: Optional[Exception],
+        exc_type: type[Exception] | None,
+        exc_val: Exception | None,
         exc_tb: Any,
     ) -> bool:
         """Async context manager exit."""
@@ -241,7 +244,7 @@ class CircuitBreaker:
         """Force the circuit to closed state."""
         self._transition_to_closed()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize circuit breaker state."""
         return {
             "name": self.name,
@@ -268,17 +271,17 @@ class CircuitBreakerRegistry:
     """
 
     def __init__(self) -> None:
-        self._breakers: Dict[str, CircuitBreaker] = {}
+        self._breakers: dict[str, CircuitBreaker] = {}
         self._lock = asyncio.Lock()
 
-    def get(self, name: str) -> Optional[CircuitBreaker]:
+    def get(self, name: str) -> CircuitBreaker | None:
         """Get a circuit breaker by name."""
         return self._breakers.get(name)
 
     def get_or_create(
         self,
         name: str,
-        config: Optional[CircuitBreakerConfig] = None,
+        config: CircuitBreakerConfig | None = None,
     ) -> CircuitBreaker:
         """Get or create a circuit breaker."""
         if name not in self._breakers:
@@ -292,7 +295,7 @@ class CircuitBreakerRegistry:
             return True
         return False
 
-    def list_all(self) -> Dict[str, Dict[str, Any]]:
+    def list_all(self) -> dict[str, dict[str, Any]]:
         """List all circuit breakers with their states."""
         return {name: breaker.to_dict() for name, breaker in self._breakers.items()}
 

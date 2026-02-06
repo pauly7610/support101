@@ -6,7 +6,7 @@ based on content, urgency, and available resources.
 """
 
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
@@ -16,7 +16,11 @@ from ..core.base_agent import AgentConfig, AgentState, AgentStatus, BaseAgent, T
 from ..services.database import get_database_service
 from ..services.external_api import get_external_api_client
 from ..services.llm_helpers import LLMCallTimer, llm_retry, track_agent_decision
-from .validation_models import AnalyzeTicketInput, AssignToAgentInput, AssignToQueueInput
+from .validation_models import (
+    AnalyzeTicketInput,
+    AssignToAgentInput,
+    AssignToQueueInput,
+)
 
 
 class TriageAgent(BaseAgent):
@@ -55,7 +59,7 @@ class TriageAgent(BaseAgent):
         "low": {"max_wait_minutes": 240, "escalate_after": 1440},
     }
 
-    def __init__(self, config: AgentConfig, evalai_tracer: Optional[Any] = None) -> None:
+    def __init__(self, config: AgentConfig, evalai_tracer: Any | None = None) -> None:
         super().__init__(config)
         self.llm = ChatOpenAI(temperature=0.1)
         self._evalai_tracer = evalai_tracer
@@ -101,7 +105,7 @@ class TriageAgent(BaseAgent):
         content: str,
         customer_tier: str = "standard",
         ticket_history: str = "None",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Analyze ticket using LLM."""
         validated = AnalyzeTicketInput(
             content=content, customer_tier=customer_tier, ticket_history=ticket_history
@@ -115,7 +119,10 @@ class TriageAgent(BaseAgent):
                     "ticket_history": validated.ticket_history,
                 }
             )
-            timer.set_tokens(input_tokens=len(validated.content) // 4, output_tokens=len(result.content) // 4)
+            timer.set_tokens(
+                input_tokens=len(validated.content) // 4,
+                output_tokens=len(result.content) // 4,
+            )
 
         import json
 
@@ -135,7 +142,7 @@ class TriageAgent(BaseAgent):
 
         return analysis
 
-    async def _check_customer_history(self, customer_id: str) -> Dict[str, Any]:
+    async def _check_customer_history(self, customer_id: str) -> dict[str, Any]:
         """Check customer's ticket history from Postgres and external CRM."""
         db_result = await self._db.get_customer_history(customer_id)
         crm_result = await self._api.get_customer_profile(customer_id)
@@ -151,11 +158,14 @@ class TriageAgent(BaseAgent):
         ticket_id: str,
         queue_name: str,
         priority: str,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Assign ticket to a queue via DB and external ticketing system."""
         validated = AssignToQueueInput(
-            ticket_id=ticket_id, queue_name=queue_name, priority=priority, metadata=metadata
+            ticket_id=ticket_id,
+            queue_name=queue_name,
+            priority=priority,
+            metadata=metadata,
         )
         routing_rules = self.ROUTING_RULES.get(validated.priority, self.ROUTING_RULES["medium"])
 
@@ -190,11 +200,9 @@ class TriageAgent(BaseAgent):
         ticket_id: str,
         agent_id: str,
         reason: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Assign ticket directly to an agent via DB and external ticketing."""
-        validated = AssignToAgentInput(
-            ticket_id=ticket_id, agent_id=agent_id, reason=reason
-        )
+        validated = AssignToAgentInput(ticket_id=ticket_id, agent_id=agent_id, reason=reason)
         await self._db.assign_ticket(validated.ticket_id, validated.agent_id)
         await self._api.update_external_ticket(
             validated.ticket_id,
@@ -218,7 +226,7 @@ class TriageAgent(BaseAgent):
             "assigned_at": datetime.utcnow().isoformat(),
         }
 
-    async def plan(self, state: AgentState) -> Dict[str, Any]:
+    async def plan(self, state: AgentState) -> dict[str, Any]:
         """Determine next triage action."""
         step = state.current_step
 
@@ -235,7 +243,7 @@ class TriageAgent(BaseAgent):
                 "action": "analyze_ticket",
                 "action_input": {
                     "content": state.input_data.get("content", ""),
-                    "customer_tier": "vip" if customer_history.get("is_vip") else "standard",
+                    "customer_tier": ("vip" if customer_history.get("is_vip") else "standard"),
                     "ticket_history": str(customer_history.get("total_tickets", 0))
                     + " previous tickets",
                 },
@@ -269,7 +277,7 @@ class TriageAgent(BaseAgent):
 
         return {"action": "complete", "action_input": {}}
 
-    async def execute_step(self, state: AgentState, action: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute_step(self, state: AgentState, action: dict[str, Any]) -> dict[str, Any]:
         """Execute a triage step."""
         action_name = action.get("action")
         action_input = action.get("action_input", {})
@@ -313,13 +321,15 @@ class TriageAgent(BaseAgent):
         """Check if triage should continue."""
         if state.current_step >= self.config.max_iterations:
             return False
-        if state.status in [AgentStatus.COMPLETED, AgentStatus.FAILED, AgentStatus.AWAITING_HUMAN]:
+        if state.status in [
+            AgentStatus.COMPLETED,
+            AgentStatus.FAILED,
+            AgentStatus.AWAITING_HUMAN,
+        ]:
             return False
         if state.intermediate_steps and state.intermediate_steps[-1].get("action") == "complete":
             return False
-        if state.output_data.get("assignment"):
-            return False
-        return True
+        return not state.output_data.get("assignment")
 
 
 TriageAgentBlueprint = AgentBlueprint(

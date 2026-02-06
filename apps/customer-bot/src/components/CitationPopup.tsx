@@ -1,5 +1,4 @@
-import React from 'react';
-import { X, ExternalLink, Clock, ShieldCheck } from 'lucide-react';
+import { Clock, ExternalLink, ShieldCheck, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export interface CitationPopupProps {
@@ -12,8 +11,7 @@ export interface CitationPopupProps {
 
 function ConfidenceMeter({ value }: { value: number }) {
   const pct = Math.round(value * 100);
-  const color =
-    pct >= 80 ? 'bg-emerald-500' : pct >= 60 ? 'bg-amber-500' : 'bg-red-500';
+  const color = pct >= 80 ? 'bg-emerald-500' : pct >= 60 ? 'bg-amber-500' : 'bg-red-500';
   const textColor =
     pct >= 80
       ? 'text-emerald-600 dark:text-emerald-400'
@@ -28,9 +26,7 @@ function ConfidenceMeter({ value }: { value: number }) {
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className={cn('text-xs font-semibold tabular-nums', textColor)}>
-        {pct}%
-      </span>
+      <span className={cn('text-xs font-semibold tabular-nums', textColor)}>{pct}%</span>
     </div>
   );
 }

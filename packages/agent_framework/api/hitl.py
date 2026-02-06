@@ -8,7 +8,8 @@ Provides REST API for:
 - Reviewer dashboard
 """
 
-from typing import Any, Dict, List, Optional
+import contextlib
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
@@ -21,8 +22,8 @@ from ..hitl.queue import HITLPriority, HITLRequestType
 router = APIRouter(prefix="/hitl", tags=["Human-in-the-Loop"])
 
 
-_hitl_manager: Optional[HITLManager] = None
-_registry: Optional[AgentRegistry] = None
+_hitl_manager: HITLManager | None = None
+_registry: AgentRegistry | None = None
 
 
 def get_hitl_manager() -> HITLManager:
@@ -47,13 +48,13 @@ class RegisterReviewerRequest(BaseModel):
     reviewer_id: str
     tenant_id: str
     name: str
-    skills: Optional[List[str]] = None
+    skills: list[str] | None = None
 
 
 class RespondToRequestRequest(BaseModel):
     """Request to respond to a HITL request."""
 
-    response: Dict[str, Any]
+    response: dict[str, Any]
     reviewer_id: str
 
 
@@ -62,8 +63,8 @@ class ManualEscalationRequest(BaseModel):
 
     agent_id: str
     reason: str
-    level: Optional[str] = "l2"
-    context: Optional[Dict[str, Any]] = None
+    level: str | None = "l2"
+    context: dict[str, Any] | None = None
 
 
 class CreateEscalationPolicyRequest(BaseModel):
@@ -71,32 +72,28 @@ class CreateEscalationPolicyRequest(BaseModel):
 
     tenant_id: str
     name: str
-    description: Optional[str] = ""
+    description: str | None = ""
     include_default_rules: bool = True
 
 
 @router.get("/queue")
 async def get_queue(
-    tenant_id: Optional[str] = Query(None),
-    priority: Optional[str] = Query(None),
-    request_type: Optional[str] = Query(None),
+    tenant_id: str | None = Query(None),
+    priority: str | None = Query(None),
+    request_type: str | None = Query(None),
     limit: int = Query(50, le=100),
     hitl_manager: HITLManager = Depends(get_hitl_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get pending HITL requests."""
     hitl_priority = None
     if priority:
-        try:
+        with contextlib.suppress(ValueError):
             hitl_priority = HITLPriority(priority)
-        except ValueError:
-            pass
 
     hitl_type = None
     if request_type:
-        try:
+        with contextlib.suppress(ValueError):
             hitl_type = HITLRequestType(request_type)
-        except ValueError:
-            pass
 
     requests = hitl_manager.queue.get_pending(
         tenant_id=tenant_id,
@@ -115,7 +112,7 @@ async def get_queue(
 async def get_request(
     request_id: str,
     hitl_manager: HITLManager = Depends(get_hitl_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get a specific HITL request."""
     request = hitl_manager.queue.get_request(request_id)
     if not request:
@@ -132,7 +129,7 @@ async def assign_request(
     request_id: str,
     reviewer_id: str = Query(...),
     hitl_manager: HITLManager = Depends(get_hitl_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Assign a request to a reviewer."""
     success = hitl_manager.queue.assign(request_id, reviewer_id)
     if not success:
@@ -148,7 +145,7 @@ async def assign_request(
 async def unassign_request(
     request_id: str,
     hitl_manager: HITLManager = Depends(get_hitl_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Unassign a request."""
     success = hitl_manager.queue.unassign(request_id)
 
@@ -160,7 +157,7 @@ async def respond_to_request(
     request_id: str,
     request: RespondToRequestRequest,
     hitl_manager: HITLManager = Depends(get_hitl_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Provide a response to a HITL request."""
     success = await hitl_manager.provide_response(
         request_id=request_id,
@@ -186,7 +183,7 @@ async def cancel_request(
     request_id: str,
     reason: str = Query(""),
     hitl_manager: HITLManager = Depends(get_hitl_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Cancel a HITL request."""
     success = hitl_manager.queue.cancel(request_id, reason)
 
@@ -197,7 +194,7 @@ async def cancel_request(
 async def register_reviewer(
     request: RegisterReviewerRequest,
     hitl_manager: HITLManager = Depends(get_hitl_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Register a new reviewer."""
     hitl_manager.register_reviewer(
         reviewer_id=request.reviewer_id,
@@ -217,7 +214,7 @@ async def set_reviewer_availability(
     reviewer_id: str,
     available: bool = Query(...),
     hitl_manager: HITLManager = Depends(get_hitl_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Set reviewer availability."""
     success = hitl_manager.set_reviewer_availability(reviewer_id, available)
 
@@ -232,7 +229,7 @@ async def set_reviewer_availability(
 async def get_reviewer_dashboard(
     reviewer_id: str,
     hitl_manager: HITLManager = Depends(get_hitl_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get dashboard data for a reviewer."""
     dashboard = hitl_manager.get_reviewer_dashboard(reviewer_id)
 
@@ -249,7 +246,7 @@ async def get_reviewer_dashboard(
 async def get_reviewer_assignments(
     reviewer_id: str,
     hitl_manager: HITLManager = Depends(get_hitl_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get all assignments for a reviewer."""
     assignments = hitl_manager.queue.get_user_assignments(reviewer_id)
 
@@ -265,7 +262,7 @@ async def manual_escalate(
     request: ManualEscalationRequest,
     hitl_manager: HITLManager = Depends(get_hitl_manager),
     registry: AgentRegistry = Depends(get_registry),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Manually escalate an agent's task."""
     agent = registry.get_agent(request.agent_id)
     if not agent:
@@ -293,7 +290,7 @@ async def manual_escalate(
 async def create_escalation_policy(
     request: CreateEscalationPolicyRequest,
     hitl_manager: HITLManager = Depends(get_hitl_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create an escalation policy for a tenant."""
     policy = hitl_manager.escalation_manager.create_policy(
         tenant_id=request.tenant_id,
@@ -309,7 +306,7 @@ async def create_escalation_policy(
 async def get_escalation_policy(
     tenant_id: str,
     hitl_manager: HITLManager = Depends(get_hitl_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get escalation policy for a tenant."""
     policy = hitl_manager.escalation_manager.get_tenant_policy(tenant_id)
     if not policy:
@@ -323,17 +320,17 @@ async def get_escalation_policy(
 
 @router.get("/stats")
 async def get_hitl_stats(
-    tenant_id: Optional[str] = Query(None),
+    tenant_id: str | None = Query(None),
     hitl_manager: HITLManager = Depends(get_hitl_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get HITL statistics."""
     return hitl_manager.get_stats(tenant_id)
 
 
 @router.get("/queue/stats")
 async def get_queue_stats(
-    tenant_id: Optional[str] = Query(None),
+    tenant_id: str | None = Query(None),
     hitl_manager: HITLManager = Depends(get_hitl_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get queue statistics."""
     return hitl_manager.queue.get_queue_stats(tenant_id)

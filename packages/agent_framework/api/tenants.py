@@ -7,8 +7,9 @@ Provides REST API for:
 - Tenant configuration
 """
 
+import contextlib
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
@@ -20,8 +21,8 @@ from ..multitenancy.tenant_manager import TenantManager
 router = APIRouter(prefix="/tenants", tags=["Tenants"])
 
 
-_tenant_manager: Optional[TenantManager] = None
-_audit_logger: Optional[AuditLogger] = None
+_tenant_manager: TenantManager | None = None
+_audit_logger: AuditLogger | None = None
 
 
 def get_tenant_manager() -> TenantManager:
@@ -43,30 +44,30 @@ class CreateTenantRequest(BaseModel):
 
     name: str
     tier: str = "starter"
-    owner_id: Optional[str] = None
-    allowed_blueprints: Optional[List[str]] = None
-    settings: Optional[Dict[str, Any]] = None
+    owner_id: str | None = None
+    allowed_blueprints: list[str] | None = None
+    settings: dict[str, Any] | None = None
     auto_activate: bool = False
 
 
 class UpdateTenantRequest(BaseModel):
     """Request to update a tenant."""
 
-    name: Optional[str] = None
-    tier: Optional[str] = None
-    allowed_blueprints: Optional[List[str]] = None
-    settings: Optional[Dict[str, Any]] = None
+    name: str | None = None
+    tier: str | None = None
+    allowed_blueprints: list[str] | None = None
+    settings: dict[str, Any] | None = None
 
 
 class CustomLimitsRequest(BaseModel):
     """Request to set custom limits."""
 
-    max_agents: Optional[int] = None
-    max_concurrent_executions: Optional[int] = None
-    max_requests_per_minute: Optional[int] = None
-    max_storage_mb: Optional[int] = None
-    max_vector_documents: Optional[int] = None
-    max_hitl_queue_size: Optional[int] = None
+    max_agents: int | None = None
+    max_concurrent_executions: int | None = None
+    max_requests_per_minute: int | None = None
+    max_storage_mb: int | None = None
+    max_vector_documents: int | None = None
+    max_hitl_queue_size: int | None = None
 
 
 class TenantResponse(BaseModel):
@@ -76,25 +77,25 @@ class TenantResponse(BaseModel):
     name: str
     tier: str
     status: str
-    owner_id: Optional[str]
+    owner_id: str | None
     created_at: str
-    limits: Dict[str, int]
-    usage: Dict[str, Any]
+    limits: dict[str, int]
+    usage: dict[str, Any]
 
 
 @router.post("", response_model=TenantResponse, status_code=status.HTTP_201_CREATED)
 async def create_tenant(
     request: CreateTenantRequest,
     tenant_manager: TenantManager = Depends(get_tenant_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a new tenant."""
     try:
         tier = TenantTier(request.tier)
-    except ValueError:
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid tier: {request.tier}. Valid options: {[t.value for t in TenantTier]}",
-        )
+        ) from e
 
     tenant = await tenant_manager.create_tenant(
         name=request.name,
@@ -108,28 +109,24 @@ async def create_tenant(
     return tenant.to_dict()
 
 
-@router.get("", response_model=List[TenantResponse])
+@router.get("", response_model=list[TenantResponse])
 async def list_tenants(
-    status_filter: Optional[str] = Query(None, alias="status"),
-    tier: Optional[str] = Query(None),
+    status_filter: str | None = Query(None, alias="status"),
+    tier: str | None = Query(None),
     limit: int = Query(50, le=100),
     offset: int = Query(0, ge=0),
     tenant_manager: TenantManager = Depends(get_tenant_manager),
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """List tenants with optional filters."""
     tenant_status = None
     if status_filter:
-        try:
+        with contextlib.suppress(ValueError):
             tenant_status = TenantStatus(status_filter)
-        except ValueError:
-            pass
 
     tenant_tier = None
     if tier:
-        try:
+        with contextlib.suppress(ValueError):
             tenant_tier = TenantTier(tier)
-        except ValueError:
-            pass
 
     tenants = tenant_manager.list_tenants(
         status=tenant_status,
@@ -145,7 +142,7 @@ async def list_tenants(
 async def get_tenant(
     tenant_id: str,
     tenant_manager: TenantManager = Depends(get_tenant_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get a specific tenant."""
     tenant = tenant_manager.get_tenant(tenant_id)
     if not tenant:
@@ -162,17 +159,17 @@ async def update_tenant(
     tenant_id: str,
     request: UpdateTenantRequest,
     tenant_manager: TenantManager = Depends(get_tenant_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Update a tenant."""
     tier = None
     if request.tier:
         try:
             tier = TenantTier(request.tier)
-        except ValueError:
+        except ValueError as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid tier: {request.tier}",
-            )
+            ) from e
 
     tenant = await tenant_manager.update_tenant(
         tenant_id=tenant_id,
@@ -209,14 +206,14 @@ async def delete_tenant(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
-        )
+        ) from e
 
 
 @router.post("/{tenant_id}/activate")
 async def activate_tenant(
     tenant_id: str,
     tenant_manager: TenantManager = Depends(get_tenant_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Activate a tenant."""
     success = await tenant_manager.activate_tenant(tenant_id)
     if not success:
@@ -233,7 +230,7 @@ async def suspend_tenant(
     tenant_id: str,
     reason: str = Query(""),
     tenant_manager: TenantManager = Depends(get_tenant_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Suspend a tenant."""
     success = await tenant_manager.suspend_tenant(tenant_id, reason)
     if not success:
@@ -249,7 +246,7 @@ async def suspend_tenant(
 async def get_tenant_usage(
     tenant_id: str,
     tenant_manager: TenantManager = Depends(get_tenant_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get usage statistics for a tenant."""
     usage = tenant_manager.get_usage(tenant_id)
     if usage is None:
@@ -270,7 +267,7 @@ async def set_custom_limits(
     tenant_id: str,
     request: CustomLimitsRequest,
     tenant_manager: TenantManager = Depends(get_tenant_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Set custom resource limits for a tenant."""
     tenant = tenant_manager.get_tenant(tenant_id)
     if not tenant:
@@ -308,7 +305,7 @@ async def set_api_key(
     tenant_id: str,
     api_key_hash: str = Query(...),
     tenant_manager: TenantManager = Depends(get_tenant_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Set API key for a tenant."""
     success = tenant_manager.set_api_key(tenant_id, api_key_hash)
     if not success:
@@ -323,6 +320,6 @@ async def set_api_key(
 @router.get("/stats/overview")
 async def get_tenant_stats(
     tenant_manager: TenantManager = Depends(get_tenant_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get overall tenant statistics."""
     return tenant_manager.get_stats()

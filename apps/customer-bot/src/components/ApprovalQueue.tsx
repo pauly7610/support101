@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
@@ -57,25 +57,11 @@ function TimeAgo({ dateStr }: { dateStr: string }) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const minutes = Math.floor(diff / 60000);
   if (minutes < 1) return <span className="text-xs text-gray-500">just now</span>;
-  if (minutes < 60)
-    return (
-      <span className="text-xs text-gray-500">
-        {minutes}m ago
-      </span>
-    );
+  if (minutes < 60) return <span className="text-xs text-gray-500">{minutes}m ago</span>;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24)
-    return (
-      <span className="text-xs text-gray-500">
-        {hours}h ago
-      </span>
-    );
+  if (hours < 24) return <span className="text-xs text-gray-500">{hours}h ago</span>;
   const days = Math.floor(hours / 24);
-  return (
-    <span className="text-xs text-gray-500">
-      {days}d ago
-    </span>
-  );
+  return <span className="text-xs text-gray-500">{days}d ago</span>;
 }
 
 function SLAIndicator({ deadline }: { deadline: string | null }) {
@@ -183,10 +169,10 @@ export default function ApprovalQueue({
 
   const pendingCount = requests.filter((r) => r.status === 'pending').length;
   const assignedCount = requests.filter(
-    (r) => r.status === 'assigned' && r.assigned_to === reviewerId
+    (r) => r.status === 'assigned' && r.assigned_to === reviewerId,
   ).length;
   const breachedCount = requests.filter(
-    (r) => r.sla_deadline && new Date(r.sla_deadline).getTime() < Date.now()
+    (r) => r.sla_deadline && new Date(r.sla_deadline).getTime() < Date.now(),
   ).length;
 
   return (
@@ -194,9 +180,7 @@ export default function ApprovalQueue({
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Approval Queue</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Human-in-the-loop requests requiring review
-        </p>
+        <p className="text-sm text-gray-500 mt-1">Human-in-the-loop requests requiring review</p>
       </div>
 
       {/* Stats Bar */}
@@ -220,7 +204,11 @@ export default function ApprovalQueue({
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex gap-1 mb-4 border-b border-gray-200" role="tablist" aria-label="Filter requests">
+      <div
+        className="flex gap-1 mb-4 border-b border-gray-200"
+        role="tablist"
+        aria-label="Filter requests"
+      >
         {(['all', 'pending', 'assigned'] as const).map((tab) => (
           <button
             key={tab}
@@ -296,9 +284,7 @@ export default function ApprovalQueue({
                     <Badge type="status" value={req.status} />
                     <SLAIndicator deadline={req.sla_deadline} />
                   </div>
-                  <h3 className="text-sm font-semibold text-gray-900 truncate">
-                    {req.question}
-                  </h3>
+                  <h3 className="text-sm font-semibold text-gray-900 truncate">{req.question}</h3>
                   <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
                     <span>Agent: {req.agent_id.slice(0, 8)}...</span>
                     <span>Type: {req.request_type}</span>
@@ -322,7 +308,7 @@ export default function ApprovalQueue({
                       className="px-3 py-1.5 text-xs font-medium bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
                       onClick={() =>
                         setSelectedRequest(
-                          selectedRequest?.request_id === req.request_id ? null : req
+                          selectedRequest?.request_id === req.request_id ? null : req,
                         )
                       }
                       aria-label={`Review request ${req.request_id}`}

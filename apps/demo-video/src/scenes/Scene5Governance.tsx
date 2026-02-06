@@ -1,28 +1,43 @@
-import React from "react";
-import { useCurrentFrame, interpolate } from "remotion";
-import { FadeIn, ScaleIn } from "../components/AnimatedText";
-import { COLORS, FONTS, gradientBg, gridLines, card } from "../styles";
+import type React from 'react';
+import { useCurrentFrame } from 'remotion';
+import { FadeIn, ScaleIn } from '../components/AnimatedText';
+import { COLORS, FONTS, card, gradientBg, gridLines } from '../styles';
 
 const METRICS = [
-  { label: "Total Agents", value: "24", sub: "9 active", color: COLORS.text },
-  { label: "Awaiting Human", value: "3", sub: "", color: COLORS.yellow },
-  { label: "HITL Pending", value: "7", sub: "42 completed", color: COLORS.primary },
-  { label: "Audit Events", value: "1,847", sub: "128 recent", color: COLORS.text },
+  { label: 'Total Agents', value: '24', sub: '9 active', color: COLORS.text },
+  { label: 'Awaiting Human', value: '3', sub: '', color: COLORS.yellow },
+  { label: 'HITL Pending', value: '7', sub: '42 completed', color: COLORS.primary },
+  { label: 'Audit Events', value: '1,847', sub: '128 recent', color: COLORS.text },
 ];
 
 const AGENTS = [
-  { name: "Support Bot Alpha", blueprint: "support_agent", status: "running", tenant: "acme-corp" },
-  { name: "Triage Router", blueprint: "triage_agent", status: "running", tenant: "acme-corp" },
-  { name: "Billing Assistant", blueprint: "support_agent", status: "awaiting_human", tenant: "globex" },
-  { name: "Compliance Scanner", blueprint: "compliance_auditor", status: "running", tenant: "initech" },
-  { name: "Onboarding Guide", blueprint: "onboarding_agent", status: "idle", tenant: "globex" },
+  { name: 'Support Bot Alpha', blueprint: 'support_agent', status: 'running', tenant: 'acme-corp' },
+  { name: 'Triage Router', blueprint: 'triage_agent', status: 'running', tenant: 'acme-corp' },
+  {
+    name: 'Billing Assistant',
+    blueprint: 'support_agent',
+    status: 'awaiting_human',
+    tenant: 'globex',
+  },
+  {
+    name: 'Compliance Scanner',
+    blueprint: 'compliance_auditor',
+    status: 'running',
+    tenant: 'initech',
+  },
+  { name: 'Onboarding Guide', blueprint: 'onboarding_agent', status: 'idle', tenant: 'globex' },
 ];
 
 const AUDIT_EVENTS = [
-  { type: "execution_completed", agent: "Support Bot Alpha", time: "2s ago", color: COLORS.green },
-  { type: "human_feedback_provided", agent: "Billing Assistant", time: "14s ago", color: COLORS.accent },
-  { type: "execution_started", agent: "Triage Router", time: "31s ago", color: COLORS.primary },
-  { type: "agent_created", agent: "Sentiment Monitor", time: "2m ago", color: COLORS.primaryLight },
+  { type: 'execution_completed', agent: 'Support Bot Alpha', time: '2s ago', color: COLORS.green },
+  {
+    type: 'human_feedback_provided',
+    agent: 'Billing Assistant',
+    time: '14s ago',
+    color: COLORS.accent,
+  },
+  { type: 'execution_started', agent: 'Triage Router', time: '31s ago', color: COLORS.primary },
+  { type: 'agent_created', agent: 'Sentiment Monitor', time: '2m ago', color: COLORS.primaryLight },
 ];
 
 const STATUS_COLORS: Record<string, string> = {
@@ -45,11 +60,11 @@ export const Scene5Governance: React.FC = () => {
       <FadeIn startFrame={0} durationFrames={15}>
         <div
           style={{
-            position: "absolute",
+            position: 'absolute',
             top: 48,
             left: 80,
-            display: "flex",
-            alignItems: "center",
+            display: 'flex',
+            alignItems: 'center',
             gap: 12,
           }}
         >
@@ -57,7 +72,7 @@ export const Scene5Governance: React.FC = () => {
             style={{
               width: 8,
               height: 8,
-              borderRadius: "50%",
+              borderRadius: '50%',
               backgroundColor: COLORS.primary,
               boxShadow: `0 0 8px ${COLORS.primary}`,
             }}
@@ -67,7 +82,7 @@ export const Scene5Governance: React.FC = () => {
               fontSize: 16,
               fontFamily: FONTS.mono,
               color: COLORS.textMuted,
-              textTransform: "uppercase",
+              textTransform: 'uppercase',
               letterSpacing: 2,
             }}
           >
@@ -79,11 +94,11 @@ export const Scene5Governance: React.FC = () => {
       {/* Metric cards */}
       <div
         style={{
-          position: "absolute",
+          position: 'absolute',
           top: 120,
           left: 80,
           right: 80,
-          display: "flex",
+          display: 'flex',
           gap: 20,
         }}
       >
@@ -93,7 +108,7 @@ export const Scene5Governance: React.FC = () => {
               style={{
                 ...card,
                 width: 220,
-                padding: "20px 24px",
+                padding: '20px 24px',
               }}
             >
               <div
@@ -101,7 +116,7 @@ export const Scene5Governance: React.FC = () => {
                   fontSize: 11,
                   fontWeight: 600,
                   color: COLORS.textDim,
-                  textTransform: "uppercase",
+                  textTransform: 'uppercase',
                   letterSpacing: 1,
                   marginBottom: 8,
                 }}
@@ -119,9 +134,7 @@ export const Scene5Governance: React.FC = () => {
                 {m.value}
               </div>
               {m.sub && (
-                <div style={{ fontSize: 13, color: COLORS.textDim, marginTop: 4 }}>
-                  {m.sub}
-                </div>
+                <div style={{ fontSize: 13, color: COLORS.textDim, marginTop: 4 }}>{m.sub}</div>
               )}
             </div>
           </ScaleIn>
@@ -132,27 +145,27 @@ export const Scene5Governance: React.FC = () => {
       <FadeIn startFrame={55} durationFrames={15}>
         <div
           style={{
-            position: "absolute",
+            position: 'absolute',
             top: 280,
             left: 80,
             right: 80,
             ...card,
-            padding: "16px 24px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
+            padding: '16px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
           }}
         >
           <div>
             <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textDim, marginBottom: 4 }}>
               SLA Compliance
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div
                 style={{
                   width: 10,
                   height: 10,
-                  borderRadius: "50%",
+                  borderRadius: '50%',
                   backgroundColor: COLORS.green,
                   boxShadow: `0 0 6px ${COLORS.green}`,
                 }}
@@ -162,13 +175,13 @@ export const Scene5Governance: React.FC = () => {
               </span>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 24, fontSize: 14 }}>
+          <div style={{ display: 'flex', gap: 24, fontSize: 14 }}>
             <span>
-              <span style={{ fontWeight: 700, color: COLORS.green }}>42</span>{" "}
+              <span style={{ fontWeight: 700, color: COLORS.green }}>42</span>{' '}
               <span style={{ color: COLORS.textDim }}>resolved</span>
             </span>
             <span>
-              <span style={{ fontWeight: 700, color: COLORS.red }}>1</span>{" "}
+              <span style={{ fontWeight: 700, color: COLORS.red }}>1</span>{' '}
               <span style={{ color: COLORS.textDim }}>expired</span>
             </span>
           </div>
@@ -180,18 +193,18 @@ export const Scene5Governance: React.FC = () => {
         <FadeIn startFrame={90} durationFrames={20}>
           <div
             style={{
-              position: "absolute",
+              position: 'absolute',
               top: 380,
               left: 80,
               width: 880,
               ...card,
               padding: 0,
-              overflow: "hidden",
+              overflow: 'hidden',
             }}
           >
             <div
               style={{
-                padding: "14px 24px",
+                padding: '14px 24px',
                 borderBottom: `1px solid ${COLORS.gray700}`,
                 fontSize: 14,
                 fontWeight: 700,
@@ -204,13 +217,13 @@ export const Scene5Governance: React.FC = () => {
             {/* Header row */}
             <div
               style={{
-                display: "flex",
-                padding: "10px 24px",
+                display: 'flex',
+                padding: '10px 24px',
                 borderBottom: `1px solid ${COLORS.gray700}`,
                 fontSize: 11,
                 fontWeight: 600,
                 color: COLORS.textDim,
-                textTransform: "uppercase",
+                textTransform: 'uppercase',
                 letterSpacing: 1,
               }}
             >
@@ -224,13 +237,10 @@ export const Scene5Governance: React.FC = () => {
               <FadeIn key={agent.name} startFrame={100 + i * 8} durationFrames={12}>
                 <div
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    padding: "12px 24px",
-                    borderBottom:
-                      i < AGENTS.length - 1
-                        ? `1px solid ${COLORS.gray700}44`
-                        : "none",
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '12px 24px',
+                    borderBottom: i < AGENTS.length - 1 ? `1px solid ${COLORS.gray700}44` : 'none',
                     fontSize: 14,
                   }}
                 >
@@ -240,7 +250,7 @@ export const Scene5Governance: React.FC = () => {
                   <div style={{ flex: 1.5 }}>
                     <span
                       style={{
-                        padding: "3px 10px",
+                        padding: '3px 10px',
                         borderRadius: 4,
                         backgroundColor: `${COLORS.gray700}`,
                         fontSize: 12,
@@ -251,18 +261,18 @@ export const Scene5Governance: React.FC = () => {
                       {agent.blueprint}
                     </span>
                   </div>
-                  <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
                     <div
                       style={{
                         width: 8,
                         height: 8,
-                        borderRadius: "50%",
+                        borderRadius: '50%',
                         backgroundColor: STATUS_COLORS[agent.status] || COLORS.gray500,
                         boxShadow: `0 0 4px ${STATUS_COLORS[agent.status] || COLORS.gray500}`,
                       }}
                     />
                     <span style={{ color: COLORS.textMuted, fontSize: 13 }}>
-                      {agent.status.replace(/_/g, " ")}
+                      {agent.status.replace(/_/g, ' ')}
                     </span>
                   </div>
                   <div
@@ -287,18 +297,18 @@ export const Scene5Governance: React.FC = () => {
         <FadeIn startFrame={160} durationFrames={20}>
           <div
             style={{
-              position: "absolute",
+              position: 'absolute',
               top: 380,
               right: 80,
               width: 440,
               ...card,
               padding: 0,
-              overflow: "hidden",
+              overflow: 'hidden',
             }}
           >
             <div
               style={{
-                padding: "14px 24px",
+                padding: '14px 24px',
                 borderBottom: `1px solid ${COLORS.gray700}`,
                 fontSize: 14,
                 fontWeight: 700,
@@ -312,32 +322,28 @@ export const Scene5Governance: React.FC = () => {
               <FadeIn key={i} startFrame={170 + i * 10} durationFrames={12}>
                 <div
                   style={{
-                    padding: "12px 24px",
+                    padding: '12px 24px',
                     borderBottom:
-                      i < AUDIT_EVENTS.length - 1
-                        ? `1px solid ${COLORS.gray700}44`
-                        : "none",
-                    display: "flex",
-                    alignItems: "center",
+                      i < AUDIT_EVENTS.length - 1 ? `1px solid ${COLORS.gray700}44` : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
                     gap: 12,
                   }}
                 >
                   <div
                     style={{
-                      padding: "3px 10px",
+                      padding: '3px 10px',
                       borderRadius: 9999,
                       backgroundColor: `${evt.color}22`,
                       fontSize: 11,
                       fontWeight: 600,
                       color: evt.color,
-                      whiteSpace: "nowrap",
+                      whiteSpace: 'nowrap',
                     }}
                   >
-                    {evt.type.replace(/_/g, " ")}
+                    {evt.type.replace(/_/g, ' ')}
                   </div>
-                  <div style={{ flex: 1, fontSize: 13, color: COLORS.textMuted }}>
-                    {evt.agent}
-                  </div>
+                  <div style={{ flex: 1, fontSize: 13, color: COLORS.textMuted }}>{evt.agent}</div>
                   <div style={{ fontSize: 12, color: COLORS.textDim }}>{evt.time}</div>
                 </div>
               </FadeIn>

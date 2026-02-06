@@ -10,14 +10,12 @@ def test_event_loop_fixture(event_loop):
 
 @pytest.mark.asyncio
 async def test_clear_redis_cache(clear_redis_cache):
-
     # Should not raise and should yield
     assert clear_redis_cache is None or clear_redis_cache is not False
 
 
 @pytest.mark.asyncio
 async def test_setup_database(setup_database):
-
     # Should not raise and should yield
     assert setup_database is None or setup_database is not False
 
@@ -29,7 +27,6 @@ async def test_async_session(async_session):
 
 @pytest.mark.asyncio
 async def test_async_client(async_client):
-
     assert isinstance(async_client, AsyncClient)
     resp = await async_client.get("/healthz")
     assert resp.status_code in (200, 404)  # Health endpoint or not found

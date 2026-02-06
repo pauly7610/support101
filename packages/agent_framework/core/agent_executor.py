@@ -10,8 +10,9 @@ Handles:
 
 import asyncio
 import logging
+from collections.abc import Callable
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from .agent_registry import AgentRegistry
 from .base_agent import AgentStatus, BaseAgent
@@ -30,10 +31,10 @@ class ExecutionResult:
         agent_id: str,
         execution_id: str,
         status: AgentStatus,
-        output: Dict[str, Any],
-        steps: List[Dict[str, Any]],
+        output: dict[str, Any],
+        steps: list[dict[str, Any]],
         duration_ms: int,
-        error: Optional[str] = None,
+        error: str | None = None,
     ) -> None:
         self.agent_id = agent_id
         self.execution_id = execution_id
@@ -43,7 +44,7 @@ class ExecutionResult:
         self.duration_ms = duration_ms
         self.error = error
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "agent_id": self.agent_id,
             "execution_id": self.execution_id,
@@ -68,18 +69,18 @@ class AgentExecutor:
 
     def __init__(
         self,
-        registry: Optional[AgentRegistry] = None,
+        registry: AgentRegistry | None = None,
         max_concurrent: int = 10,
         default_timeout: int = 300,
         evalai_tracer: Optional["EvalAITracer"] = None,
-        playbook_engine: Optional[Any] = None,
+        playbook_engine: Any | None = None,
     ) -> None:
         self.registry = registry or AgentRegistry()
         self.max_concurrent = max_concurrent
         self.default_timeout = default_timeout
         self._semaphore = asyncio.Semaphore(max_concurrent)
-        self._running_executions: Dict[str, asyncio.Task] = {}
-        self._audit_callback: Optional[Callable] = None
+        self._running_executions: dict[str, asyncio.Task] = {}
+        self._audit_callback: Callable | None = None
         self._evalai_tracer = evalai_tracer
         self._playbook_engine = playbook_engine
 
@@ -92,7 +93,7 @@ class AgentExecutor:
         event_type: str,
         agent_id: str,
         tenant_id: str,
-        details: Dict[str, Any],
+        details: dict[str, Any],
     ) -> None:
         """Log an audit event."""
         if self._audit_callback:
@@ -110,8 +111,8 @@ class AgentExecutor:
     async def execute(
         self,
         agent: BaseAgent,
-        input_data: Dict[str, Any],
-        timeout: Optional[int] = None,
+        input_data: dict[str, Any],
+        timeout: int | None = None,
     ) -> ExecutionResult:
         """
         Execute an agent with the given input.
@@ -128,7 +129,6 @@ class AgentExecutor:
         start_time = datetime.utcnow()
 
         # Check for matching playbook before agent plans from scratch
-        playbook_result = None
         if self._playbook_engine and self._playbook_engine.available:
             try:
                 category = input_data.get("category", "")
@@ -211,7 +211,7 @@ class AgentExecutor:
                     duration_ms=duration_ms,
                 )
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 duration_ms = int((datetime.utcnow() - start_time).total_seconds() * 1000)
 
                 await self._log_audit(
@@ -272,8 +272,8 @@ class AgentExecutor:
     async def execute_by_id(
         self,
         agent_id: str,
-        input_data: Dict[str, Any],
-        timeout: Optional[int] = None,
+        input_data: dict[str, Any],
+        timeout: int | None = None,
     ) -> ExecutionResult:
         """Execute an agent by its ID."""
         agent = self.registry.get_agent(agent_id)
@@ -284,7 +284,7 @@ class AgentExecutor:
     async def resume(
         self,
         agent_id: str,
-        human_feedback: Dict[str, Any],
+        human_feedback: dict[str, Any],
     ) -> ExecutionResult:
         """
         Resume an agent that is awaiting human feedback.

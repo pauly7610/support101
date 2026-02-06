@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export function useThemeDetection(): [string, (theme: string) => void] {
   const [theme, setTheme] = useState<string>(() => {

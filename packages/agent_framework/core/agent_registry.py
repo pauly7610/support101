@@ -8,8 +8,9 @@ Provides:
 - Agent lookup and querying
 """
 
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Type
+from typing import Any, Optional
 
 from .base_agent import AgentConfig, AgentStatus, BaseAgent
 
@@ -25,10 +26,10 @@ class AgentBlueprint:
     def __init__(
         self,
         name: str,
-        agent_class: Type[BaseAgent],
+        agent_class: type[BaseAgent],
         description: str = "",
-        default_config: Optional[Dict[str, Any]] = None,
-        required_tools: Optional[List[str]] = None,
+        default_config: dict[str, Any] | None = None,
+        required_tools: list[str] | None = None,
         version: str = "1.0.0",
     ) -> None:
         self.name = name
@@ -43,7 +44,7 @@ class AgentBlueprint:
         self,
         tenant_id: str,
         name: str,
-        config_overrides: Optional[Dict[str, Any]] = None,
+        config_overrides: dict[str, Any] | None = None,
     ) -> BaseAgent:
         """Create a new agent instance from this blueprint."""
         merged_config = {**self.default_config, **(config_overrides or {})}
@@ -57,7 +58,7 @@ class AgentBlueprint:
 
         return self.agent_class(config)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize blueprint metadata."""
         return {
             "name": self.name,
@@ -93,10 +94,10 @@ class AgentRegistry:
         if self._initialized:
             return
 
-        self._blueprints: Dict[str, AgentBlueprint] = {}
-        self._agents: Dict[str, BaseAgent] = {}  # agent_id -> agent
-        self._tenant_agents: Dict[str, List[str]] = {}  # tenant_id -> [agent_ids]
-        self._state_persistence_hook: Optional[Callable] = None
+        self._blueprints: dict[str, AgentBlueprint] = {}
+        self._agents: dict[str, BaseAgent] = {}  # agent_id -> agent
+        self._tenant_agents: dict[str, list[str]] = {}  # tenant_id -> [agent_ids]
+        self._state_persistence_hook: Callable | None = None
         self._initialized = True
 
     def register_blueprint(self, blueprint: AgentBlueprint) -> None:
@@ -105,11 +106,11 @@ class AgentRegistry:
             raise ValueError(f"Blueprint '{blueprint.name}' already registered")
         self._blueprints[blueprint.name] = blueprint
 
-    def get_blueprint(self, name: str) -> Optional[AgentBlueprint]:
+    def get_blueprint(self, name: str) -> AgentBlueprint | None:
         """Get a blueprint by name."""
         return self._blueprints.get(name)
 
-    def list_blueprints(self) -> List[Dict[str, Any]]:
+    def list_blueprints(self) -> list[dict[str, Any]]:
         """List all registered blueprints."""
         return [bp.to_dict() for bp in self._blueprints.values()]
 
@@ -118,7 +119,7 @@ class AgentRegistry:
         blueprint_name: str,
         tenant_id: str,
         agent_name: str,
-        config_overrides: Optional[Dict[str, Any]] = None,
+        config_overrides: dict[str, Any] | None = None,
     ) -> BaseAgent:
         """
         Create a new agent instance from a blueprint.
@@ -146,21 +147,21 @@ class AgentRegistry:
 
         return agent
 
-    def get_agent(self, agent_id: str) -> Optional[BaseAgent]:
+    def get_agent(self, agent_id: str) -> BaseAgent | None:
         """Get an agent by ID."""
         return self._agents.get(agent_id)
 
-    def get_tenant_agents(self, tenant_id: str) -> List[BaseAgent]:
+    def get_tenant_agents(self, tenant_id: str) -> list[BaseAgent]:
         """Get all agents for a tenant."""
         agent_ids = self._tenant_agents.get(tenant_id, [])
         return [self._agents[aid] for aid in agent_ids if aid in self._agents]
 
     def list_agents(
         self,
-        tenant_id: Optional[str] = None,
-        status: Optional[AgentStatus] = None,
-        blueprint_name: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        tenant_id: str | None = None,
+        status: AgentStatus | None = None,
+        blueprint_name: str | None = None,
+    ) -> list[dict[str, Any]]:
         """
         List agents with optional filters.
 
@@ -216,9 +217,9 @@ class AgentRegistry:
             if hasattr(result, "__await__"):
                 await result
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get registry statistics."""
-        status_counts: Dict[str, int] = {}
+        status_counts: dict[str, int] = {}
         for agent in self._agents.values():
             status = agent.state.status.value if agent.state else "not_started"
             status_counts[status] = status_counts.get(status, 0) + 1

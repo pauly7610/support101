@@ -5,10 +5,11 @@ Provides pub/sub pattern for decoupled communication.
 """
 
 import asyncio
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
 
@@ -48,13 +49,13 @@ class Event:
 
     event_id: str = field(default_factory=lambda: str(uuid4()))
     event_type: EventType = EventType.AGENT_CREATED
-    tenant_id: Optional[str] = None
-    agent_id: Optional[str] = None
-    data: Dict[str, Any] = field(default_factory=dict)
+    tenant_id: str | None = None
+    agent_id: str | None = None
+    data: dict[str, Any] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=datetime.utcnow)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "event_id": self.event_id,
             "event_type": self.event_type.value,
@@ -78,9 +79,9 @@ class EventBus:
     """
 
     def __init__(self) -> None:
-        self._subscribers: Dict[str, List[Callable]] = {}
-        self._wildcard_subscribers: List[Callable] = []
-        self._event_history: List[Event] = []
+        self._subscribers: dict[str, list[Callable]] = {}
+        self._wildcard_subscribers: list[Callable] = []
+        self._event_history: list[Event] = []
         self._max_history: int = 1000
         self._lock = asyncio.Lock()
 
@@ -150,7 +151,7 @@ class EventBus:
 
         return handlers_called
 
-    async def publish_many(self, events: List[Event]) -> int:
+    async def publish_many(self, events: list[Event]) -> int:
         """Publish multiple events."""
         total = 0
         for event in events:
@@ -160,9 +161,9 @@ class EventBus:
     def emit(
         self,
         event_type: EventType,
-        tenant_id: Optional[str] = None,
-        agent_id: Optional[str] = None,
-        data: Optional[Dict[str, Any]] = None,
+        tenant_id: str | None = None,
+        agent_id: str | None = None,
+        data: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> asyncio.Task:
         """
@@ -181,10 +182,10 @@ class EventBus:
 
     def get_history(
         self,
-        event_type: Optional[EventType] = None,
-        tenant_id: Optional[str] = None,
+        event_type: EventType | None = None,
+        tenant_id: str | None = None,
         limit: int = 100,
-    ) -> List[Event]:
+    ) -> list[Event]:
         """Get event history with optional filters."""
         events = self._event_history.copy()
 
@@ -201,9 +202,9 @@ class EventBus:
         self._event_history.clear()
         return count
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get event bus statistics."""
-        event_counts: Dict[str, int] = {}
+        event_counts: dict[str, int] = {}
         for event in self._event_history:
             key = event.event_type.value
             event_counts[key] = event_counts.get(key, 0) + 1
@@ -214,7 +215,6 @@ class EventBus:
             "wildcard_subscribers": len(self._wildcard_subscribers),
             "events_by_type": event_counts,
         }
-
 
     def bridge_to_activity_stream(self, activity_stream: Any) -> None:
         """Bridge all EventBus events to an ActivityStream for durable persistence."""
@@ -239,7 +239,7 @@ class EventBus:
         self.subscribe_all(_forward)
 
 
-_default_bus: Optional[EventBus] = None
+_default_bus: EventBus | None = None
 
 
 def get_event_bus() -> EventBus:

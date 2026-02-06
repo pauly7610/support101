@@ -8,9 +8,10 @@ Provides bidirectional communication for:
 """
 
 import asyncio
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any
 from uuid import uuid4
 
 try:
@@ -29,11 +30,11 @@ class Connection:
     connection_id: str
     websocket: Any
     tenant_id: str
-    user_id: Optional[str] = None
-    subscriptions: Set[str] = field(default_factory=set)
+    user_id: str | None = None
+    subscriptions: set[str] = field(default_factory=set)
     connected_at: datetime = field(default_factory=datetime.utcnow)
     last_ping: datetime = field(default_factory=datetime.utcnow)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class ConnectionManager:
@@ -48,17 +49,17 @@ class ConnectionManager:
     """
 
     def __init__(self) -> None:
-        self._connections: Dict[str, Connection] = {}
-        self._tenant_connections: Dict[str, Set[str]] = {}
-        self._channel_subscribers: Dict[str, Set[str]] = {}
+        self._connections: dict[str, Connection] = {}
+        self._tenant_connections: dict[str, set[str]] = {}
+        self._channel_subscribers: dict[str, set[str]] = {}
         self._lock = asyncio.Lock()
 
     async def connect(
         self,
         websocket: WebSocket,
         tenant_id: str,
-        user_id: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        user_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> Connection:
         """
         Accept a new WebSocket connection.
@@ -159,7 +160,7 @@ class ConnectionManager:
     async def _send_message(
         self,
         connection: Connection,
-        message: Dict[str, Any],
+        message: dict[str, Any],
     ) -> bool:
         """Send a message to a connection."""
         try:
@@ -172,7 +173,7 @@ class ConnectionManager:
     async def send_to_connection(
         self,
         connection_id: str,
-        message: Dict[str, Any],
+        message: dict[str, Any],
     ) -> bool:
         """Send a message to a specific connection."""
         connection = self._connections.get(connection_id)
@@ -184,46 +185,47 @@ class ConnectionManager:
         self,
         tenant_id: str,
         user_id: str,
-        message: Dict[str, Any],
+        message: dict[str, Any],
     ) -> int:
         """Send a message to all connections for a user."""
         sent = 0
         for conn_id in list(self._tenant_connections.get(tenant_id, [])):
             connection = self._connections.get(conn_id)
-            if connection and connection.user_id == user_id:
-                if await self._send_message(connection, message):
-                    sent += 1
+            if (
+                connection
+                and connection.user_id == user_id
+                and await self._send_message(connection, message)
+            ):
+                sent += 1
         return sent
 
     async def broadcast_to_tenant(
         self,
         tenant_id: str,
-        message: Dict[str, Any],
+        message: dict[str, Any],
     ) -> int:
         """Broadcast a message to all connections in a tenant."""
         sent = 0
         for conn_id in list(self._tenant_connections.get(tenant_id, [])):
             connection = self._connections.get(conn_id)
-            if connection:
-                if await self._send_message(connection, message):
-                    sent += 1
+            if connection and await self._send_message(connection, message):
+                sent += 1
         return sent
 
     async def broadcast_to_channel(
         self,
         channel: str,
-        message: Dict[str, Any],
+        message: dict[str, Any],
     ) -> int:
         """Broadcast a message to all subscribers of a channel."""
         sent = 0
         for conn_id in list(self._channel_subscribers.get(channel, [])):
             connection = self._connections.get(conn_id)
-            if connection:
-                if await self._send_message(connection, message):
-                    sent += 1
+            if connection and await self._send_message(connection, message):
+                sent += 1
         return sent
 
-    async def broadcast_all(self, message: Dict[str, Any]) -> int:
+    async def broadcast_all(self, message: dict[str, Any]) -> int:
         """Broadcast a message to all connections."""
         sent = 0
         for connection in list(self._connections.values()):
@@ -231,16 +233,16 @@ class ConnectionManager:
                 sent += 1
         return sent
 
-    def get_connection(self, connection_id: str) -> Optional[Connection]:
+    def get_connection(self, connection_id: str) -> Connection | None:
         """Get a connection by ID."""
         return self._connections.get(connection_id)
 
-    def get_tenant_connections(self, tenant_id: str) -> List[Connection]:
+    def get_tenant_connections(self, tenant_id: str) -> list[Connection]:
         """Get all connections for a tenant."""
         conn_ids = self._tenant_connections.get(tenant_id, set())
         return [self._connections[cid] for cid in conn_ids if cid in self._connections]
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get connection statistics."""
         return {
             "total_connections": len(self._connections),
@@ -263,9 +265,9 @@ class WebSocketManager:
     CHANNEL_AGENTS = "agents"
     CHANNEL_GOVERNANCE = "governance"
 
-    def __init__(self, connection_manager: Optional[ConnectionManager] = None) -> None:
+    def __init__(self, connection_manager: ConnectionManager | None = None) -> None:
         self.connections = connection_manager or ConnectionManager()
-        self._message_handlers: Dict[str, List[Callable]] = {}
+        self._message_handlers: dict[str, list[Callable]] = {}
 
     def on_message(self, message_type: str, handler: Callable) -> None:
         """Register a handler for a message type."""
@@ -276,8 +278,8 @@ class WebSocketManager:
     async def handle_message(
         self,
         connection: Connection,
-        message: Dict[str, Any],
-    ) -> Optional[Dict[str, Any]]:
+        message: dict[str, Any],
+    ) -> dict[str, Any] | None:
         """Handle an incoming WebSocket message."""
         msg_type = message.get("type")
 
@@ -310,7 +312,7 @@ class WebSocketManager:
     async def notify_hitl_request(
         self,
         tenant_id: str,
-        request_data: Dict[str, Any],
+        request_data: dict[str, Any],
     ) -> int:
         """Notify about a new HITL request."""
         message = {
@@ -332,7 +334,7 @@ class WebSocketManager:
         self,
         tenant_id: str,
         request_id: str,
-        response_data: Dict[str, Any],
+        response_data: dict[str, Any],
     ) -> int:
         """Notify about a HITL response."""
         message = {
@@ -348,7 +350,7 @@ class WebSocketManager:
         tenant_id: str,
         agent_id: str,
         status: str,
-        details: Optional[Dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ) -> int:
         """Notify about agent status change."""
         message = {
@@ -370,7 +372,7 @@ class WebSocketManager:
         execution_id: str,
         step: int,
         action: str,
-        result: Optional[Dict[str, Any]] = None,
+        result: dict[str, Any] | None = None,
     ) -> int:
         """Notify about execution progress."""
         message = {
@@ -390,7 +392,7 @@ class WebSocketManager:
     async def notify_escalation(
         self,
         tenant_id: str,
-        escalation_data: Dict[str, Any],
+        escalation_data: dict[str, Any],
     ) -> int:
         """Notify about an escalation."""
         message = {
@@ -404,7 +406,7 @@ class WebSocketManager:
         self,
         tenant_id: str,
         request_id: str,
-        breach_data: Dict[str, Any],
+        breach_data: dict[str, Any],
     ) -> int:
         """Notify about SLA breach."""
         message = {

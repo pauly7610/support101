@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import Sentiment from 'sentiment';
 import * as idb from 'idb-keyval';
+import Sentiment from 'sentiment';
 import { generateSuggestedReply, reportEscalation } from '../api';
 
 const CHAT_HISTORY_KEY = 'chat_history';
@@ -151,7 +151,7 @@ export default function ChatWidgetBackend() {
 
   function handleFileUpload(event: Event) {
     const target = event.target as HTMLInputElement;
-    const file = target && target.files ? target.files[0] : null;
+    const file = target?.files ? target.files[0] : null;
     if (file) {
       const reader = new FileReader();
       reader.onload = (ev) => {
@@ -184,7 +184,6 @@ export default function ChatWidgetBackend() {
         theme === 'dark' ? 'bg-gray-900 text-gray-100' : 'bg-white'
       }`}
       aria-label="Customer chat widget"
-      tabIndex={0}
       style={{ outline: escalate ? '2px solid #ff4d4f' : undefined }}
     >
       <header
@@ -271,8 +270,8 @@ export default function ChatWidgetBackend() {
                         ? 'bg-blue-900 text-blue-100'
                         : 'bg-blue-100 text-blue-900'
                       : theme === 'dark'
-                      ? 'bg-gray-800 text-gray-100'
-                      : 'bg-gray-100 text-gray-800'
+                        ? 'bg-gray-800 text-gray-100'
+                        : 'bg-gray-100 text-gray-800'
                   }`}
                   style={{
                     color: theme === 'dark' ? '#fff' : '#1a1a1a',
@@ -282,15 +281,14 @@ export default function ChatWidgetBackend() {
                           ? '#1e40af'
                           : '#e6f0ff'
                         : theme === 'dark'
-                        ? '#222'
-                        : '#f4f4f4',
+                          ? '#222'
+                          : '#f4f4f4',
                     minWidth: 40,
                     maxWidth: 240,
                     wordBreak: 'break-word',
                     border: msg.sentiment === 'urgent' ? '2px solid #ff4d4f' : undefined,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
                   }}
-                  tabIndex={0}
                 >
                   {msg.text}
                   {msg.image && (

@@ -7,7 +7,7 @@ Defines tenant structure for multi-tenant agent deployment.
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
 
@@ -40,7 +40,7 @@ class TenantLimits:
     max_vector_documents: int = 10000
     max_hitl_queue_size: int = 100
 
-    def to_dict(self) -> Dict[str, int]:
+    def to_dict(self) -> dict[str, int]:
         return {
             "max_agents": self.max_agents,
             "max_concurrent_executions": self.max_concurrent_executions,
@@ -94,17 +94,17 @@ class TenantConfig:
     name: str
     tier: TenantTier = TenantTier.STARTER
 
-    allowed_blueprints: List[str] = field(default_factory=list)
+    allowed_blueprints: list[str] = field(default_factory=list)
 
-    custom_limits: Optional[TenantLimits] = None
+    custom_limits: TenantLimits | None = None
 
-    pinecone_namespace: Optional[str] = None
-    database_schema: Optional[str] = None
+    pinecone_namespace: str | None = None
+    database_schema: str | None = None
 
-    api_key_hash: Optional[str] = None
-    webhook_url: Optional[str] = None
+    api_key_hash: str | None = None
+    webhook_url: str | None = None
 
-    settings: Dict[str, Any] = field(default_factory=dict)
+    settings: dict[str, Any] = field(default_factory=dict)
 
     def get_limits(self) -> TenantLimits:
         """Get effective limits (custom or tier-based)."""
@@ -121,17 +121,17 @@ class Tenant:
     config: TenantConfig = field(default_factory=lambda: TenantConfig(name="Default"))
     status: TenantStatus = TenantStatus.PENDING
 
-    owner_id: Optional[str] = None
-    admin_ids: List[str] = field(default_factory=list)
+    owner_id: str | None = None
+    admin_ids: list[str] = field(default_factory=list)
 
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
-    activated_at: Optional[datetime] = None
-    suspended_at: Optional[datetime] = None
+    activated_at: datetime | None = None
+    suspended_at: datetime | None = None
 
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    _current_usage: Dict[str, int] = field(default_factory=dict)
+    _current_usage: dict[str, int] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not self._current_usage:
@@ -189,7 +189,7 @@ class Tenant:
         """Reset rate limit counter (called every minute)."""
         self._current_usage["requests_this_minute"] = 0
 
-    def get_usage(self) -> Dict[str, Any]:
+    def get_usage(self) -> dict[str, Any]:
         """Get current usage with limits."""
         limits = self.limits
         return {
@@ -233,7 +233,7 @@ class Tenant:
         self.status = TenantStatus.DEACTIVATED
         self.updated_at = datetime.utcnow()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize tenant."""
         return {
             "tenant_id": self.tenant_id,
@@ -246,6 +246,6 @@ class Tenant:
             "usage": self.get_usage(),
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
-            "activated_at": self.activated_at.isoformat() if self.activated_at else None,
+            "activated_at": (self.activated_at.isoformat() if self.activated_at else None),
             "settings": self.config.settings,
         }

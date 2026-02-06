@@ -6,9 +6,10 @@ configures initial settings, and provides personalized getting-started
 recommendations.
 """
 
+import contextlib
 import json
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
@@ -118,8 +119,8 @@ class OnboardingAgent(BaseAgent):
     def __init__(
         self,
         config: AgentConfig,
-        llm: Optional[Any] = None,
-        evalai_tracer: Optional[Any] = None,
+        llm: Any | None = None,
+        evalai_tracer: Any | None = None,
     ) -> None:
         super().__init__(config)
         self._llm = llm
@@ -132,14 +133,12 @@ class OnboardingAgent(BaseAgent):
         if self._initialized:
             return
         if self._llm is None:
-            try:
+            with contextlib.suppress(Exception):
                 self._llm = ChatOpenAI(temperature=0.3)
-            except Exception:
-                pass
         self._initialized = True
 
     @property
-    def llm(self) -> Optional[Any]:
+    def llm(self) -> Any | None:
         self._lazy_init()
         return self._llm
 
@@ -183,15 +182,17 @@ class OnboardingAgent(BaseAgent):
 
     @llm_retry(max_attempts=3)
     async def _assess_customer(
-        self, customer_info: Dict[str, Any], product: str = ""
-    ) -> Dict[str, Any]:
+        self, customer_info: dict[str, Any], product: str = ""
+    ) -> dict[str, Any]:
         validated = AssessCustomerInput(customer_info=customer_info, product=product)
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.ASSESSMENT_PROMPT | self.llm
-            result = await chain.ainvoke({
-                "customer_info": json.dumps(validated.customer_info, indent=2),
-                "product": validated.product,
-            })
+            result = await chain.ainvoke(
+                {
+                    "customer_info": json.dumps(validated.customer_info, indent=2),
+                    "product": validated.product,
+                }
+            )
             timer.set_tokens(input_tokens=200, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
@@ -209,20 +210,27 @@ class OnboardingAgent(BaseAgent):
 
     @llm_retry(max_attempts=3)
     async def _generate_checklist(
-        self, assessment: Dict[str, Any], product: str = ""
-    ) -> Dict[str, Any]:
+        self, assessment: dict[str, Any], product: str = ""
+    ) -> dict[str, Any]:
         validated = GenerateChecklistInput(assessment=assessment, product=product)
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.CHECKLIST_PROMPT | self.llm
-            result = await chain.ainvoke({
-                "assessment": json.dumps(validated.assessment, indent=2),
-                "product": validated.product,
-            })
+            result = await chain.ainvoke(
+                {
+                    "assessment": json.dumps(validated.assessment, indent=2),
+                    "product": validated.product,
+                }
+            )
             timer.set_tokens(input_tokens=200, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
         except json.JSONDecodeError:
-            return {"checklist": [], "total_steps": 0, "estimated_total_minutes": 0, "priority_order": []}
+            return {
+                "checklist": [],
+                "total_steps": 0,
+                "estimated_total_minutes": 0,
+                "priority_order": [],
+            }
 
     @llm_retry(max_attempts=3)
     async def _provide_guidance(
@@ -231,19 +239,23 @@ class OnboardingAgent(BaseAgent):
         step_description: str,
         experience_level: str = "beginner",
         question: str = "",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         validated = ProvideGuidanceInput(
-            step_title=step_title, step_description=step_description,
-            experience_level=experience_level, question=question,
+            step_title=step_title,
+            step_description=step_description,
+            experience_level=experience_level,
+            question=question,
         )
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.GUIDANCE_PROMPT | self.llm
-            result = await chain.ainvoke({
-                "step_title": validated.step_title,
-                "step_description": validated.step_description,
-                "experience_level": validated.experience_level,
-                "question": validated.question or "How do I complete this step?",
-            })
+            result = await chain.ainvoke(
+                {
+                    "step_title": validated.step_title,
+                    "step_description": validated.step_description,
+                    "experience_level": validated.experience_level,
+                    "question": validated.question or "How do I complete this step?",
+                }
+            )
             timer.set_tokens(input_tokens=200, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
@@ -259,20 +271,24 @@ class OnboardingAgent(BaseAgent):
     @llm_retry(max_attempts=3)
     async def _validate_completion(
         self,
-        checklist: List[Dict[str, Any]],
-        completed_steps: List[str],
-        customer_profile: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        checklist: list[dict[str, Any]],
+        completed_steps: list[str],
+        customer_profile: dict[str, Any],
+    ) -> dict[str, Any]:
         validated = ValidateCompletionInput(
-            checklist=checklist, completed_steps=completed_steps, customer_profile=customer_profile,
+            checklist=checklist,
+            completed_steps=completed_steps,
+            customer_profile=customer_profile,
         )
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.COMPLETION_PROMPT | self.llm
-            result = await chain.ainvoke({
-                "checklist": json.dumps(validated.checklist, indent=2),
-                "completed_steps": json.dumps(validated.completed_steps),
-                "customer_profile": json.dumps(validated.customer_profile, indent=2),
-            })
+            result = await chain.ainvoke(
+                {
+                    "checklist": json.dumps(validated.checklist, indent=2),
+                    "completed_steps": json.dumps(validated.completed_steps),
+                    "customer_profile": json.dumps(validated.customer_profile, indent=2),
+                }
+            )
             timer.set_tokens(input_tokens=300, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
@@ -288,8 +304,8 @@ class OnboardingAgent(BaseAgent):
             }
 
     async def _request_setup_help(
-        self, issue: str, step_id: str, customer_info: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, issue: str, step_id: str, customer_info: dict[str, Any]
+    ) -> dict[str, Any]:
         await self._api.send_notification(
             channel="onboarding",
             message=f"Setup help needed: {issue}",
@@ -312,7 +328,7 @@ class OnboardingAgent(BaseAgent):
             "timestamp": datetime.utcnow().isoformat(),
         }
 
-    async def plan(self, state: AgentState) -> Dict[str, Any]:
+    async def plan(self, state: AgentState) -> dict[str, Any]:
         step = state.current_step
 
         if step == 0:
@@ -334,7 +350,9 @@ class OnboardingAgent(BaseAgent):
             }
         elif step == 2:
             completed = state.input_data.get("completed_steps", [])
-            checklist_data = state.intermediate_steps[-1] if len(state.intermediate_steps) > 1 else {}
+            checklist_data = (
+                state.intermediate_steps[-1] if len(state.intermediate_steps) > 1 else {}
+            )
             checklist = checklist_data.get("checklist", [])
             assessment = state.intermediate_steps[0] if state.intermediate_steps else {}
             return {
@@ -348,7 +366,7 @@ class OnboardingAgent(BaseAgent):
 
         return {"action": "complete", "action_input": {}}
 
-    async def execute_step(self, state: AgentState, action: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute_step(self, state: AgentState, action: dict[str, Any]) -> dict[str, Any]:
         action_name = action.get("action")
         action_input = action.get("action_input", {})
 
@@ -393,11 +411,15 @@ class OnboardingAgent(BaseAgent):
     def should_continue(self, state: AgentState) -> bool:
         if state.current_step >= self.config.max_iterations:
             return False
-        if state.status in [AgentStatus.COMPLETED, AgentStatus.FAILED, AgentStatus.AWAITING_HUMAN]:
+        if state.status in [
+            AgentStatus.COMPLETED,
+            AgentStatus.FAILED,
+            AgentStatus.AWAITING_HUMAN,
+        ]:
             return False
-        if state.intermediate_steps and state.intermediate_steps[-1].get("action") == "complete":
-            return False
-        return True
+        return not (
+            state.intermediate_steps and state.intermediate_steps[-1].get("action") == "complete"
+        )
 
 
 OnboardingBlueprint = AgentBlueprint(

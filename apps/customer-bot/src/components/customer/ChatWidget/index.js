@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Send, MessageCircle } from 'lucide-react';
+import { MessageCircle, Send } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '../../../lib/utils';
-import FloatingChatButton from './FloatingChatButton';
 import ChatWindow from './ChatWindow';
+import FloatingChatButton from './FloatingChatButton';
 import MessageBubble from './MessageBubble';
 
 export default function ChatWidget() {
@@ -59,7 +59,7 @@ export default function ChatWidget() {
           sources: result.sources?.map((src) => src.title || src.url),
         },
       ]);
-    } catch (err) {
+    } catch (_err) {
       setError('Sorry, something went wrong. Please try again.');
     } finally {
       setLoading(false);

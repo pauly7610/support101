@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import CitationPopup from './CitationPopup';
-import Sentiment from 'sentiment';
 import * as idb from 'idb-keyval';
+import { useEffect, useRef, useState } from 'react';
+import Sentiment from 'sentiment';
+import CitationPopup from './CitationPopup';
 
 const CHAT_HISTORY_KEY = 'chat_history';
 const sentiment = new Sentiment(undefined);
@@ -117,7 +117,7 @@ export default function ChatWidget() {
         citations: data.citations || [],
       };
       setMessages((prev) => [...prev, agentReply]);
-    } catch (err) {
+    } catch (_err) {
       setMessages((prev) => [
         ...prev,
         {
@@ -147,7 +147,6 @@ export default function ChatWidget() {
           theme === 'dark' ? 'bg-gray-900 text-gray-100' : 'bg-white'
         }`}
         aria-label="Customer chat widget"
-        tabIndex={0}
         style={{ outline: escalate ? '2px solid #ff4d4f' : undefined }}
       >
         <header

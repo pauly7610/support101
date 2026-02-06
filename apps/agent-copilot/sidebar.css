@@ -6,7 +6,7 @@
   width: 340px;
   height: 100vh;
   background: #f8fafc;
-  box-shadow: -2px 0 8px rgba(0,0,0,0.08);
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.08);
   z-index: 9999;
   border-left: 1px solid #e5e7eb;
   font-family: sans-serif;

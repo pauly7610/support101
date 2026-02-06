@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { AlertTriangle } from 'lucide-react';
 import * as idb from 'idb-keyval';
+import { AlertTriangle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { cn } from '../lib/utils';
 
 const ESCALATION_LOG_KEY = 'escalation_log';
@@ -38,10 +38,12 @@ function ChartSkeleton() {
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className={cn(
-        'w-12 h-12 rounded-full flex items-center justify-center mb-3',
-        'bg-emerald-50 dark:bg-emerald-900/20',
-      )}>
+      <div
+        className={cn(
+          'w-12 h-12 rounded-full flex items-center justify-center mb-3',
+          'bg-emerald-50 dark:bg-emerald-900/20',
+        )}
+      >
         <AlertTriangle className="w-5 h-5 text-emerald-500" />
       </div>
       <p className="text-sm font-medium text-gray-700 dark:text-slate-300">No escalations yet</p>
@@ -74,12 +76,14 @@ export default function EscalationCharts() {
       <h3 className="text-sm font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-3">
         Escalations per Day
       </h3>
-      <div className={cn(
-        'rounded-xl p-4',
-        'bg-white dark:bg-slate-900',
-        'border border-gray-200 dark:border-slate-700',
-        'shadow-sm',
-      )}>
+      <div
+        className={cn(
+          'rounded-xl p-4',
+          'bg-white dark:bg-slate-900',
+          'border border-gray-200 dark:border-slate-700',
+          'shadow-sm',
+        )}
+      >
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={data} margin={{ top: 4, right: 4, bottom: 4, left: -20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.1} />

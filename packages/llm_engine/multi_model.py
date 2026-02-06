@@ -15,13 +15,12 @@ Environment variables:
 """
 
 import os
-from typing import Any, Dict, Optional
+from typing import Any
 
 from langchain_core.language_models import BaseChatModel
 
-
 # Provider registry
-_PROVIDERS: Dict[str, type] = {}
+_PROVIDERS: dict[str, type] = {}
 
 
 def _register_providers() -> None:
@@ -31,6 +30,7 @@ def _register_providers() -> None:
     # OpenAI (always available — it's a core dependency)
     try:
         from langchain_openai import ChatOpenAI
+
         _PROVIDERS["openai"] = ChatOpenAI
     except ImportError:
         pass
@@ -38,6 +38,7 @@ def _register_providers() -> None:
     # Anthropic Claude
     try:
         from langchain_anthropic import ChatAnthropic
+
         _PROVIDERS["anthropic"] = ChatAnthropic
     except ImportError:
         pass
@@ -45,6 +46,7 @@ def _register_providers() -> None:
     # Google Gemini
     try:
         from langchain_google_genai import ChatGoogleGenerativeAI
+
         _PROVIDERS["google"] = ChatGoogleGenerativeAI
     except ImportError:
         pass
@@ -52,6 +54,7 @@ def _register_providers() -> None:
     # Ollama (local models)
     try:
         from langchain_community.chat_models import ChatOllama
+
         _PROVIDERS["ollama"] = ChatOllama
     except ImportError:
         pass
@@ -59,6 +62,7 @@ def _register_providers() -> None:
     # LiteLLM (universal router — supports 100+ providers)
     try:
         from langchain_community.chat_models import ChatLiteLLM
+
         _PROVIDERS["litellm"] = ChatLiteLLM
     except ImportError:
         pass
@@ -68,7 +72,7 @@ _register_providers()
 
 
 # Default model names per provider
-_DEFAULT_MODELS: Dict[str, str] = {
+_DEFAULT_MODELS: dict[str, str] = {
     "openai": "gpt-4o",
     "anthropic": "claude-3-5-sonnet-20241022",
     "google": "gemini-2.0-flash",
@@ -83,8 +87,8 @@ def get_available_providers() -> list[str]:
 
 
 def get_chat_model(
-    provider: Optional[str] = None,
-    model_name: Optional[str] = None,
+    provider: str | None = None,
+    model_name: str | None = None,
     temperature: float = 0.3,
     **kwargs: Any,
 ) -> BaseChatModel:
@@ -163,7 +167,7 @@ def get_chat_model(
     )
 
 
-def get_model_info() -> Dict[str, Any]:
+def get_model_info() -> dict[str, Any]:
     """Return information about the current LLM configuration."""
     provider = os.getenv("LLM_PROVIDER", "openai")
     model_name = os.getenv("LLM_MODEL_NAME", _DEFAULT_MODELS.get(provider, "gpt-4o"))

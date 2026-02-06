@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { requestGdprDelete, requestCcpaOptout } from '../../api';
+import { useState } from 'react';
+import { requestCcpaOptout, requestGdprDelete } from '../../api';
 
 export default function ComplianceSettings({ userId }: { userId?: string }) {
   const [gdprStatus, setGdprStatus] = useState('');

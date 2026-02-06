@@ -6,7 +6,7 @@ Provides persistent storage with full query capabilities.
 
 import json
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy import Column, DateTime, Index, Integer, String, Text, and_, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -112,8 +112,8 @@ class DatabaseStateStore(StateStore):
         self,
         agent_id: str,
         execution_id: str,
-        state: Dict[str, Any],
-        ttl_seconds: Optional[int] = None,
+        state: dict[str, Any],
+        ttl_seconds: int | None = None,
     ) -> bool:
         async with await self._get_session() as session:
             stmt = select(AgentStateModel).where(
@@ -143,7 +143,7 @@ class DatabaseStateStore(StateStore):
         self,
         agent_id: str,
         execution_id: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         async with await self._get_session() as session:
             stmt = select(AgentStateModel).where(
                 and_(
@@ -183,7 +183,7 @@ class DatabaseStateStore(StateStore):
         self,
         agent_id: str,
         limit: int = 100,
-    ) -> List[str]:
+    ) -> list[str]:
         async with await self._get_session() as session:
             stmt = (
                 select(AgentStateModel.execution_id)
@@ -197,8 +197,8 @@ class DatabaseStateStore(StateStore):
     async def save_hitl_request(
         self,
         request_id: str,
-        request_data: Dict[str, Any],
-        ttl_seconds: Optional[int] = None,
+        request_data: dict[str, Any],
+        ttl_seconds: int | None = None,
     ) -> bool:
         async with await self._get_session() as session:
             model = HITLRequestModel(
@@ -216,7 +216,7 @@ class DatabaseStateStore(StateStore):
     async def get_hitl_request(
         self,
         request_id: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         async with await self._get_session() as session:
             stmt = select(HITLRequestModel).where(HITLRequestModel.request_id == request_id)
             result = await session.execute(stmt)
@@ -229,7 +229,7 @@ class DatabaseStateStore(StateStore):
     async def update_hitl_request(
         self,
         request_id: str,
-        updates: Dict[str, Any],
+        updates: dict[str, Any],
     ) -> bool:
         async with await self._get_session() as session:
             stmt = select(HITLRequestModel).where(HITLRequestModel.request_id == request_id)
@@ -251,10 +251,10 @@ class DatabaseStateStore(StateStore):
 
     async def list_hitl_requests(
         self,
-        tenant_id: Optional[str] = None,
-        status: Optional[str] = None,
+        tenant_id: str | None = None,
+        status: str | None = None,
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         async with await self._get_session() as session:
             stmt = select(HITLRequestModel)
 
@@ -275,7 +275,7 @@ class DatabaseStateStore(StateStore):
     async def save_audit_event(
         self,
         event_id: str,
-        event_data: Dict[str, Any],
+        event_data: dict[str, Any],
     ) -> bool:
         async with await self._get_session() as session:
             model = AuditEventModel(
@@ -301,14 +301,14 @@ class DatabaseStateStore(StateStore):
 
     async def query_audit_events(
         self,
-        tenant_id: Optional[str] = None,
-        agent_id: Optional[str] = None,
-        event_type: Optional[str] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        tenant_id: str | None = None,
+        agent_id: str | None = None,
+        event_type: str | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         async with await self._get_session() as session:
             stmt = select(AuditEventModel)
 
@@ -335,7 +335,7 @@ class DatabaseStateStore(StateStore):
     async def save_tenant(
         self,
         tenant_id: str,
-        tenant_data: Dict[str, Any],
+        tenant_data: dict[str, Any],
     ) -> bool:
         async with await self._get_session() as session:
             stmt = select(TenantModel).where(TenantModel.tenant_id == tenant_id)
@@ -360,7 +360,7 @@ class DatabaseStateStore(StateStore):
     async def get_tenant(
         self,
         tenant_id: str,
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         async with await self._get_session() as session:
             stmt = select(TenantModel).where(TenantModel.tenant_id == tenant_id)
             result = await session.execute(stmt)
@@ -372,9 +372,9 @@ class DatabaseStateStore(StateStore):
 
     async def list_tenants(
         self,
-        status: Optional[str] = None,
+        status: str | None = None,
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         async with await self._get_session() as session:
             stmt = select(TenantModel)
 

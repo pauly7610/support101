@@ -23,7 +23,8 @@ async def get_escalation_analytics(
     """Get escalation metrics (admin only, with optional filters)"""
     if not getattr(current_user, "is_admin", False):
         return JSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN, content={"detail": "Insufficient permissions"}
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={"detail": "Insufficient permissions"},
         )
     filters = ["TRUE"]
     params = {}
@@ -66,7 +67,8 @@ async def get_escalations_by_agent(
     """Aggregate escalations by agent (admin only)"""
     if not getattr(current_user, "is_admin", False):
         return JSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN, content={"detail": "Insufficient permissions"}
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={"detail": "Insufficient permissions"},
         )
     filters = ["TRUE"]
     params = {}
@@ -94,7 +96,11 @@ async def get_escalations_by_agent(
     rows = result.fetchall()
     return {
         "by_agent": [dict(row) for row in rows],
-        "filters": {"agent_id": agent_id, "start_time": start_time, "end_time": end_time},
+        "filters": {
+            "agent_id": agent_id,
+            "start_time": start_time,
+            "end_time": end_time,
+        },
     }
 
 
@@ -109,7 +115,8 @@ async def get_escalations_by_category(
     """Aggregate escalations by category (admin only)"""
     if not getattr(current_user, "is_admin", False):
         return JSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN, content={"detail": "Insufficient permissions"}
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={"detail": "Insufficient permissions"},
         )
     filters = ["TRUE"]
     params = {}
@@ -137,5 +144,9 @@ async def get_escalations_by_category(
     rows = result.fetchall()
     return {
         "by_category": [dict(row) for row in rows],
-        "filters": {"category": category, "start_time": start_time, "end_time": end_time},
+        "filters": {
+            "category": category,
+            "start_time": start_time,
+            "end_time": end_time,
+        },
     }

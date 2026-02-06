@@ -1,40 +1,40 @@
-import React from "react";
-import { useCurrentFrame, interpolate, Easing } from "remotion";
-import { FadeIn } from "../components/AnimatedText";
-import { COLORS, FONTS, gradientBg, gridLines, card, badge } from "../styles";
+import type React from 'react';
+import { useCurrentFrame } from 'remotion';
+import { FadeIn } from '../components/AnimatedText';
+import { COLORS, FONTS, badge, card, gradientBg, gridLines } from '../styles';
 
 const REQUESTS = [
   {
-    id: "REQ-7291",
-    agent: "SupportAgent",
-    action: "Process refund $24.50",
-    priority: "critical",
-    sla: "4m left",
+    id: 'REQ-7291',
+    agent: 'SupportAgent',
+    action: 'Process refund $24.50',
+    priority: 'critical',
+    sla: '4m left',
     slaColor: COLORS.orange,
   },
   {
-    id: "REQ-7290",
-    agent: "TriageAgent",
-    action: "Escalate to L2 Engineering",
-    priority: "high",
-    sla: "12m left",
+    id: 'REQ-7290',
+    agent: 'TriageAgent',
+    action: 'Escalate to L2 Engineering',
+    priority: 'high',
+    sla: '12m left',
     slaColor: COLORS.textDim,
   },
   {
-    id: "REQ-7289",
-    agent: "OnboardingAgent",
-    action: "Send welcome package",
-    priority: "medium",
-    sla: "28m left",
+    id: 'REQ-7289',
+    agent: 'OnboardingAgent',
+    action: 'Send welcome package',
+    priority: 'medium',
+    sla: '28m left',
     slaColor: COLORS.textDim,
   },
 ];
 
 const PRIORITY_COLORS: Record<string, { text: string; bg: string }> = {
-  critical: { text: "#fca5a5", bg: "#7f1d1d" },
-  high: { text: "#fdba74", bg: "#7c2d12" },
-  medium: { text: "#fde68a", bg: "#713f12" },
-  low: { text: "#86efac", bg: "#14532d" },
+  critical: { text: '#fca5a5', bg: '#7f1d1d' },
+  high: { text: '#fdba74', bg: '#7c2d12' },
+  medium: { text: '#fde68a', bg: '#713f12' },
+  low: { text: '#86efac', bg: '#14532d' },
 };
 
 export const Scene4HITL: React.FC = () => {
@@ -53,11 +53,11 @@ export const Scene4HITL: React.FC = () => {
       <FadeIn startFrame={0} durationFrames={15}>
         <div
           style={{
-            position: "absolute",
+            position: 'absolute',
             top: 48,
             left: 80,
-            display: "flex",
-            alignItems: "center",
+            display: 'flex',
+            alignItems: 'center',
             gap: 12,
           }}
         >
@@ -65,7 +65,7 @@ export const Scene4HITL: React.FC = () => {
             style={{
               width: 8,
               height: 8,
-              borderRadius: "50%",
+              borderRadius: '50%',
               backgroundColor: COLORS.yellow,
               boxShadow: `0 0 8px ${COLORS.yellow}`,
             }}
@@ -75,7 +75,7 @@ export const Scene4HITL: React.FC = () => {
               fontSize: 16,
               fontFamily: FONTS.mono,
               color: COLORS.textMuted,
-              textTransform: "uppercase",
+              textTransform: 'uppercase',
               letterSpacing: 2,
             }}
           >
@@ -87,12 +87,12 @@ export const Scene4HITL: React.FC = () => {
       {/* Queue panel */}
       <div
         style={{
-          position: "absolute",
+          position: 'absolute',
           left: 80,
           top: 130,
           width: 860,
-          display: "flex",
-          flexDirection: "column",
+          display: 'flex',
+          flexDirection: 'column',
           gap: 0,
         }}
       >
@@ -101,23 +101,23 @@ export const Scene4HITL: React.FC = () => {
           <div
             style={{
               ...card,
-              borderRadius: "16px 16px 0 0",
-              borderBottom: "none",
-              padding: "16px 24px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
+              borderRadius: '16px 16px 0 0',
+              borderBottom: 'none',
+              padding: '16px 24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
             }}
           >
-            <div style={{ display: "flex", gap: 24 }}>
-              {["All (3)", "Pending (2)", "Assigned (1)"].map((tab, i) => (
+            <div style={{ display: 'flex', gap: 24 }}>
+              {['All (3)', 'Pending (2)', 'Assigned (1)'].map((tab, i) => (
                 <span
                   key={tab}
                   style={{
                     fontSize: 14,
                     fontWeight: i === 0 ? 700 : 400,
                     color: i === 0 ? COLORS.primary : COLORS.textDim,
-                    borderBottom: i === 0 ? `2px solid ${COLORS.primary}` : "none",
+                    borderBottom: i === 0 ? `2px solid ${COLORS.primary}` : 'none',
                     paddingBottom: 4,
                   }}
                 >
@@ -143,27 +143,20 @@ export const Scene4HITL: React.FC = () => {
             <div
               style={{
                 ...card,
-                borderRadius: i === REQUESTS.length - 1 ? "0 0 16px 16px" : 0,
+                borderRadius: i === REQUESTS.length - 1 ? '0 0 16px 16px' : 0,
                 borderTop: `1px solid ${COLORS.gray700}`,
-                padding: "18px 24px",
-                display: "flex",
-                alignItems: "center",
+                padding: '18px 24px',
+                display: 'flex',
+                alignItems: 'center',
                 gap: 20,
-                backgroundColor:
-                  selectedIdx === i
-                    ? `${COLORS.primary}11`
-                    : COLORS.bgCard,
-                borderColor:
-                  selectedIdx === i ? COLORS.primary : COLORS.gray700,
-                transition: "all 0.3s",
+                backgroundColor: selectedIdx === i ? `${COLORS.primary}11` : COLORS.bgCard,
+                borderColor: selectedIdx === i ? COLORS.primary : COLORS.gray700,
+                transition: 'all 0.3s',
               }}
             >
               {/* Priority badge */}
               <div
-                style={badge(
-                  PRIORITY_COLORS[req.priority].text,
-                  PRIORITY_COLORS[req.priority].bg
-                )}
+                style={badge(PRIORITY_COLORS[req.priority].text, PRIORITY_COLORS[req.priority].bg)}
               >
                 {req.priority}
               </div>
@@ -206,22 +199,16 @@ export const Scene4HITL: React.FC = () => {
               {i === 0 && !approved && (
                 <div
                   style={{
-                    padding: "6px 16px",
+                    padding: '6px 16px',
                     borderRadius: 6,
-                    backgroundColor:
-                      selectedIdx === 0
-                        ? COLORS.primary
-                        : `${COLORS.primary}22`,
-                    color:
-                      selectedIdx === 0
-                        ? COLORS.white
-                        : COLORS.primaryLight,
+                    backgroundColor: selectedIdx === 0 ? COLORS.primary : `${COLORS.primary}22`,
+                    color: selectedIdx === 0 ? COLORS.white : COLORS.primaryLight,
                     fontSize: 13,
                     fontWeight: 600,
                     border: `1px solid ${COLORS.primary}44`,
                   }}
                 >
-                  {selectedIdx === 0 ? "Claimed" : "Claim"}
+                  {selectedIdx === 0 ? 'Claimed' : 'Claim'}
                 </div>
               )}
             </div>
@@ -234,26 +221,24 @@ export const Scene4HITL: React.FC = () => {
         <FadeIn startFrame={95} durationFrames={20}>
           <div
             style={{
-              position: "absolute",
+              position: 'absolute',
               right: 80,
               top: 130,
               width: 480,
               ...card,
               padding: 0,
-              overflow: "hidden",
+              overflow: 'hidden',
             }}
           >
             {/* Review header */}
             <div
               style={{
-                padding: "16px 24px",
+                padding: '16px 24px',
                 borderBottom: `1px solid ${COLORS.gray700}`,
                 backgroundColor: COLORS.bgCardLight,
               }}
             >
-              <div style={{ fontSize: 16, fontWeight: 700 }}>
-                Review: {REQUESTS[0].action}
-              </div>
+              <div style={{ fontSize: 16, fontWeight: 700 }}>Review: {REQUESTS[0].action}</div>
               <div
                 style={{
                   fontSize: 13,
@@ -273,7 +258,7 @@ export const Scene4HITL: React.FC = () => {
                   fontSize: 12,
                   fontWeight: 600,
                   color: COLORS.textDim,
-                  textTransform: "uppercase",
+                  textTransform: 'uppercase',
                   letterSpacing: 1,
                   marginBottom: 8,
                 }}
@@ -292,21 +277,21 @@ export const Scene4HITL: React.FC = () => {
                   border: `1px solid ${COLORS.gray700}`,
                 }}
               >
-                Customer requested cancellation. Account has 12 days remaining
-                on Pro plan ($49/mo). Prorated refund = $24.50. Policy allows
-                immediate processing for accounts in good standing.
+                Customer requested cancellation. Account has 12 days remaining on Pro plan ($49/mo).
+                Prorated refund = $24.50. Policy allows immediate processing for accounts in good
+                standing.
               </div>
 
               {/* Action buttons */}
               {showApprove && !approved && (
-                <div style={{ display: "flex", gap: 12 }}>
+                <div style={{ display: 'flex', gap: 12 }}>
                   <div
                     style={{
                       flex: 1,
-                      padding: "12px 0",
+                      padding: '12px 0',
                       borderRadius: 8,
                       background: `linear-gradient(135deg, ${COLORS.green}, #16a34a)`,
-                      textAlign: "center",
+                      textAlign: 'center',
                       fontSize: 14,
                       fontWeight: 700,
                       color: COLORS.white,
@@ -318,11 +303,11 @@ export const Scene4HITL: React.FC = () => {
                   <div
                     style={{
                       flex: 1,
-                      padding: "12px 0",
+                      padding: '12px 0',
                       borderRadius: 8,
                       backgroundColor: COLORS.bgCardLight,
                       border: `1px solid ${COLORS.gray600}`,
-                      textAlign: "center",
+                      textAlign: 'center',
                       fontSize: 14,
                       fontWeight: 600,
                       color: COLORS.textMuted,
@@ -332,7 +317,7 @@ export const Scene4HITL: React.FC = () => {
                   </div>
                   <div
                     style={{
-                      padding: "12px 20px",
+                      padding: '12px 20px',
                       borderRadius: 8,
                       backgroundColor: `${COLORS.red}15`,
                       border: `1px solid ${COLORS.red}33`,
@@ -351,11 +336,11 @@ export const Scene4HITL: React.FC = () => {
                 <FadeIn startFrame={160} durationFrames={10}>
                   <div
                     style={{
-                      padding: "16px 0",
+                      padding: '16px 0',
                       borderRadius: 8,
                       background: `linear-gradient(135deg, ${COLORS.green}22, ${COLORS.green}11)`,
                       border: `1px solid ${COLORS.green}44`,
-                      textAlign: "center",
+                      textAlign: 'center',
                       fontSize: 16,
                       fontWeight: 700,
                       color: COLORS.green,
@@ -372,10 +357,10 @@ export const Scene4HITL: React.FC = () => {
                   <div
                     style={{
                       marginTop: 16,
-                      display: "flex",
-                      alignItems: "center",
+                      display: 'flex',
+                      alignItems: 'center',
                       gap: 10,
-                      padding: "10px 16px",
+                      padding: '10px 16px',
                       borderRadius: 8,
                       backgroundColor: `${COLORS.accent}12`,
                       border: `1px solid ${COLORS.accent}33`,

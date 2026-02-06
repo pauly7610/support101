@@ -12,9 +12,9 @@ import hashlib
 import hmac
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Header, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -23,13 +23,13 @@ router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
 
 _activity_stream = None
 _feedback_collector = None
-_webhook_secrets: Dict[str, str] = {}
+_webhook_secrets: dict[str, str] = {}
 
 
 def configure_webhooks(
     activity_stream: Any = None,
     feedback_collector: Any = None,
-    secrets: Optional[Dict[str, str]] = None,
+    secrets: dict[str, str] | None = None,
 ) -> None:
     """Configure webhook dependencies. Called from SDK initialization."""
     global _activity_stream, _feedback_collector, _webhook_secrets
@@ -55,8 +55,8 @@ class WebhookPayload(BaseModel):
     event_type: str = Field(..., description="Event type (e.g. ticket.updated)")
     external_id: str = Field(default="", description="ID in the source system")
     tenant_id: str = Field(default="", description="Tenant ID for isolation")
-    data: Dict[str, Any] = Field(default_factory=dict, description="Provider-specific payload")
-    timestamp: Optional[str] = Field(default=None, description="ISO timestamp")
+    data: dict[str, Any] = Field(default_factory=dict, description="Provider-specific payload")
+    timestamp: str | None = Field(default=None, description="ISO timestamp")
 
 
 class ZendeskWebhookPayload(BaseModel):
@@ -70,9 +70,9 @@ class ZendeskWebhookPayload(BaseModel):
     description: str = ""
     assignee_id: str = ""
     requester_id: str = ""
-    satisfaction_rating: Optional[Dict[str, Any]] = None
-    tags: List[str] = Field(default_factory=list)
-    custom_fields: Dict[str, Any] = Field(default_factory=dict)
+    satisfaction_rating: dict[str, Any] | None = None
+    tags: list[str] = Field(default_factory=list)
+    custom_fields: dict[str, Any] = Field(default_factory=dict)
 
 
 class SlackWebhookPayload(BaseModel):
@@ -84,7 +84,7 @@ class SlackWebhookPayload(BaseModel):
     text: str = ""
     thread_ts: str = ""
     reaction: str = ""
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class JiraWebhookPayload(BaseModel):
@@ -98,7 +98,7 @@ class JiraWebhookPayload(BaseModel):
     assignee: str = ""
     reporter: str = ""
     comment: str = ""
-    fields: Dict[str, Any] = Field(default_factory=dict)
+    fields: dict[str, Any] = Field(default_factory=dict)
 
 
 # ── Signature Verification ────────────────────────────────────
@@ -107,7 +107,7 @@ class JiraWebhookPayload(BaseModel):
 def _verify_signature(
     provider: str,
     body: bytes,
-    signature: Optional[str],
+    signature: str | None,
 ) -> bool:
     """Verify HMAC signature for a webhook provider."""
     secret = _webhook_secrets.get(provider)
@@ -136,8 +136,8 @@ def _verify_signature(
 async def receive_generic_webhook(
     payload: WebhookPayload,
     request: Request,
-    x_webhook_signature: Optional[str] = Header(None),
-) -> Dict[str, Any]:
+    x_webhook_signature: str | None = Header(None),
+) -> dict[str, Any]:
     """Receive a generic webhook event."""
     body = await request.body()
     if not _verify_signature("generic", body, x_webhook_signature):
@@ -165,9 +165,9 @@ async def receive_generic_webhook(
 async def receive_zendesk_webhook(
     payload: ZendeskWebhookPayload,
     request: Request,
-    x_zendesk_webhook_signature: Optional[str] = Header(None),
+    x_zendesk_webhook_signature: str | None = Header(None),
     x_tenant_id: str = Header(default=""),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Receive a Zendesk webhook event."""
     body = await request.body()
     if not _verify_signature("zendesk", body, x_zendesk_webhook_signature):
@@ -180,7 +180,7 @@ async def receive_zendesk_webhook(
     from ..learning.activity_stream import ActivityEvent
 
     event = ActivityEvent(
-        event_type=f"zendesk.{payload.event_type}" if payload.event_type else "zendesk.unknown",
+        event_type=(f"zendesk.{payload.event_type}" if payload.event_type else "zendesk.unknown"),
         source="webhook",
         tenant_id=x_tenant_id,
         data={
@@ -227,9 +227,9 @@ async def receive_zendesk_webhook(
 async def receive_slack_webhook(
     payload: SlackWebhookPayload,
     request: Request,
-    x_slack_signature: Optional[str] = Header(None),
+    x_slack_signature: str | None = Header(None),
     x_tenant_id: str = Header(default=""),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Receive a Slack webhook event."""
     body = await request.body()
     if not _verify_signature("slack", body, x_slack_signature):
@@ -242,7 +242,7 @@ async def receive_slack_webhook(
     from ..learning.activity_stream import ActivityEvent
 
     event = ActivityEvent(
-        event_type=f"slack.{payload.event_type}" if payload.event_type else "slack.unknown",
+        event_type=(f"slack.{payload.event_type}" if payload.event_type else "slack.unknown"),
         source="webhook",
         tenant_id=x_tenant_id,
         data={
@@ -262,9 +262,9 @@ async def receive_slack_webhook(
 async def receive_jira_webhook(
     payload: JiraWebhookPayload,
     request: Request,
-    x_hub_signature: Optional[str] = Header(None),
+    x_hub_signature: str | None = Header(None),
     x_tenant_id: str = Header(default=""),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Receive a Jira webhook event."""
     body = await request.body()
     if not _verify_signature("jira", body, x_hub_signature):
@@ -277,7 +277,7 @@ async def receive_jira_webhook(
     from ..learning.activity_stream import ActivityEvent
 
     event = ActivityEvent(
-        event_type=f"jira.{payload.event_type}" if payload.event_type else "jira.unknown",
+        event_type=(f"jira.{payload.event_type}" if payload.event_type else "jira.unknown"),
         source="webhook",
         tenant_id=x_tenant_id,
         data={
@@ -297,10 +297,10 @@ async def receive_jira_webhook(
 
 
 @router.get("/stats")
-async def get_webhook_stats() -> Dict[str, Any]:
+async def get_webhook_stats() -> dict[str, Any]:
     """Get webhook and activity stream statistics."""
     stream = get_activity_stream()
     return {
         "activity_stream": stream.get_stats() if stream else {"connected": False},
-        "configured_providers": list(_webhook_secrets.keys()) if _webhook_secrets else [],
+        "configured_providers": (list(_webhook_secrets.keys()) if _webhook_secrets else []),
     }

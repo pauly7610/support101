@@ -5,9 +5,10 @@ Generates test cases for agent responses, validates output quality,
 runs regression checks, and reports coverage gaps.
 """
 
+import contextlib
 import json
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
@@ -15,7 +16,11 @@ from langchain_openai import ChatOpenAI
 from ..core.agent_registry import AgentBlueprint
 from ..core.base_agent import AgentConfig, AgentState, AgentStatus, BaseAgent, Tool
 from ..services.llm_helpers import LLMCallTimer, llm_retry, track_agent_decision
-from .validation_models import CheckRegressionInput, GenerateTestsInput, ValidateOutputInput
+from .validation_models import (
+    CheckRegressionInput,
+    GenerateTestsInput,
+    ValidateOutputInput,
+)
 
 
 class QATestAgent(BaseAgent):
@@ -91,8 +96,8 @@ class QATestAgent(BaseAgent):
     def __init__(
         self,
         config: AgentConfig,
-        llm: Optional[Any] = None,
-        evalai_tracer: Optional[Any] = None,
+        llm: Any | None = None,
+        evalai_tracer: Any | None = None,
     ) -> None:
         super().__init__(config)
         self._llm = llm
@@ -104,14 +109,12 @@ class QATestAgent(BaseAgent):
         if self._initialized:
             return
         if self._llm is None:
-            try:
+            with contextlib.suppress(Exception):
                 self._llm = ChatOpenAI(temperature=0.2)
-            except Exception:
-                pass
         self._initialized = True
 
     @property
-    def llm(self) -> Optional[Any]:
+    def llm(self) -> Any | None:
         self._lazy_init()
         return self._llm
 
@@ -153,19 +156,23 @@ class QATestAgent(BaseAgent):
         agent_description: str,
         sample_input: str = "",
         sample_output: str = "",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         validated = GenerateTestsInput(
-            agent_name=agent_name, agent_description=agent_description,
-            sample_input=sample_input, sample_output=sample_output,
+            agent_name=agent_name,
+            agent_description=agent_description,
+            sample_input=sample_input,
+            sample_output=sample_output,
         )
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.TEST_GENERATION_PROMPT | self.llm
-            result = await chain.ainvoke({
-                "agent_name": validated.agent_name,
-                "agent_description": validated.agent_description,
-                "sample_input": validated.sample_input,
-                "sample_output": validated.sample_output,
-            })
+            result = await chain.ainvoke(
+                {
+                    "agent_name": validated.agent_name,
+                    "agent_description": validated.agent_description,
+                    "sample_input": validated.sample_input,
+                    "sample_output": validated.sample_output,
+                }
+            )
             timer.set_tokens(input_tokens=200, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
@@ -180,55 +187,73 @@ class QATestAgent(BaseAgent):
     @llm_retry(max_attempts=3)
     async def _validate_output(
         self,
-        test_case: Dict[str, Any],
-        agent_input: Dict[str, Any],
-        agent_output: Dict[str, Any],
-        criteria: List[str],
-    ) -> Dict[str, Any]:
+        test_case: dict[str, Any],
+        agent_input: dict[str, Any],
+        agent_output: dict[str, Any],
+        criteria: list[str],
+    ) -> dict[str, Any]:
         validated = ValidateOutputInput(
-            test_case=test_case, agent_input=agent_input,
-            agent_output=agent_output, criteria=criteria,
+            test_case=test_case,
+            agent_input=agent_input,
+            agent_output=agent_output,
+            criteria=criteria,
         )
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.VALIDATION_PROMPT | self.llm
-            result = await chain.ainvoke({
-                "test_case": json.dumps(validated.test_case),
-                "agent_input": json.dumps(validated.agent_input),
-                "agent_output": json.dumps(validated.agent_output),
-                "criteria": json.dumps(validated.criteria),
-            })
+            result = await chain.ainvoke(
+                {
+                    "test_case": json.dumps(validated.test_case),
+                    "agent_input": json.dumps(validated.agent_input),
+                    "agent_output": json.dumps(validated.agent_output),
+                    "criteria": json.dumps(validated.criteria),
+                }
+            )
             timer.set_tokens(input_tokens=300, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
         except json.JSONDecodeError:
-            return {"passed": False, "score": 0, "criteria_results": [], "issues": ["Validation parse error"]}
+            return {
+                "passed": False,
+                "score": 0,
+                "criteria_results": [],
+                "issues": ["Validation parse error"],
+            }
 
     @llm_retry(max_attempts=3)
     async def _check_regression(
         self,
-        previous_output: Dict[str, Any],
-        current_output: Dict[str, Any],
-        test_case: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        previous_output: dict[str, Any],
+        current_output: dict[str, Any],
+        test_case: dict[str, Any],
+    ) -> dict[str, Any]:
         validated = CheckRegressionInput(
-            previous_output=previous_output, current_output=current_output, test_case=test_case,
+            previous_output=previous_output,
+            current_output=current_output,
+            test_case=test_case,
         )
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.REGRESSION_PROMPT | self.llm
-            result = await chain.ainvoke({
-                "previous_output": json.dumps(validated.previous_output),
-                "current_output": json.dumps(validated.current_output),
-                "test_case": json.dumps(validated.test_case),
-            })
+            result = await chain.ainvoke(
+                {
+                    "previous_output": json.dumps(validated.previous_output),
+                    "current_output": json.dumps(validated.current_output),
+                    "test_case": json.dumps(validated.test_case),
+                }
+            )
             timer.set_tokens(input_tokens=300, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
         except json.JSONDecodeError:
-            return {"has_regression": False, "severity": "none", "changes": [], "summary": "Unable to compare"}
+            return {
+                "has_regression": False,
+                "severity": "none",
+                "changes": [],
+                "summary": "Unable to compare",
+            }
 
     async def _report_failure(
-        self, test_id: str, description: str, severity: str, evidence: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, test_id: str, description: str, severity: str, evidence: dict[str, Any]
+    ) -> dict[str, Any]:
         return {
             "reported": True,
             "test_id": test_id,
@@ -238,7 +263,7 @@ class QATestAgent(BaseAgent):
             "timestamp": datetime.utcnow().isoformat(),
         }
 
-    async def plan(self, state: AgentState) -> Dict[str, Any]:
+    async def plan(self, state: AgentState) -> dict[str, Any]:
         step = state.current_step
 
         if step == 0:
@@ -283,7 +308,7 @@ class QATestAgent(BaseAgent):
 
         return {"action": "complete", "action_input": {}}
 
-    async def execute_step(self, state: AgentState, action: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute_step(self, state: AgentState, action: dict[str, Any]) -> dict[str, Any]:
         action_name = action.get("action")
         action_input = action.get("action_input", {})
 
@@ -321,11 +346,15 @@ class QATestAgent(BaseAgent):
     def should_continue(self, state: AgentState) -> bool:
         if state.current_step >= self.config.max_iterations:
             return False
-        if state.status in [AgentStatus.COMPLETED, AgentStatus.FAILED, AgentStatus.AWAITING_HUMAN]:
+        if state.status in [
+            AgentStatus.COMPLETED,
+            AgentStatus.FAILED,
+            AgentStatus.AWAITING_HUMAN,
+        ]:
             return False
-        if state.intermediate_steps and state.intermediate_steps[-1].get("action") == "complete":
-            return False
-        return True
+        return not (
+            state.intermediate_steps and state.intermediate_steps[-1].get("action") == "complete"
+        )
 
 
 QATestBlueprint = AgentBlueprint(

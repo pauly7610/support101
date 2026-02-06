@@ -1,5 +1,4 @@
 import hashlib
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -7,7 +6,7 @@ from sqlalchemy.future import select
 from apps.backend.app.auth.models import User
 
 
-async def get_user_by_username(session: AsyncSession, username: str) -> Optional[User]:
+async def get_user_by_username(session: AsyncSession, username: str) -> User | None:
     result = await session.execute(select(User).where(User.username == username))
     return result.scalars().first()
 

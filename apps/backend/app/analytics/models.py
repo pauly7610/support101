@@ -1,6 +1,7 @@
 """SQLAlchemy models for LLM cost tracking persistence."""
 
 import sqlalchemy as sa
+
 from apps.backend.app.core.db import Base
 
 
@@ -19,9 +20,7 @@ class LLMUsageRecord(Base):
     tenant_id = sa.Column(sa.String(128), default="", index=True)
     agent_id = sa.Column(sa.String(128), default="")
     metadata_ = sa.Column("metadata", sa.JSON, nullable=True)
-    created_at = sa.Column(
-        sa.DateTime, server_default=sa.func.now(), nullable=False
-    )
+    created_at = sa.Column(sa.DateTime, server_default=sa.func.now(), nullable=False)
 
 
 class LLMBudgetAlert(Base):
@@ -33,6 +32,4 @@ class LLMBudgetAlert(Base):
     current_spend_usd = sa.Column(sa.Float, nullable=False)
     budget_usd = sa.Column(sa.Float, nullable=False)
     percentage = sa.Column(sa.Float, nullable=False)
-    created_at = sa.Column(
-        sa.DateTime, server_default=sa.func.now(), nullable=False
-    )
+    created_at = sa.Column(sa.DateTime, server_default=sa.func.now(), nullable=False)

@@ -7,13 +7,12 @@ Async RAG chain using LangChain, FastEmbed, and Pinecone.
 
 import asyncio
 import os
-from typing import Any, Dict, List
+from typing import Any
 
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from langchain_openai import ChatOpenAI  # fallback
-from packages.llm_engine.multi_model import get_chat_model
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -21,6 +20,7 @@ from tenacity import (
     wait_exponential,
 )
 
+from packages.llm_engine.multi_model import get_chat_model
 from packages.shared.models import SourceDocument, SuggestedResponse, TicketContext
 
 from ..embeddings import get_fastembed_model
@@ -67,14 +67,14 @@ class RAGChain:
             | self.llm
             | StrOutputParser()
         )
-        self.retrieved_sources: List[SourceDocument] = []
+        self.retrieved_sources: list[SourceDocument] = []
 
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=8),
         retry=retry_if_exception_type(Exception),
     )
-    async def _safe_query_pinecone(self, question: str, top_k: int = 3) -> List[dict]:
+    async def _safe_query_pinecone(self, question: str, top_k: int = 3) -> list[dict]:
         """
         Query Pinecone vector store with exponential backoff and error masking.
         """
@@ -94,7 +94,7 @@ class RAGChain:
                 doc_url="https://api.support101/errors#E500",
             )
 
-    async def _retrieve_and_format_context(self, input_data: Dict[str, Any]) -> str:
+    async def _retrieve_and_format_context(self, input_data: dict[str, Any]) -> str:
         """
         Retrieve relevant context from Pinecone and format for prompt.
         Applies cosine similarity threshold and records citations.
@@ -127,7 +127,7 @@ class RAGChain:
             return "No relevant documentation found."
         return "\n---\n".join(context_chunks)
 
-    async def generate(self, question: str, **kwargs) -> Dict[str, Any]:
+    async def generate(self, question: str, **kwargs) -> dict[str, Any]:
         """
         Generate a support response using RAG.
         Returns answer and citations, or unified error on failure.
@@ -149,7 +149,7 @@ class RAGChain:
                 "reply": result,
                 "sources": citations,
             }
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return self._unified_error(
                 error_type="llm_timeout",
                 message="LLM response exceeded 30s threshold",
@@ -167,7 +167,7 @@ class RAGChain:
 
     def _unified_error(
         self, error_type: str, message: str, retryable: bool, doc_url: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Return a unified error response per API spec, masking any sensitive data.
         """
@@ -190,7 +190,7 @@ class RAGChain:
             response_text = await asyncio.wait_for(
                 self.chain.ainvoke({"question": question_to_llm}), timeout=30
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return SuggestedResponse(
                 reply_text=None,
                 sources=[],

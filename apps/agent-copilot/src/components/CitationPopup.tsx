@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface CitationPopupProps {
   excerpt: string;
   confidence: number; // 0.0 - 1.0
@@ -20,7 +18,6 @@ function CitationPopup({ excerpt, confidence, lastUpdated, sourceUrl }: Citation
       role="dialog"
       aria-modal="true"
       aria-label="Citation details"
-      tabIndex={0}
       style={{
         background: '#fff',
         color: '#1a1a1a',

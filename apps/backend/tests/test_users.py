@@ -51,7 +51,7 @@ def test_verify_password_success():
 
 def test_verify_password_failure():
     password = "secret"
-    hashed = hashlib.sha256("other".encode()).hexdigest()
+    hashed = hashlib.sha256(b"other").hexdigest()
     assert not users_module.verify_password(password, hashed)
 
 

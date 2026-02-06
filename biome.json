@@ -23,12 +23,16 @@
       },
       "suspicious": {
         "noExplicitAny": "warn",
-        "noConsoleLog": "warn"
+        "noConsoleLog": "warn",
+        "noArrayIndexKey": "warn"
       },
       "a11y": {
         "useButtonType": "warn",
         "useAltText": "error",
-        "noSvgWithoutTitle": "warn"
+        "noSvgWithoutTitle": "warn",
+        "noLabelWithoutControl": "warn",
+        "useSemanticElements": "warn",
+        "useKeyWithClickEvents": "warn"
       }
     }
   },

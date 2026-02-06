@@ -6,7 +6,7 @@ Provides comprehensive metrics for monitoring agent performance.
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 try:
     from prometheus_client import Counter, Gauge, Histogram
@@ -30,7 +30,7 @@ class AgentMetrics:
     avg_steps_per_execution: float = 0.0
     hitl_requests_total: int = 0
     escalations_total: int = 0
-    last_execution_at: Optional[datetime] = None
+    last_execution_at: datetime | None = None
 
 
 class MetricsCollector:
@@ -47,7 +47,7 @@ class MetricsCollector:
     def __init__(self, namespace: str = "agent_framework") -> None:
         self._namespace = namespace
         self._initialized = False
-        self._metrics: Dict[str, Any] = {}
+        self._metrics: dict[str, Any] = {}
 
         if PROMETHEUS_AVAILABLE:
             self._initialize_metrics()
@@ -349,7 +349,7 @@ class MetricsCollector:
         ).inc()
 
 
-_default_collector: Optional[MetricsCollector] = None
+_default_collector: MetricsCollector | None = None
 
 
 def get_metrics_collector() -> MetricsCollector:

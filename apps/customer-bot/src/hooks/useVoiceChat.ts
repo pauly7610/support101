@@ -192,7 +192,7 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}): UseVoiceChatRet
     [voice, textOnly, language, onResult, onError],
   );
 
-  const playAudio = useCallback((base64: string, format: string = 'mp3') => {
+  const playAudio = useCallback((base64: string, format = 'mp3') => {
     stopAudio();
 
     const mimeMap: Record<string, string> = {

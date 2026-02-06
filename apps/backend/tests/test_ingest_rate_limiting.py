@@ -40,6 +40,6 @@ def test_ingest_rate_limiting():
             success_codes.add(resp.status_code)
         time.sleep(0.1)  # minimal delay to simulate burst
     assert rate_limited, "Expected at least one 429 Too Many Requests response."
-    assert all(
-        code in {200, 400, 500} for code in success_codes
-    ), f"Unexpected status codes: {success_codes}"
+    assert all(code in {200, 400, 500} for code in success_codes), (
+        f"Unexpected status codes: {success_codes}"
+    )

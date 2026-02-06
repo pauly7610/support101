@@ -1,12 +1,12 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useVoiceChat } from '../hooks/useVoiceChat';
 
 // Mock MediaRecorder
 const mockStop = vi.fn();
 const mockStart = vi.fn();
-let mockOnDataAvailable: ((e: { data: Blob }) => void) | null = null;
-let mockOnStop: (() => void) | null = null;
+const _mockOnDataAvailable: ((e: { data: Blob }) => void) | null = null;
+const _mockOnStop: (() => void) | null = null;
 
 class MockMediaRecorder {
   state = 'inactive';
@@ -47,19 +47,25 @@ beforeEach(() => {
     },
   });
   vi.stubGlobal('fetch', vi.fn());
-  vi.stubGlobal('Audio', vi.fn(() => ({
-    play: vi.fn().mockResolvedValue(undefined),
-    pause: vi.fn(),
-    onplay: null,
-    onended: null,
-    onerror: null,
-    currentTime: 0,
-  })));
+  vi.stubGlobal(
+    'Audio',
+    vi.fn(() => ({
+      play: vi.fn().mockResolvedValue(undefined),
+      pause: vi.fn(),
+      onplay: null,
+      onended: null,
+      onerror: null,
+      currentTime: 0,
+    })),
+  );
   vi.stubGlobal('URL', {
     createObjectURL: vi.fn(() => 'blob:mock-url'),
     revokeObjectURL: vi.fn(),
   });
-  vi.stubGlobal('atob', vi.fn((s: string) => 'decoded-audio'));
+  vi.stubGlobal(
+    'atob',
+    vi.fn((_s: string) => 'decoded-audio'),
+  );
 });
 
 afterEach(() => {

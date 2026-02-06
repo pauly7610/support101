@@ -6,9 +6,10 @@ and urgency signals, triggers escalation when thresholds are breached,
 and generates sentiment trend reports.
 """
 
+import contextlib
 import json
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
@@ -17,7 +18,11 @@ from ..core.agent_registry import AgentBlueprint
 from ..core.base_agent import AgentConfig, AgentState, AgentStatus, BaseAgent, Tool
 from ..services.external_api import get_external_api_client
 from ..services.llm_helpers import LLMCallTimer, llm_retry, track_agent_decision
-from .validation_models import AnalyzeSentimentInput, TrackTrajectoryInput, TriggerEscalationInput
+from .validation_models import (
+    AnalyzeSentimentInput,
+    TrackTrajectoryInput,
+    TriggerEscalationInput,
+)
 
 
 class SentimentMonitorAgent(BaseAgent):
@@ -97,14 +102,14 @@ class SentimentMonitorAgent(BaseAgent):
     def __init__(
         self,
         config: AgentConfig,
-        llm: Optional[Any] = None,
-        evalai_tracer: Optional[Any] = None,
+        llm: Any | None = None,
+        evalai_tracer: Any | None = None,
     ) -> None:
         super().__init__(config)
         self._llm = llm
         self._evalai_tracer = evalai_tracer
         self._initialized = False
-        self._sentiment_history: List[Dict[str, Any]] = []
+        self._sentiment_history: list[dict[str, Any]] = []
         self._api = get_external_api_client()
         self._register_default_tools()
 
@@ -112,14 +117,12 @@ class SentimentMonitorAgent(BaseAgent):
         if self._initialized:
             return
         if self._llm is None:
-            try:
+            with contextlib.suppress(Exception):
                 self._llm = ChatOpenAI(temperature=0.1)
-            except Exception:
-                pass
         self._initialized = True
 
     @property
-    def llm(self) -> Optional[Any]:
+    def llm(self) -> Any | None:
         self._lazy_init()
         return self._llm
 
@@ -156,17 +159,24 @@ class SentimentMonitorAgent(BaseAgent):
 
     @llm_retry(max_attempts=3)
     async def _analyze_sentiment(
-        self, message: str, history: List[Dict[str, str]]
-    ) -> Dict[str, Any]:
+        self, message: str, history: list[dict[str, str]]
+    ) -> dict[str, Any]:
         validated = AnalyzeSentimentInput(message=message, history=history)
-        history_str = "\n".join(
-            f"{m.get('role', 'user')}: {m.get('content', '')}" for m in validated.history[-10:]
-        ) if validated.history else "No previous messages"
+        history_str = (
+            "\n".join(
+                f"{m.get('role', 'user')}: {m.get('content', '')}" for m in validated.history[-10:]
+            )
+            if validated.history
+            else "No previous messages"
+        )
 
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.SENTIMENT_PROMPT | self.llm
             result = await chain.ainvoke({"message": validated.message, "history": history_str})
-            timer.set_tokens(input_tokens=len(validated.message) // 4, output_tokens=len(result.content) // 4)
+            timer.set_tokens(
+                input_tokens=len(validated.message) // 4,
+                output_tokens=len(result.content) // 4,
+            )
         try:
             analysis = json.loads(result.content)
         except json.JSONDecodeError:
@@ -185,15 +195,15 @@ class SentimentMonitorAgent(BaseAgent):
         return analysis
 
     @llm_retry(max_attempts=3)
-    async def _track_trajectory(
-        self, sentiment_history: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+    async def _track_trajectory(self, sentiment_history: list[dict[str, Any]]) -> dict[str, Any]:
         validated = TrackTrajectoryInput(sentiment_history=sentiment_history)
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.TRAJECTORY_PROMPT | self.llm
-            result = await chain.ainvoke({
-                "sentiment_history": json.dumps(validated.sentiment_history, indent=2),
-            })
+            result = await chain.ainvoke(
+                {
+                    "sentiment_history": json.dumps(validated.sentiment_history, indent=2),
+                }
+            )
             timer.set_tokens(input_tokens=300, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
@@ -211,17 +221,19 @@ class SentimentMonitorAgent(BaseAgent):
     @llm_retry(max_attempts=3)
     async def _generate_summary(
         self,
-        current_sentiment: Dict[str, Any],
-        trajectory: Dict[str, Any],
+        current_sentiment: dict[str, Any],
+        trajectory: dict[str, Any],
         customer_context: str = "",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.SUMMARY_PROMPT | self.llm
-            result = await chain.ainvoke({
-                "current_sentiment": json.dumps(current_sentiment),
-                "trajectory": json.dumps(trajectory),
-                "customer_context": customer_context or "No additional context",
-            })
+            result = await chain.ainvoke(
+                {
+                    "current_sentiment": json.dumps(current_sentiment),
+                    "trajectory": json.dumps(trajectory),
+                    "customer_context": customer_context or "No additional context",
+                }
+            )
             timer.set_tokens(input_tokens=300, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
@@ -236,8 +248,8 @@ class SentimentMonitorAgent(BaseAgent):
             }
 
     async def _trigger_escalation(
-        self, reason: str, sentiment_data: Dict[str, Any], urgency: str
-    ) -> Dict[str, Any]:
+        self, reason: str, sentiment_data: dict[str, Any], urgency: str
+    ) -> dict[str, Any]:
         validated = TriggerEscalationInput(
             reason=reason, sentiment_data=sentiment_data, urgency=urgency
         )
@@ -263,7 +275,7 @@ class SentimentMonitorAgent(BaseAgent):
             "timestamp": datetime.utcnow().isoformat(),
         }
 
-    def _check_escalation_needed(self, sentiment: Dict[str, Any]) -> bool:
+    def _check_escalation_needed(self, sentiment: dict[str, Any]) -> bool:
         score = sentiment.get("sentiment_score", 0)
         if score < self.ESCALATION_THRESHOLDS["sentiment_score"]:
             return True
@@ -271,22 +283,24 @@ class SentimentMonitorAgent(BaseAgent):
         for emotion in sentiment.get("emotions", []):
             name = emotion.get("emotion", "")
             intensity = emotion.get("intensity", 0)
-            if name == "frustration" and intensity > self.ESCALATION_THRESHOLDS["frustration_intensity"]:
+            if (
+                name == "frustration"
+                and intensity > self.ESCALATION_THRESHOLDS["frustration_intensity"]
+            ):
                 return True
             if name == "anger" and intensity > self.ESCALATION_THRESHOLDS["anger_intensity"]:
                 return True
 
-        if sentiment.get("escalation_recommended"):
-            return True
+        return bool(sentiment.get("escalation_recommended"))
 
-        return False
-
-    async def plan(self, state: AgentState) -> Dict[str, Any]:
+    async def plan(self, state: AgentState) -> dict[str, Any]:
         step = state.current_step
 
         if step == 0:
             messages = state.input_data.get("messages", [])
-            current_msg = messages[-1].get("content", "") if messages else state.input_data.get("message", "")
+            current_msg = (
+                messages[-1].get("content", "") if messages else state.input_data.get("message", "")
+            )
             return {
                 "action": "analyze_sentiment",
                 "action_input": {
@@ -324,7 +338,7 @@ class SentimentMonitorAgent(BaseAgent):
 
         return {"action": "complete", "action_input": {}}
 
-    async def execute_step(self, state: AgentState, action: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute_step(self, state: AgentState, action: dict[str, Any]) -> dict[str, Any]:
         action_name = action.get("action")
         action_input = action.get("action_input", {})
 
@@ -366,11 +380,15 @@ class SentimentMonitorAgent(BaseAgent):
     def should_continue(self, state: AgentState) -> bool:
         if state.current_step >= self.config.max_iterations:
             return False
-        if state.status in [AgentStatus.COMPLETED, AgentStatus.FAILED, AgentStatus.AWAITING_HUMAN]:
+        if state.status in [
+            AgentStatus.COMPLETED,
+            AgentStatus.FAILED,
+            AgentStatus.AWAITING_HUMAN,
+        ]:
             return False
-        if state.intermediate_steps and state.intermediate_steps[-1].get("action") == "complete":
-            return False
-        return True
+        return not (
+            state.intermediate_steps and state.intermediate_steps[-1].get("action") == "complete"
+        )
 
 
 SentimentMonitorBlueprint = AgentBlueprint(

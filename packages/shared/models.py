@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, HttpUrl
 
@@ -7,38 +7,38 @@ from pydantic import BaseModel, Field, HttpUrl
 # --- Existing Models (expanded and merged) ---
 class UserContext(BaseModel):
     user_id: str
-    name: Optional[str] = None
-    email: Optional[str] = None
+    name: str | None = None
+    email: str | None = None
     # ... other user details
 
 
 class MemoryState(BaseModel):
-    memory_id: Optional[str] = None
-    user_id: Optional[str] = None
-    state: Optional[dict] = None
-    conversation_history: Optional[List[Dict[str, str]]] = (
+    memory_id: str | None = None
+    user_id: str | None = None
+    state: dict | None = None
+    conversation_history: list[dict[str, str]] | None = (
         None  # e.g., [{"role": "user", "content": "Hi"}, ...]
     )
 
 
 class TicketContext(BaseModel):
     ticket_id: str
-    user_id: Optional[str] = None
-    content: Optional[str] = None  # alias for user_query
-    user_query: Optional[str] = None
-    user_context: Optional[UserContext] = None
-    metadata: Optional[dict] = None
+    user_id: str | None = None
+    content: str | None = None  # alias for user_query
+    user_query: str | None = None
+    user_context: UserContext | None = None
+    metadata: dict | None = None
     # conversation_history: Optional[List[Dict[str, str]]] = None
     # relevant_documents_for_context: Optional[List[str]] = None
 
 
 # --- New/Adapted Models ---
 class DocumentMetadata(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    language: Optional[str] = "en"
-    crawl_date: Optional[datetime] = Field(default_factory=datetime.now)
-    source_url: Optional[HttpUrl] = None
+    title: str | None = None
+    description: str | None = None
+    language: str | None = "en"
+    crawl_date: datetime | None = Field(default_factory=datetime.now)
+    source_url: HttpUrl | None = None
     # Add any other metadata you deem important (breadcrumbs, section, etc.)
 
 
@@ -46,8 +46,8 @@ class DocumentPayload(BaseModel):
     id: str  # UUID for the document chunk
     content: str
     source_url: HttpUrl
-    title: Optional[str] = None
-    metadata: Dict[str, Any] = {}
+    title: str | None = None
+    metadata: dict[str, Any] = {}
 
 
 class CrawledPage(BaseModel):
@@ -58,7 +58,7 @@ class CrawledPage(BaseModel):
 
 class IngestURLRequest(BaseModel):
     url: HttpUrl
-    crawl_limit: Optional[int] = 20
+    crawl_limit: int | None = 20
 
 
 class IngestResponse(BaseModel):
@@ -76,19 +76,19 @@ class QueryResult(BaseModel):
 
 class SourceDocument(BaseModel):
     url: HttpUrl
-    title: Optional[str] = None
-    excerpt: Optional[str] = None
-    confidence: Optional[float] = None
-    last_updated: Optional[str] = None
+    title: str | None = None
+    excerpt: str | None = None
+    confidence: float | None = None
+    last_updated: str | None = None
 
 
 class SuggestedResponse(BaseModel):
     reply_text: str
-    sources: List[SourceDocument]
+    sources: list[SourceDocument]
     # debug_info: Optional[Dict[str, Any]] = None
 
 
 class TTSRequest(BaseModel):
     text_to_speak: str
-    voice: Optional[str] = "alloy"
-    tts_instructions: Optional[str] = None
+    voice: str | None = "alloy"
+    tts_instructions: str | None = None

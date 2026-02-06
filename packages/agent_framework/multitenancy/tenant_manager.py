@@ -9,8 +9,9 @@ Handles:
 """
 
 import asyncio
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Optional
 
 from ..core.agent_registry import AgentRegistry
 from ..governance.audit import AuditEventType, AuditLogger
@@ -41,12 +42,12 @@ class TenantManager:
         if self._initialized:
             return
 
-        self._tenants: Dict[str, Tenant] = {}
-        self._tenant_by_api_key: Dict[str, str] = {}
-        self._registry: Optional[AgentRegistry] = None
-        self._audit_logger: Optional[AuditLogger] = None
-        self._rate_limit_task: Optional[asyncio.Task] = None
-        self._on_tenant_change_callbacks: List[Callable] = []
+        self._tenants: dict[str, Tenant] = {}
+        self._tenant_by_api_key: dict[str, str] = {}
+        self._registry: AgentRegistry | None = None
+        self._audit_logger: AuditLogger | None = None
+        self._rate_limit_task: asyncio.Task | None = None
+        self._on_tenant_change_callbacks: list[Callable] = []
         self._initialized = True
 
     def set_registry(self, registry: AgentRegistry) -> None:
@@ -75,7 +76,7 @@ class TenantManager:
         self,
         event_type: AuditEventType,
         tenant_id: str,
-        details: Dict[str, Any],
+        details: dict[str, Any],
     ) -> None:
         """Log tenant event."""
         if self._audit_logger:
@@ -90,10 +91,10 @@ class TenantManager:
         self,
         name: str,
         tier: TenantTier = TenantTier.STARTER,
-        owner_id: Optional[str] = None,
-        allowed_blueprints: Optional[List[str]] = None,
-        custom_limits: Optional[TenantLimits] = None,
-        settings: Optional[Dict[str, Any]] = None,
+        owner_id: str | None = None,
+        allowed_blueprints: list[str] | None = None,
+        custom_limits: TenantLimits | None = None,
+        settings: dict[str, Any] | None = None,
         auto_activate: bool = False,
     ) -> Tenant:
         """
@@ -140,11 +141,11 @@ class TenantManager:
 
         return tenant
 
-    def get_tenant(self, tenant_id: str) -> Optional[Tenant]:
+    def get_tenant(self, tenant_id: str) -> Tenant | None:
         """Get a tenant by ID."""
         return self._tenants.get(tenant_id)
 
-    def get_tenant_by_api_key(self, api_key_hash: str) -> Optional[Tenant]:
+    def get_tenant_by_api_key(self, api_key_hash: str) -> Tenant | None:
         """Get a tenant by API key hash."""
         tenant_id = self._tenant_by_api_key.get(api_key_hash)
         if tenant_id:
@@ -153,11 +154,11 @@ class TenantManager:
 
     def list_tenants(
         self,
-        status: Optional[TenantStatus] = None,
-        tier: Optional[TenantTier] = None,
+        status: TenantStatus | None = None,
+        tier: TenantTier | None = None,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[Tenant]:
+    ) -> list[Tenant]:
         """List tenants with optional filters."""
         tenants = list(self._tenants.values())
 
@@ -216,12 +217,12 @@ class TenantManager:
     async def update_tenant(
         self,
         tenant_id: str,
-        name: Optional[str] = None,
-        tier: Optional[TenantTier] = None,
-        allowed_blueprints: Optional[List[str]] = None,
-        custom_limits: Optional[TenantLimits] = None,
-        settings: Optional[Dict[str, Any]] = None,
-    ) -> Optional[Tenant]:
+        name: str | None = None,
+        tier: TenantTier | None = None,
+        allowed_blueprints: list[str] | None = None,
+        custom_limits: TenantLimits | None = None,
+        settings: dict[str, Any] | None = None,
+    ) -> Tenant | None:
         """Update tenant configuration."""
         tenant = self._tenants.get(tenant_id)
         if not tenant:
@@ -371,7 +372,7 @@ class TenantManager:
         if tenant:
             tenant.decrement_usage(metric, amount)
 
-    def get_usage(self, tenant_id: str) -> Optional[Dict[str, Any]]:
+    def get_usage(self, tenant_id: str) -> dict[str, Any] | None:
         """Get usage statistics for a tenant."""
         tenant = self._tenants.get(tenant_id)
         if tenant:
@@ -399,7 +400,7 @@ class TenantManager:
             self._rate_limit_task.cancel()
             self._rate_limit_task = None
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get overall tenant statistics."""
         tenants = list(self._tenants.values())
 

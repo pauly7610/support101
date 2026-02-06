@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import hashlib
 import os
 from unittest.mock import AsyncMock
@@ -18,7 +19,8 @@ from apps.backend.main import get_db
 
 # Use environment variable or default to test database
 DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/support101_test"
+    "DATABASE_URL",
+    "postgresql+asyncpg://postgres:postgres@localhost:5432/support101_test",
 )
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
@@ -89,22 +91,16 @@ def mock_externals(monkeypatch):
         pass
 
     # Mock RateLimiter dependency to always pass
-    try:
+    with contextlib.suppress(Exception):
         monkeypatch.setattr(
             "fastapi_limiter.depends.RateLimiter.__call__",
             AsyncMock(return_value=None),
         )
-    except Exception:
-        pass
 
-    try:
+    with contextlib.suppress(Exception):
         monkeypatch.setattr("pinecone.Index.query", lambda *args, **kwargs: {"matches": []})
-    except Exception:
-        pass
-    try:
+    with contextlib.suppress(Exception):
         monkeypatch.setattr("firecrawl.FirecrawlApp.scrape", lambda *args, **kwargs: None)
-    except Exception:
-        pass
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -113,7 +109,7 @@ def create_admin_user(setup_database):
 
     async def _insert():
         async with engine.begin() as conn:
-            hashed_password = hashlib.sha256("admin".encode()).hexdigest()
+            hashed_password = hashlib.sha256(b"admin").hexdigest()
             await conn.execute(
                 User.__table__.insert().values(username="admin", hashed_password=hashed_password)
             )

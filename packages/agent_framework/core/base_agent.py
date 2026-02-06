@@ -10,10 +10,11 @@ All agent blueprints inherit from BaseAgent, which provides:
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -37,13 +38,13 @@ class AgentConfig(BaseModel):
     tenant_id: str
     blueprint_name: str
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     max_iterations: int = 10
     timeout_seconds: int = 300
     require_human_approval: bool = False
     confidence_threshold: float = 0.75
-    allowed_tools: List[str] = Field(default_factory=list)
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    allowed_tools: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -56,14 +57,14 @@ class AgentState(BaseModel):
     tenant_id: str
     status: AgentStatus = AgentStatus.IDLE
     current_step: int = 0
-    input_data: Dict[str, Any] = Field(default_factory=dict)
-    output_data: Dict[str, Any] = Field(default_factory=dict)
-    intermediate_steps: List[Dict[str, Any]] = Field(default_factory=list)
-    error: Optional[str] = None
-    human_feedback_request: Optional[Dict[str, Any]] = None
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    input_data: dict[str, Any] = Field(default_factory=dict)
+    output_data: dict[str, Any] = Field(default_factory=dict)
+    intermediate_steps: list[dict[str, Any]] = Field(default_factory=list)
+    error: str | None = None
+    human_feedback_request: dict[str, Any] | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 @dataclass
@@ -74,7 +75,7 @@ class Tool:
     description: str
     func: Callable
     requires_approval: bool = False
-    allowed_tenants: List[str] = field(default_factory=list)
+    allowed_tenants: list[str] = field(default_factory=list)
 
 
 class BaseAgent(ABC):
@@ -89,9 +90,9 @@ class BaseAgent(ABC):
 
     def __init__(self, config: AgentConfig) -> None:
         self.config = config
-        self.state: Optional[AgentState] = None
-        self._tools: Dict[str, Tool] = {}
-        self._hooks: Dict[str, List[Callable]] = {
+        self.state: AgentState | None = None
+        self._tools: dict[str, Tool] = {}
+        self._hooks: dict[str, list[Callable]] = {
             "pre_step": [],
             "post_step": [],
             "on_error": [],
@@ -129,7 +130,7 @@ class BaseAgent(ABC):
                 if hasattr(result, "__await__"):
                     await result
 
-    def initialize_state(self, input_data: Dict[str, Any]) -> AgentState:
+    def initialize_state(self, input_data: dict[str, Any]) -> AgentState:
         """Initialize a new execution state."""
         self.state = AgentState(
             agent_id=self.agent_id,
@@ -140,7 +141,7 @@ class BaseAgent(ABC):
         return self.state
 
     @abstractmethod
-    async def plan(self, state: AgentState) -> Dict[str, Any]:
+    async def plan(self, state: AgentState) -> dict[str, Any]:
         """
         Determine the next action based on current state.
 
@@ -149,7 +150,7 @@ class BaseAgent(ABC):
         """
 
     @abstractmethod
-    async def execute_step(self, state: AgentState, action: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute_step(self, state: AgentState, action: dict[str, Any]) -> dict[str, Any]:
         """
         Execute a single step of the agent's workflow.
 
@@ -168,8 +169,8 @@ class BaseAgent(ABC):
     async def request_human_feedback(
         self,
         question: str,
-        context: Dict[str, Any],
-        options: Optional[List[str]] = None,
+        context: dict[str, Any],
+        options: list[str] | None = None,
     ) -> None:
         """
         Request human-in-the-loop feedback.
@@ -188,7 +189,7 @@ class BaseAgent(ABC):
         }
         await self._run_hooks("on_human_request", request=self.state.human_feedback_request)
 
-    async def provide_human_feedback(self, feedback: Dict[str, Any]) -> None:
+    async def provide_human_feedback(self, feedback: dict[str, Any]) -> None:
         """Provide human feedback to resume agent execution."""
         if self.state is None:
             raise RuntimeError("Agent state not initialized")
@@ -206,7 +207,7 @@ class BaseAgent(ABC):
         self.state.human_feedback_request = None
         self.state.status = AgentStatus.RUNNING
 
-    async def run(self, input_data: Dict[str, Any]) -> AgentState:
+    async def run(self, input_data: dict[str, Any]) -> AgentState:
         """
         Execute the agent's full workflow.
 
@@ -258,7 +259,7 @@ class BaseAgent(ABC):
 
         return self.state
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize agent configuration and state."""
         return {
             "config": self.config.model_dump(),

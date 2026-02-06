@@ -9,8 +9,7 @@ Defines the schema for the Apache AGE knowledge graph:
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
-
+from typing import Any
 
 # ── Node Types ────────────────────────────────────────────────
 
@@ -31,7 +30,7 @@ class CustomerNode:
     def label(self) -> str:
         return "Customer"
 
-    def to_props(self) -> Dict[str, Any]:
+    def to_props(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
@@ -59,7 +58,7 @@ class TicketNode:
     def label(self) -> str:
         return "Ticket"
 
-    def to_props(self) -> Dict[str, Any]:
+    def to_props(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "subject": self.subject,
@@ -84,7 +83,7 @@ class AgentNode:
     def label(self) -> str:
         return "Agent"
 
-    def to_props(self) -> Dict[str, Any]:
+    def to_props(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "blueprint": self.blueprint,
@@ -106,7 +105,7 @@ class ArticleNode:
     def label(self) -> str:
         return "Article"
 
-    def to_props(self) -> Dict[str, Any]:
+    def to_props(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "title": self.title,
@@ -124,7 +123,7 @@ class ResolutionNode:
     confidence: float = 0.0
     approved: bool = False
     success: bool = False
-    steps: List[str] = field(default_factory=list)
+    steps: list[str] = field(default_factory=list)
     tenant_id: str = ""
     created_at: str = ""
 
@@ -132,7 +131,7 @@ class ResolutionNode:
     def label(self) -> str:
         return "Resolution"
 
-    def to_props(self) -> Dict[str, Any]:
+    def to_props(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "method": self.method,
@@ -152,7 +151,7 @@ class PlaybookNode:
     id: str = ""
     name: str = ""
     category: str = ""
-    steps: List[str] = field(default_factory=list)
+    steps: list[str] = field(default_factory=list)
     success_rate: float = 0.0
     sample_count: int = 0
     tenant_id: str = ""
@@ -162,7 +161,7 @@ class PlaybookNode:
     def label(self) -> str:
         return "Playbook"
 
-    def to_props(self) -> Dict[str, Any]:
+    def to_props(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
@@ -187,77 +186,94 @@ class GraphEdge:
     from_label: str = ""
     to_id: str = ""
     to_label: str = ""
-    properties: Dict[str, Any] = field(default_factory=dict)
+    properties: dict[str, Any] = field(default_factory=dict)
 
-    def to_props(self) -> Dict[str, Any]:
+    def to_props(self) -> dict[str, Any]:
         return {**self.properties}
 
 
 # Convenience edge constructors
 
+
 def filed_edge(customer_id: str, ticket_id: str) -> GraphEdge:
     return GraphEdge(
-        label="FILED", from_id=customer_id, from_label="Customer",
-        to_id=ticket_id, to_label="Ticket",
+        label="FILED",
+        from_id=customer_id,
+        from_label="Customer",
+        to_id=ticket_id,
+        to_label="Ticket",
     )
 
 
-def resolved_by_edge(
-    ticket_id: str, resolution_id: str, duration_ms: int = 0
-) -> GraphEdge:
+def resolved_by_edge(ticket_id: str, resolution_id: str, duration_ms: int = 0) -> GraphEdge:
     return GraphEdge(
-        label="RESOLVED_BY", from_id=ticket_id, from_label="Ticket",
-        to_id=resolution_id, to_label="Resolution",
+        label="RESOLVED_BY",
+        from_id=ticket_id,
+        from_label="Ticket",
+        to_id=resolution_id,
+        to_label="Resolution",
         properties={"duration_ms": duration_ms},
     )
 
 
 def used_article_edge(resolution_id: str, article_id: str) -> GraphEdge:
     return GraphEdge(
-        label="USED_ARTICLE", from_id=resolution_id, from_label="Resolution",
-        to_id=article_id, to_label="Article",
+        label="USED_ARTICLE",
+        from_id=resolution_id,
+        from_label="Resolution",
+        to_id=article_id,
+        to_label="Article",
     )
 
 
 def executed_by_edge(resolution_id: str, agent_id: str) -> GraphEdge:
     return GraphEdge(
-        label="EXECUTED_BY", from_id=resolution_id, from_label="Resolution",
-        to_id=agent_id, to_label="Agent",
+        label="EXECUTED_BY",
+        from_id=resolution_id,
+        from_label="Resolution",
+        to_id=agent_id,
+        to_label="Agent",
     )
 
 
 def followed_edge(resolution_id: str, playbook_id: str) -> GraphEdge:
     return GraphEdge(
-        label="FOLLOWED", from_id=resolution_id, from_label="Resolution",
-        to_id=playbook_id, to_label="Playbook",
+        label="FOLLOWED",
+        from_id=resolution_id,
+        from_label="Resolution",
+        to_id=playbook_id,
+        to_label="Playbook",
     )
 
 
-def similar_to_edge(
-    ticket_id_a: str, ticket_id_b: str, similarity: float = 0.0
-) -> GraphEdge:
+def similar_to_edge(ticket_id_a: str, ticket_id_b: str, similarity: float = 0.0) -> GraphEdge:
     return GraphEdge(
-        label="SIMILAR_TO", from_id=ticket_id_a, from_label="Ticket",
-        to_id=ticket_id_b, to_label="Ticket",
+        label="SIMILAR_TO",
+        from_id=ticket_id_a,
+        from_label="Ticket",
+        to_id=ticket_id_b,
+        to_label="Ticket",
         properties={"similarity": similarity},
     )
 
 
-def escalated_to_edge(
-    from_agent_id: str, to_agent_id: str, reason: str = ""
-) -> GraphEdge:
+def escalated_to_edge(from_agent_id: str, to_agent_id: str, reason: str = "") -> GraphEdge:
     return GraphEdge(
-        label="ESCALATED_TO", from_id=from_agent_id, from_label="Agent",
-        to_id=to_agent_id, to_label="Agent",
+        label="ESCALATED_TO",
+        from_id=from_agent_id,
+        from_label="Agent",
+        to_id=to_agent_id,
+        to_label="Agent",
         properties={"reason": reason},
     )
 
 
-def has_sentiment_edge(
-    customer_id: str, ticket_id: str, score: float = 0.0
-) -> GraphEdge:
+def has_sentiment_edge(customer_id: str, ticket_id: str, score: float = 0.0) -> GraphEdge:
     return GraphEdge(
-        label="HAS_SENTIMENT", from_id=customer_id, from_label="Customer",
-        to_id=ticket_id, to_label="Ticket",
+        label="HAS_SENTIMENT",
+        from_id=customer_id,
+        from_label="Customer",
+        to_id=ticket_id,
+        to_label="Ticket",
         properties={"score": score, "timestamp": datetime.utcnow().isoformat()},
     )

@@ -5,9 +5,10 @@ Analyzes structured and unstructured data, generates insights,
 creates summaries, and produces actionable recommendations.
 """
 
+import contextlib
 import json
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
@@ -75,8 +76,8 @@ class DataAnalystAgent(BaseAgent):
     def __init__(
         self,
         config: AgentConfig,
-        llm: Optional[Any] = None,
-        evalai_tracer: Optional[Any] = None,
+        llm: Any | None = None,
+        evalai_tracer: Any | None = None,
     ) -> None:
         super().__init__(config)
         self._llm = llm
@@ -89,14 +90,12 @@ class DataAnalystAgent(BaseAgent):
         if self._initialized:
             return
         if self._llm is None:
-            try:
+            with contextlib.suppress(Exception):
                 self._llm = ChatOpenAI(temperature=0.2)
-            except Exception:
-                pass
         self._initialized = True
 
     @property
-    def llm(self) -> Optional[Any]:
+    def llm(self) -> Any | None:
         """Get LLM, initializing if needed."""
         self._lazy_init()
         return self._llm
@@ -139,10 +138,12 @@ class DataAnalystAgent(BaseAgent):
         data_sample: str,
         description: str = "",
         analysis_type: str = "exploratory",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Analyze data using LLM."""
         validated = AnalyzeDataInput(
-            data_sample=data_sample, description=description, analysis_type=analysis_type
+            data_sample=data_sample,
+            description=description,
+            analysis_type=analysis_type,
         )
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.ANALYSIS_PROMPT | self.llm
@@ -153,7 +154,10 @@ class DataAnalystAgent(BaseAgent):
                     "analysis_type": validated.analysis_type,
                 }
             )
-            timer.set_tokens(input_tokens=len(validated.data_sample) // 4, output_tokens=len(result.content) // 4)
+            timer.set_tokens(
+                input_tokens=len(validated.data_sample) // 4,
+                output_tokens=len(result.content) // 4,
+            )
         try:
             analysis = json.loads(result.content)
         except json.JSONDecodeError:
@@ -171,9 +175,9 @@ class DataAnalystAgent(BaseAgent):
     @llm_retry(max_attempts=3)
     async def _generate_insights(
         self,
-        analysis: Dict[str, Any],
+        analysis: dict[str, Any],
         context: str = "",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate insights from analysis results."""
         validated = GenerateInsightsInput(analysis=analysis, context=context)
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
@@ -209,10 +213,12 @@ class DataAnalystAgent(BaseAgent):
         question: str,
         data_context: str = "",
         previous_analysis: str = "",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Answer a question about the data."""
         validated = QueryDataInput(
-            question=question, data_context=data_context, previous_analysis=previous_analysis
+            question=question,
+            data_context=data_context,
+            previous_analysis=previous_analysis,
         )
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.QUERY_PROMPT | self.llm
@@ -223,7 +229,10 @@ class DataAnalystAgent(BaseAgent):
                     "previous_analysis": validated.previous_analysis,
                 }
             )
-            timer.set_tokens(input_tokens=len(validated.question) // 4, output_tokens=len(result.content) // 4)
+            timer.set_tokens(
+                input_tokens=len(validated.question) // 4,
+                output_tokens=len(result.content) // 4,
+            )
         return {
             "question": question,
             "answer": result.content,
@@ -234,8 +243,8 @@ class DataAnalystAgent(BaseAgent):
         self,
         finding: str,
         impact: str,
-        evidence: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        evidence: dict[str, Any],
+    ) -> dict[str, Any]:
         """Flag a finding for human review."""
         return {
             "flagged": True,
@@ -245,7 +254,7 @@ class DataAnalystAgent(BaseAgent):
             "timestamp": datetime.utcnow().isoformat(),
         }
 
-    async def plan(self, state: AgentState) -> Dict[str, Any]:
+    async def plan(self, state: AgentState) -> dict[str, Any]:
         """Determine next analysis action based on current state."""
         step = state.current_step
 
@@ -269,11 +278,7 @@ class DataAnalystAgent(BaseAgent):
             }
         elif step == 2:
             insights = state.intermediate_steps[-1] if state.intermediate_steps else {}
-            high_impact = [
-                i
-                for i in insights.get("insights", [])
-                if i.get("impact") == "high"
-            ]
+            high_impact = [i for i in insights.get("insights", []) if i.get("impact") == "high"]
             if high_impact:
                 return {
                     "action": "flag_for_review",
@@ -289,9 +294,7 @@ class DataAnalystAgent(BaseAgent):
             question = state.input_data.get("question")
             if question:
                 prev_analysis = (
-                    json.dumps(state.intermediate_steps[0])
-                    if state.intermediate_steps
-                    else ""
+                    json.dumps(state.intermediate_steps[0]) if state.intermediate_steps else ""
                 )
                 return {
                     "action": "query_data",
@@ -305,7 +308,7 @@ class DataAnalystAgent(BaseAgent):
 
         return {"action": "complete", "action_input": {}}
 
-    async def execute_step(self, state: AgentState, action: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute_step(self, state: AgentState, action: dict[str, Any]) -> dict[str, Any]:
         """Execute a single analysis step."""
         action_name = action.get("action")
         action_input = action.get("action_input", {})
@@ -365,11 +368,15 @@ class DataAnalystAgent(BaseAgent):
         """Check if analysis should continue."""
         if state.current_step >= self.config.max_iterations:
             return False
-        if state.status in [AgentStatus.COMPLETED, AgentStatus.FAILED, AgentStatus.AWAITING_HUMAN]:
+        if state.status in [
+            AgentStatus.COMPLETED,
+            AgentStatus.FAILED,
+            AgentStatus.AWAITING_HUMAN,
+        ]:
             return False
-        if state.intermediate_steps and state.intermediate_steps[-1].get("action") == "complete":
-            return False
-        return True
+        return not (
+            state.intermediate_steps and state.intermediate_steps[-1].get("action") == "complete"
+        )
 
 
 DataAnalystBlueprint = AgentBlueprint(

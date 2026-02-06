@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastembed import TextEmbedding as FastEmbedModelType
 from pinecone import Pinecone as PineconeClient
@@ -21,8 +21,8 @@ PINECONE_NAMESPACE = os.getenv("PINECONE_NAMESPACE", "")
 PINECONE_RERANK_MODEL = os.getenv("PINECONE_RERANK_MODEL", "bge-reranker-v2-m3")
 PINECONE_RERANK_ENABLED = os.getenv("PINECONE_RERANK_ENABLED", "true").lower() == "true"
 
-_pinecone_client: Optional[PineconeClient] = None
-_pinecone_index: Optional[Any] = None  # Index type from client.Index()
+_pinecone_client: PineconeClient | None = None
+_pinecone_index: Any | None = None  # Index type from client.Index()
 
 
 def get_pinecone_client() -> PineconeClient:
@@ -36,7 +36,7 @@ def get_pinecone_client() -> PineconeClient:
 
 def get_pinecone_index(
     index_name: str = PINECONE_INDEX_NAME,
-    dimension: Optional[int] = None,
+    dimension: int | None = None,
     metric: str = "cosine",
     cloud: str = PINECONE_CLOUD_PROVIDER,
     region: str = PINECONE_REGION,
@@ -61,13 +61,13 @@ def get_pinecone_index(
             if "already exists" in str(e).lower():
                 logger.info("Index '%s' already exists.", index_name)
             else:
-                raise RuntimeError(f"Failed to create Pinecone index '{index_name}': {e}")
+                raise RuntimeError(f"Failed to create Pinecone index '{index_name}': {e}") from e
     _pinecone_index = client.Index(index_name)
     return _pinecone_index
 
 
 async def upsert_documents_to_pinecone(
-    documents: List[DocumentPayload],
+    documents: list[DocumentPayload],
     embedding_model: FastEmbedModelType,
     batch_size: int = 100,
     namespace: str = PINECONE_NAMESPACE,
@@ -106,10 +106,10 @@ async def query_pinecone(
     embedding_model: FastEmbedModelType,
     top_k: int = 3,
     namespace: str = PINECONE_NAMESPACE,
-    metadata_filter: Optional[Dict[str, Any]] = None,
+    metadata_filter: dict[str, Any] | None = None,
     rerank: bool = PINECONE_RERANK_ENABLED,
-    rerank_top_n: Optional[int] = None,
-) -> List[dict]:
+    rerank_top_n: int | None = None,
+) -> list[dict]:
     """
     Query Pinecone with optional metadata filtering and integrated reranking.
 
@@ -129,7 +129,7 @@ async def query_pinecone(
     index = get_pinecone_index()
     query_embedding = list(embedding_model.embed([query_text]))[0].tolist()
 
-    query_kwargs: Dict[str, Any] = {
+    query_kwargs: dict[str, Any] = {
         "vector": query_embedding,
         "top_k": top_k,
         "include_metadata": True,
@@ -150,9 +150,9 @@ async def query_pinecone(
 
 def _rerank_results(
     query: str,
-    matches: List[dict],
+    matches: list[dict],
     top_n: int,
-) -> List[dict]:
+) -> list[dict]:
     """
     Rerank results using Pinecone's integrated reranking API or a local fallback.
 
@@ -199,9 +199,9 @@ def _rerank_results(
 
 def _fallback_rerank(
     query: str,
-    matches: List[dict],
+    matches: list[dict],
     top_n: int,
-) -> List[dict]:
+) -> list[dict]:
     """
     Simple keyword-overlap reranking fallback when Pinecone reranking is unavailable.
     """
@@ -220,7 +220,7 @@ def _fallback_rerank(
 
 
 async def delete_by_metadata(
-    metadata_filter: Dict[str, Any],
+    metadata_filter: dict[str, Any],
     namespace: str = PINECONE_NAMESPACE,
 ) -> None:
     """
@@ -237,7 +237,7 @@ async def delete_by_metadata(
     logger.info("Deleted vectors matching filter in namespace '%s'", namespace)
 
 
-def get_index_stats() -> Dict[str, Any]:
+def get_index_stats() -> dict[str, Any]:
     """Get statistics about the Pinecone index."""
     try:
         index = get_pinecone_index()

@@ -5,9 +5,10 @@ Curates, updates, deduplicates, and organizes knowledge base articles.
 Identifies content gaps, stale articles, and conflicting information.
 """
 
+import contextlib
 import json
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
@@ -117,9 +118,9 @@ class KnowledgeManagerAgent(BaseAgent):
     def __init__(
         self,
         config: AgentConfig,
-        llm: Optional[Any] = None,
-        rag_chain: Optional[RAGChainType] = None,
-        evalai_tracer: Optional[Any] = None,
+        llm: Any | None = None,
+        rag_chain: RAGChainType | None = None,
+        evalai_tracer: Any | None = None,
     ) -> None:
         super().__init__(config)
         self._llm = llm
@@ -134,14 +135,12 @@ class KnowledgeManagerAgent(BaseAgent):
         if self._initialized:
             return
         if self._llm is None:
-            try:
+            with contextlib.suppress(Exception):
                 self._llm = ChatOpenAI(temperature=0.2)
-            except Exception:
-                pass
         self._initialized = True
 
     @property
-    def llm(self) -> Optional[Any]:
+    def llm(self) -> Any | None:
         self._lazy_init()
         return self._llm
 
@@ -184,31 +183,38 @@ class KnowledgeManagerAgent(BaseAgent):
         )
 
     @llm_retry(max_attempts=3)
-    async def _audit_content(self, articles: List[Dict[str, Any]]) -> Dict[str, Any]:
+    async def _audit_content(self, articles: list[dict[str, Any]]) -> dict[str, Any]:
         validated = AuditContentInput(articles=articles)
         if not validated.articles and self._db.available:
             db_articles = await self._db.list_articles(tenant_id=self.tenant_id)
             validated = AuditContentInput(articles=db_articles) if db_articles else validated
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.AUDIT_PROMPT | self.llm
-            result = await chain.ainvoke({"articles": json.dumps(validated.articles[:20], indent=2)})
+            result = await chain.ainvoke(
+                {"articles": json.dumps(validated.articles[:20], indent=2)}
+            )
             timer.set_tokens(input_tokens=500, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
         except json.JSONDecodeError:
-            return {"audit_results": [], "overall_health": 50, "stale_count": 0, "action_needed_count": 0}
+            return {
+                "audit_results": [],
+                "overall_health": 50,
+                "stale_count": 0,
+                "action_needed_count": 0,
+            }
 
     @llm_retry(max_attempts=3)
-    async def _find_gaps(
-        self, queries: List[str], existing_topics: List[str]
-    ) -> Dict[str, Any]:
+    async def _find_gaps(self, queries: list[str], existing_topics: list[str]) -> dict[str, Any]:
         validated = FindGapsInput(queries=queries, existing_topics=existing_topics)
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.GAP_ANALYSIS_PROMPT | self.llm
-            result = await chain.ainvoke({
-                "queries": "\n".join(f"- {q}" for q in validated.queries[:50]),
-                "existing_topics": "\n".join(f"- {t}" for t in validated.existing_topics[:50]),
-            })
+            result = await chain.ainvoke(
+                {
+                    "queries": "\n".join(f"- {q}" for q in validated.queries[:50]),
+                    "existing_topics": "\n".join(f"- {t}" for t in validated.existing_topics[:50]),
+                }
+            )
             timer.set_tokens(input_tokens=300, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
@@ -216,11 +222,13 @@ class KnowledgeManagerAgent(BaseAgent):
             return {"gaps": [], "total_gaps": 0, "coverage_score": 50}
 
     @llm_retry(max_attempts=3)
-    async def _detect_duplicates(self, articles: List[Dict[str, Any]]) -> Dict[str, Any]:
+    async def _detect_duplicates(self, articles: list[dict[str, Any]]) -> dict[str, Any]:
         validated = DetectDuplicatesInput(articles=articles)
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.DEDUP_PROMPT | self.llm
-            result = await chain.ainvoke({"articles": json.dumps(validated.articles[:20], indent=2)})
+            result = await chain.ainvoke(
+                {"articles": json.dumps(validated.articles[:20], indent=2)}
+            )
             timer.set_tokens(input_tokens=500, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
@@ -230,26 +238,37 @@ class KnowledgeManagerAgent(BaseAgent):
     @llm_retry(max_attempts=3)
     async def _generate_update(
         self, current_content: str, reason: str, context: str = ""
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         validated = GenerateUpdateInput(
             current_content=current_content, reason=reason, context=context
         )
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.UPDATE_PROMPT | self.llm
-            result = await chain.ainvoke({
-                "current_content": validated.current_content[:3000],
-                "reason": validated.reason,
-                "context": validated.context,
-            })
-            timer.set_tokens(input_tokens=len(validated.current_content) // 4, output_tokens=len(result.content) // 4)
+            result = await chain.ainvoke(
+                {
+                    "current_content": validated.current_content[:3000],
+                    "reason": validated.reason,
+                    "context": validated.context,
+                }
+            )
+            timer.set_tokens(
+                input_tokens=len(validated.current_content) // 4,
+                output_tokens=len(result.content) // 4,
+            )
         try:
             return json.loads(result.content)
         except json.JSONDecodeError:
-            return {"title": "", "content": result.content, "summary_of_changes": "", "tags": [], "confidence": 50}
+            return {
+                "title": "",
+                "content": result.content,
+                "summary_of_changes": "",
+                "tags": [],
+                "confidence": 50,
+            }
 
     async def _request_content_approval(
-        self, changes: List[Dict[str, Any]], summary: str
-    ) -> Dict[str, Any]:
+        self, changes: list[dict[str, Any]], summary: str
+    ) -> dict[str, Any]:
         return {
             "approval_requested": True,
             "changes_count": len(changes),
@@ -257,7 +276,7 @@ class KnowledgeManagerAgent(BaseAgent):
             "timestamp": datetime.utcnow().isoformat(),
         }
 
-    async def plan(self, state: AgentState) -> Dict[str, Any]:
+    async def plan(self, state: AgentState) -> dict[str, Any]:
         step = state.current_step
 
         if step == 0:
@@ -294,7 +313,7 @@ class KnowledgeManagerAgent(BaseAgent):
 
         return {"action": "complete", "action_input": {}}
 
-    async def execute_step(self, state: AgentState, action: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute_step(self, state: AgentState, action: dict[str, Any]) -> dict[str, Any]:
         action_name = action.get("action")
         action_input = action.get("action_input", {})
 
@@ -340,11 +359,15 @@ class KnowledgeManagerAgent(BaseAgent):
     def should_continue(self, state: AgentState) -> bool:
         if state.current_step >= self.config.max_iterations:
             return False
-        if state.status in [AgentStatus.COMPLETED, AgentStatus.FAILED, AgentStatus.AWAITING_HUMAN]:
+        if state.status in [
+            AgentStatus.COMPLETED,
+            AgentStatus.FAILED,
+            AgentStatus.AWAITING_HUMAN,
+        ]:
             return False
-        if state.intermediate_steps and state.intermediate_steps[-1].get("action") == "complete":
-            return False
-        return True
+        return not (
+            state.intermediate_steps and state.intermediate_steps[-1].get("action") == "complete"
+        )
 
 
 KnowledgeManagerBlueprint = AgentBlueprint(

@@ -1,8 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { Sparkles, Copy, Check, X, Wifi, WifiOff, Send, Search, User, FileText, ExternalLink } from 'lucide-react';
-import { generateSuggestedReply } from '../../../api';
-import { useWebSocket } from '../../WebSocketProvider';
+import {
+  Check,
+  Copy,
+  ExternalLink,
+  FileText,
+  Search,
+  Send,
+  Sparkles,
+  User,
+  Wifi,
+  WifiOff,
+  X,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
 import CitationPopup from '../../CitationPopup';
+import { useWebSocket } from '../../WebSocketProvider';
 
 function cn(...classes) {
   return classes.filter(Boolean).join(' ');
@@ -28,7 +39,11 @@ function Toast({ message, type, onClose }) {
         type === 'error' ? 'bg-red-500' : 'bg-gray-900',
       )}
     >
-      {type === 'error' ? <WifiOff className="w-4 h-4 flex-shrink-0" /> : <Wifi className="w-4 h-4 flex-shrink-0" />}
+      {type === 'error' ? (
+        <WifiOff className="w-4 h-4 flex-shrink-0" />
+      ) : (
+        <Wifi className="w-4 h-4 flex-shrink-0" />
+      )}
       {message}
       <button
         onClick={onClose}
@@ -50,7 +65,6 @@ function ConnectionDot({ status }) {
   };
   return (
     <span
-      tabIndex={0}
       aria-label={`Connection status: ${status}`}
       title={`Connection: ${status}`}
       className={cn(
@@ -77,7 +91,7 @@ export default function CopilotSidebar() {
 
   useEffect(() => {
     if (window.chrome && chrome.tabs) {
-      chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs[0]) setTabUrl(tabs[0].url || '');
       });
     }
@@ -94,7 +108,8 @@ export default function CopilotSidebar() {
 
   useEffect(() => {
     if (ws.status === 'open') setToast({ message: 'Connected', type: '' });
-    if (ws.status === 'closed') setToast({ message: 'Connection lost. Reconnecting...', type: 'error' });
+    if (ws.status === 'closed')
+      setToast({ message: 'Connection lost. Reconnecting...', type: 'error' });
     if (ws.status === 'error') setToast({ message: 'Connection error', type: 'error' });
   }, [ws.status]);
 
@@ -124,18 +139,22 @@ export default function CopilotSidebar() {
   };
 
   return (
-    <aside className={cn(
-      'fixed top-0 right-0 w-[360px] h-full z-40',
-      'bg-white dark:bg-slate-900',
-      'border-l border-gray-200 dark:border-slate-700',
-      'shadow-xl flex flex-col',
-    )}>
+    <aside
+      className={cn(
+        'fixed top-0 right-0 w-[360px] h-full z-40',
+        'bg-white dark:bg-slate-900',
+        'border-l border-gray-200 dark:border-slate-700',
+        'shadow-xl flex flex-col',
+      )}
+    >
       {/* Header */}
-      <header className={cn(
-        'px-5 py-3.5 flex items-center justify-between',
-        'bg-gradient-to-r from-brand-500 to-brand-600',
-        'dark:from-brand-600 dark:to-brand-800',
-      )}>
+      <header
+        className={cn(
+          'px-5 py-3.5 flex items-center justify-between',
+          'bg-gradient-to-r from-brand-500 to-brand-600',
+          'dark:from-brand-600 dark:to-brand-800',
+        )}
+      >
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
             <Sparkles className="w-4 h-4 text-white" />
@@ -216,12 +235,14 @@ export default function CopilotSidebar() {
                 {copied ? 'Copied' : 'Copy'}
               </button>
             </div>
-            <div className={cn(
-              'rounded-xl p-4',
-              'bg-gray-50 dark:bg-slate-800',
-              'border border-gray-200 dark:border-slate-700',
-              'shadow-sm',
-            )}>
+            <div
+              className={cn(
+                'rounded-xl p-4',
+                'bg-gray-50 dark:bg-slate-800',
+                'border border-gray-200 dark:border-slate-700',
+                'shadow-sm',
+              )}
+            >
               <p className="text-sm text-gray-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap">
                 {suggested.reply_text}
               </p>
@@ -275,11 +296,13 @@ export default function CopilotSidebar() {
               Customer Context
             </span>
           </div>
-          <div className={cn(
-            'rounded-xl p-3',
-            'bg-gray-50 dark:bg-slate-800',
-            'border border-gray-200 dark:border-slate-700',
-          )}>
+          <div
+            className={cn(
+              'rounded-xl p-3',
+              'bg-gray-50 dark:bg-slate-800',
+              'border border-gray-200 dark:border-slate-700',
+            )}
+          >
             <p className="text-xs text-gray-500 dark:text-slate-400">
               Previous tickets, purchase history, account info...
             </p>

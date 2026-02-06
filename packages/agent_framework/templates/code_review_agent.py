@@ -6,9 +6,10 @@ issues, and best practice adherence. Provides structured feedback with
 severity levels and actionable suggestions.
 """
 
+import contextlib
 import json
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
@@ -124,8 +125,8 @@ class CodeReviewAgent(BaseAgent):
     def __init__(
         self,
         config: AgentConfig,
-        llm: Optional[Any] = None,
-        evalai_tracer: Optional[Any] = None,
+        llm: Any | None = None,
+        evalai_tracer: Any | None = None,
     ) -> None:
         super().__init__(config)
         self._llm = llm
@@ -138,14 +139,12 @@ class CodeReviewAgent(BaseAgent):
         if self._initialized:
             return
         if self._llm is None:
-            try:
+            with contextlib.suppress(Exception):
                 self._llm = ChatOpenAI(temperature=0.1)
-            except Exception:
-                pass
         self._initialized = True
 
     @property
-    def llm(self) -> Optional[Any]:
+    def llm(self) -> Any | None:
         """Get LLM, initializing if needed."""
         self._lazy_init()
         return self._llm
@@ -194,7 +193,7 @@ class CodeReviewAgent(BaseAgent):
         self,
         code: str,
         language: str = "python",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Scan code for security vulnerabilities."""
         validated = CodeReviewInput(code=code, language=language)
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
@@ -202,7 +201,10 @@ class CodeReviewAgent(BaseAgent):
             result = await chain.ainvoke(
                 {"code": validated.code[:5000], "language": validated.language}
             )
-            timer.set_tokens(input_tokens=len(validated.code) // 4, output_tokens=len(result.content) // 4)
+            timer.set_tokens(
+                input_tokens=len(validated.code) // 4,
+                output_tokens=len(result.content) // 4,
+            )
         try:
             findings = json.loads(result.content)
         except json.JSONDecodeError:
@@ -218,7 +220,7 @@ class CodeReviewAgent(BaseAgent):
         self,
         code: str,
         language: str = "python",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Check code quality and best practices."""
         validated = CodeReviewInput(code=code, language=language)
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
@@ -226,7 +228,10 @@ class CodeReviewAgent(BaseAgent):
             result = await chain.ainvoke(
                 {"code": validated.code[:5000], "language": validated.language}
             )
-            timer.set_tokens(input_tokens=len(validated.code) // 4, output_tokens=len(result.content) // 4)
+            timer.set_tokens(
+                input_tokens=len(validated.code) // 4,
+                output_tokens=len(result.content) // 4,
+            )
         try:
             findings = json.loads(result.content)
         except json.JSONDecodeError:
@@ -243,7 +248,7 @@ class CodeReviewAgent(BaseAgent):
         self,
         code: str,
         language: str = "python",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Review code for performance issues."""
         validated = CodeReviewInput(code=code, language=language)
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
@@ -251,7 +256,10 @@ class CodeReviewAgent(BaseAgent):
             result = await chain.ainvoke(
                 {"code": validated.code[:5000], "language": validated.language}
             )
-            timer.set_tokens(input_tokens=len(validated.code) // 4, output_tokens=len(result.content) // 4)
+            timer.set_tokens(
+                input_tokens=len(validated.code) // 4,
+                output_tokens=len(result.content) // 4,
+            )
         try:
             findings = json.loads(result.content)
         except json.JSONDecodeError:
@@ -265,10 +273,10 @@ class CodeReviewAgent(BaseAgent):
     @llm_retry(max_attempts=3)
     async def _generate_summary(
         self,
-        security: Dict[str, Any],
-        quality: Dict[str, Any],
-        performance: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        security: dict[str, Any],
+        quality: dict[str, Any],
+        performance: dict[str, Any],
+    ) -> dict[str, Any]:
         """Generate overall review summary."""
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.SUMMARY_PROMPT | self.llm
@@ -297,8 +305,8 @@ class CodeReviewAgent(BaseAgent):
     async def _block_merge(
         self,
         reason: str,
-        critical_findings: List[Dict[str, Any]],
-    ) -> Dict[str, Any]:
+        critical_findings: list[dict[str, Any]],
+    ) -> dict[str, Any]:
         """Block merge due to critical findings."""
         validated = BlockMergeInput(reason=reason, critical_findings=critical_findings)
         await track_agent_decision(
@@ -317,7 +325,7 @@ class CodeReviewAgent(BaseAgent):
             "timestamp": datetime.utcnow().isoformat(),
         }
 
-    async def plan(self, state: AgentState) -> Dict[str, Any]:
+    async def plan(self, state: AgentState) -> dict[str, Any]:
         """Determine next review action based on current state."""
         step = state.current_step
         code = state.input_data.get("code", "")
@@ -369,7 +377,7 @@ class CodeReviewAgent(BaseAgent):
 
         return {"action": "complete", "action_input": {}}
 
-    async def execute_step(self, state: AgentState, action: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute_step(self, state: AgentState, action: dict[str, Any]) -> dict[str, Any]:
         """Execute a single review step."""
         action_name = action.get("action")
         action_input = action.get("action_input", {})
@@ -435,11 +443,15 @@ class CodeReviewAgent(BaseAgent):
         """Check if review should continue."""
         if state.current_step >= self.config.max_iterations:
             return False
-        if state.status in [AgentStatus.COMPLETED, AgentStatus.FAILED, AgentStatus.AWAITING_HUMAN]:
+        if state.status in [
+            AgentStatus.COMPLETED,
+            AgentStatus.FAILED,
+            AgentStatus.AWAITING_HUMAN,
+        ]:
             return False
-        if state.intermediate_steps and state.intermediate_steps[-1].get("action") == "complete":
-            return False
-        return True
+        return not (
+            state.intermediate_steps and state.intermediate_steps[-1].get("action") == "complete"
+        )
 
 
 CodeReviewBlueprint = AgentBlueprint(

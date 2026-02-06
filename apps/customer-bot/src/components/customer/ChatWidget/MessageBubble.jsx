@@ -1,5 +1,4 @@
-import React from 'react';
-import { Bot, User, ExternalLink } from 'lucide-react';
+import { Bot, ExternalLink, User } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 
 import PropTypes from 'prop-types';
@@ -63,7 +62,9 @@ export default function MessageBubble({ from, text, timestamp, sources }) {
         <span
           className={cn(
             'text-[10px] mt-1 px-1',
-            isUser ? 'text-right text-gray-400 dark:text-slate-500' : 'text-gray-400 dark:text-slate-500',
+            isUser
+              ? 'text-right text-gray-400 dark:text-slate-500'
+              : 'text-gray-400 dark:text-slate-500',
           )}
         >
           {timestamp}

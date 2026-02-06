@@ -8,7 +8,7 @@ environment to enable real vector store calls.
 
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -44,16 +44,16 @@ class VectorStoreService:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        index_name: Optional[str] = None,
+        api_key: str | None = None,
+        index_name: str | None = None,
         embedding_model_name: str = "BAAI/bge-small-en-v1.5",
     ) -> None:
         self._api_key = api_key or os.getenv("PINECONE_API_KEY")
         self._index_name = index_name or os.getenv("PINECONE_INDEX_NAME", "support-docs")
         self._embedding_model_name = embedding_model_name
-        self._client: Optional[Any] = None
-        self._index: Optional[Any] = None
-        self._embed_model: Optional[Any] = None
+        self._client: Any | None = None
+        self._index: Any | None = None
+        self._embed_model: Any | None = None
 
     @property
     def available(self) -> bool:
@@ -79,15 +79,13 @@ class VectorStoreService:
         if not _FASTEMBED_AVAILABLE:
             return False
         try:
-            self._embed_model = TextEmbedding(
-                model_name=self._embedding_model_name, max_length=512
-            )
+            self._embed_model = TextEmbedding(model_name=self._embedding_model_name, max_length=512)
             return True
         except Exception as e:
             logger.warning("VectorStoreService: failed to load embedding model: %s", e)
             return False
 
-    def _embed(self, texts: List[str]) -> List[List[float]]:
+    def _embed(self, texts: list[str]) -> list[list[float]]:
         if not self._ensure_embed_model():
             return []
         return [emb.tolist() for emb in self._embed_model.embed(texts)]
@@ -97,8 +95,8 @@ class VectorStoreService:
         query: str,
         top_k: int = 5,
         min_score: float = 0.0,
-        filter_metadata: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
+        filter_metadata: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Search the vector store for relevant documents.
 
@@ -113,7 +111,7 @@ class VectorStoreService:
             return []
 
         try:
-            kwargs: Dict[str, Any] = {
+            kwargs: dict[str, Any] = {
                 "vector": embeddings[0],
                 "top_k": top_k,
                 "include_metadata": True,
@@ -130,13 +128,15 @@ class VectorStoreService:
                 if score < min_score:
                     continue
                 meta = match.get("metadata", {})
-                results.append({
-                    "id": match.get("id", ""),
-                    "content": meta.get("text", ""),
-                    "source": meta.get("source_url", ""),
-                    "title": meta.get("title", ""),
-                    "score": score,
-                })
+                results.append(
+                    {
+                        "id": match.get("id", ""),
+                        "content": meta.get("text", ""),
+                        "source": meta.get("source_url", ""),
+                        "title": meta.get("title", ""),
+                        "score": score,
+                    }
+                )
             return results
         except Exception as e:
             logger.warning("VectorStoreService: search failed: %s", e)
@@ -144,7 +144,7 @@ class VectorStoreService:
 
     async def upsert(
         self,
-        documents: List[Dict[str, Any]],
+        documents: list[dict[str, Any]],
         batch_size: int = 100,
     ) -> int:
         """
@@ -165,11 +165,13 @@ class VectorStoreService:
         for i, doc in enumerate(documents):
             meta = doc.get("metadata", {})
             meta["text"] = doc.get("content", "")[:5000]
-            vectors.append({
-                "id": doc["id"],
-                "values": embeddings[i],
-                "metadata": meta,
-            })
+            vectors.append(
+                {
+                    "id": doc["id"],
+                    "values": embeddings[i],
+                    "metadata": meta,
+                }
+            )
 
         upserted = 0
         try:
@@ -182,7 +184,7 @@ class VectorStoreService:
 
         return upserted
 
-    async def delete(self, ids: List[str]) -> bool:
+    async def delete(self, ids: list[str]) -> bool:
         """Delete documents by ID."""
         if not self._ensure_client():
             return False
@@ -194,7 +196,7 @@ class VectorStoreService:
             return False
 
 
-_vs_service: Optional[VectorStoreService] = None
+_vs_service: VectorStoreService | None = None
 
 
 def get_vector_store_service() -> VectorStoreService:

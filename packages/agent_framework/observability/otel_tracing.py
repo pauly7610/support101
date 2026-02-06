@@ -15,8 +15,9 @@ Environment variables:
 import logging
 import os
 import time
-from contextlib import contextmanager
-from typing import Any, Dict, Generator, Optional
+from collections.abc import Generator
+from contextlib import contextmanager, suppress
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +31,8 @@ def _is_enabled() -> bool:
 
 
 def initialize_tracing(
-    service_name: Optional[str] = None,
-    api_key: Optional[str] = None,
+    service_name: str | None = None,
+    api_key: str | None = None,
 ) -> bool:
     """
     Initialize OpenTelemetry tracing with Traceloop SDK.
@@ -66,9 +67,9 @@ def initialize_tracing(
 
     try:
         from opentelemetry import trace
+        from opentelemetry.sdk.resources import Resource
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
-        from opentelemetry.sdk.resources import Resource
 
         resource = Resource.create({"service.name": svc_name})
         provider = TracerProvider(resource=resource)
@@ -76,7 +77,10 @@ def initialize_tracing(
         endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4318")
 
         try:
-            from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+            from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+                OTLPSpanExporter,
+            )
+
             exporter = OTLPSpanExporter(endpoint=f"{endpoint}/v1/traces")
             provider.add_span_processor(BatchSpanProcessor(exporter))
         except ImportError:
@@ -99,6 +103,7 @@ def get_tracer():
         return _tracer
     try:
         from opentelemetry import trace
+
         return trace.get_tracer("support101-agent-framework")
     except ImportError:
         return None
@@ -107,7 +112,7 @@ def get_tracer():
 class SpanContext:
     """Lightweight span wrapper that no-ops when tracing is unavailable."""
 
-    def __init__(self, name: str, attributes: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, name: str, attributes: dict[str, Any] | None = None) -> None:
         self.name = name
         self.attributes = attributes or {}
         self._span = None
@@ -117,16 +122,18 @@ class SpanContext:
         """Set an attribute on the span."""
         self.attributes[key] = value
         if self._span:
-            try:
-                self._span.set_attribute(key, str(value) if not isinstance(value, (str, int, float, bool)) else value)
-            except Exception:
-                pass
+            with suppress(Exception):
+                self._span.set_attribute(
+                    key,
+                    (str(value) if not isinstance(value, (str, int, float, bool)) else value),
+                )
 
     def set_status_ok(self) -> None:
         """Mark span as successful."""
         if self._span:
             try:
                 from opentelemetry.trace import StatusCode
+
                 self._span.set_status(StatusCode.OK)
             except (ImportError, Exception):
                 pass
@@ -136,6 +143,7 @@ class SpanContext:
         if self._span:
             try:
                 from opentelemetry.trace import StatusCode
+
                 self._span.set_status(StatusCode.ERROR, message)
             except (ImportError, Exception):
                 pass
@@ -143,10 +151,8 @@ class SpanContext:
     def record_exception(self, exc: Exception) -> None:
         """Record an exception on the span."""
         if self._span:
-            try:
+            with suppress(Exception):
                 self._span.record_exception(exc)
-            except Exception:
-                pass
 
     @property
     def duration_ms(self) -> float:
@@ -156,7 +162,7 @@ class SpanContext:
 @contextmanager
 def trace_span(
     name: str,
-    attributes: Optional[Dict[str, Any]] = None,
+    attributes: dict[str, Any] | None = None,
 ) -> Generator[SpanContext, None, None]:
     """
     Context manager for creating a traced span.
@@ -188,7 +194,7 @@ def trace_span(
 @contextmanager
 def trace_llm_call(
     model: str,
-    prompt_tokens: Optional[int] = None,
+    prompt_tokens: int | None = None,
     provider: str = "openai",
 ) -> Generator[SpanContext, None, None]:
     """
@@ -246,7 +252,7 @@ def trace_agent_execution(
 @contextmanager
 def trace_tool_call(
     tool_name: str,
-    arguments: Optional[Dict[str, Any]] = None,
+    arguments: dict[str, Any] | None = None,
 ) -> Generator[SpanContext, None, None]:
     """Specialized span for tool invocations."""
     attrs = {

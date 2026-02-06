@@ -1,5 +1,3 @@
-import React from 'react';
-
 const colorMap = {
   success: 'bg-success-green text-white',
   warning: 'bg-warning-orange text-white',

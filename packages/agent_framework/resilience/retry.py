@@ -7,8 +7,9 @@ Provides configurable retry logic with exponential backoff.
 import asyncio
 import functools
 import random
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, List, Optional, Tuple, Type, TypeVar
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
@@ -33,8 +34,8 @@ class RetryPolicy:
     max_delay: float = 60.0
     exponential_base: float = 2.0
     jitter: float = 0.1
-    retryable_exceptions: Tuple[Type[Exception], ...] = (Exception,)
-    non_retryable_exceptions: Tuple[Type[Exception], ...] = ()
+    retryable_exceptions: tuple[type[Exception], ...] = (Exception,)
+    non_retryable_exceptions: tuple[type[Exception], ...] = ()
 
     def should_retry(self, exception: Exception, attempt: int) -> bool:
         """Determine if an exception should trigger a retry."""
@@ -99,17 +100,17 @@ class RetryResult:
 
     success: bool
     result: Any = None
-    exception: Optional[Exception] = None
+    exception: Exception | None = None
     attempts: int = 0
     total_delay: float = 0.0
-    attempt_errors: List[Tuple[int, Exception, float]] = field(default_factory=list)
+    attempt_errors: list[tuple[int, Exception, float]] = field(default_factory=list)
 
 
 async def retry_with_policy(
     func: Callable[..., T],
     policy: RetryPolicy,
     *args: Any,
-    on_retry: Optional[Callable[[int, Exception, float], Any]] = None,
+    on_retry: Callable[[int, Exception, float], Any] | None = None,
     **kwargs: Any,
 ) -> RetryResult:
     """
@@ -165,10 +166,10 @@ async def retry_with_policy(
 
 
 def with_retry(
-    policy: Optional[RetryPolicy] = None,
+    policy: RetryPolicy | None = None,
     max_attempts: int = 3,
     base_delay: float = 1.0,
-    retryable_exceptions: Tuple[Type[Exception], ...] = (Exception,),
+    retryable_exceptions: tuple[type[Exception], ...] = (Exception,),
 ) -> Callable:
     """
     Decorator for adding retry logic to async functions.

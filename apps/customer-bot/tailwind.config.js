@@ -33,8 +33,8 @@ module.exports = {
       boxShadow: {
         'chat-float': '0 4px 24px rgba(37, 99, 235, 0.25)',
         'chat-window': '0 8px 40px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08)',
-        'glass': '0 8px 32px rgba(0, 0, 0, 0.08)',
-        'glow': '0 0 20px rgba(37, 99, 235, 0.15)',
+        glass: '0 8px 32px rgba(0, 0, 0, 0.08)',
+        glow: '0 0 20px rgba(37, 99, 235, 0.15)',
       },
       borderRadius: {
         chat: '16px',
@@ -96,7 +96,5 @@ module.exports = {
       },
     },
   },
-  plugins: [
-    require('@tailwindcss/typography'),
-  ],
+  plugins: [require('@tailwindcss/typography')],
 };

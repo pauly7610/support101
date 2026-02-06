@@ -1,4 +1,3 @@
-import asyncio
 import os
 from unittest.mock import patch
 
@@ -48,7 +47,7 @@ def test_generate_reply_llm_timeout():
     }
     with patch(
         "packages.llm_engine.chains.rag_chain.ChatOpenAI.ainvoke",
-        side_effect=asyncio.TimeoutError(),
+        side_effect=TimeoutError(),
     ):
         resp = client.post("/generate_reply", json=payload)
         assert resp.status_code == 200
@@ -100,17 +99,19 @@ def test_generate_reply_citation_filtering():
             },
         },
     ]
-    with patch(
-        "packages.llm_engine.chains.rag_chain.RAGChain._safe_query_pinecone",
-        return_value=fake_citations,
-    ):
-        with patch(
+    with (
+        patch(
+            "packages.llm_engine.chains.rag_chain.RAGChain._safe_query_pinecone",
+            return_value=fake_citations,
+        ),
+        patch(
             "packages.llm_engine.chains.rag_chain.ChatOpenAI.ainvoke",
             return_value="Answer.",
-        ):
-            resp = client.post("/generate_reply", json=payload)
-            assert resp.status_code == 200
-            data = resp.json()
-            assert "reply" in data
-            # Response uses "sources" not "citations"
-            assert "sources" in data or "citations" in data
+        ),
+    ):
+        resp = client.post("/generate_reply", json=payload)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "reply" in data
+        # Response uses "sources" not "citations"
+        assert "sources" in data or "citations" in data

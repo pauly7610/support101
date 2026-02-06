@@ -5,8 +5,9 @@ Integrates with existing RAGChain for knowledge retrieval and
 provides structured support workflows.
 """
 
+import contextlib
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
@@ -17,7 +18,11 @@ from ..services.database import get_database_service
 from ..services.external_api import get_external_api_client
 from ..services.llm_helpers import LLMCallTimer, llm_retry, track_agent_decision
 from ..services.vector_store import get_vector_store_service
-from .validation_models import CreateTicketInput, EscalateToHumanInput, SearchKnowledgeBaseInput
+from .validation_models import (
+    CreateTicketInput,
+    EscalateToHumanInput,
+    SearchKnowledgeBaseInput,
+)
 
 # Type hints for optional dependencies
 RAGChainType = Any
@@ -56,10 +61,10 @@ class SupportAgent(BaseAgent):
     def __init__(
         self,
         config: AgentConfig,
-        rag_chain: Optional[RAGChainType] = None,
-        llm: Optional[Any] = None,
-        embedding_model: Optional[EmbeddingModelType] = None,
-        evalai_tracer: Optional[Any] = None,
+        rag_chain: RAGChainType | None = None,
+        llm: Any | None = None,
+        embedding_model: EmbeddingModelType | None = None,
+        evalai_tracer: Any | None = None,
     ) -> None:
         """
         Initialize SupportAgent with optional dependency injection.
@@ -96,10 +101,8 @@ class SupportAgent(BaseAgent):
                 pass
 
         if self._llm is None:
-            try:
+            with contextlib.suppress(Exception):
                 self._llm = ChatOpenAI(temperature=0.3)
-            except Exception:
-                pass
 
         if self._embedding_model is None:
             try:
@@ -112,19 +115,19 @@ class SupportAgent(BaseAgent):
         self._initialized = True
 
     @property
-    def rag_chain(self) -> Optional[RAGChainType]:
+    def rag_chain(self) -> RAGChainType | None:
         """Get RAG chain, initializing if needed."""
         self._lazy_init()
         return self._rag_chain
 
     @property
-    def llm(self) -> Optional[Any]:
+    def llm(self) -> Any | None:
         """Get LLM, initializing if needed."""
         self._lazy_init()
         return self._llm
 
     @property
-    def embedding_model(self) -> Optional[EmbeddingModelType]:
+    def embedding_model(self) -> EmbeddingModelType | None:
         """Get embedding model, initializing if needed."""
         self._lazy_init()
         return self._embedding_model
@@ -154,7 +157,7 @@ class SupportAgent(BaseAgent):
             )
         )
 
-    async def _search_knowledge_base(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+    async def _search_knowledge_base(self, query: str, top_k: int = 5) -> list[dict[str, Any]]:
         """Search knowledge base using Pinecone vector store service."""
         validated = SearchKnowledgeBaseInput(query=query, top_k=top_k)
 
@@ -190,7 +193,7 @@ class SupportAgent(BaseAgent):
 
         return results
 
-    async def _escalate_to_human(self, reason: str, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def _escalate_to_human(self, reason: str, context: dict[str, Any]) -> dict[str, Any]:
         """Escalate to human agent with notification."""
         validated = EscalateToHumanInput(reason=reason, context=context)
 
@@ -219,11 +222,9 @@ class SupportAgent(BaseAgent):
 
     async def _create_ticket(
         self, subject: str, description: str, priority: str = "medium"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create a support ticket in Postgres and external ticketing system."""
-        validated = CreateTicketInput(
-            subject=subject, description=description, priority=priority
-        )
+        validated = CreateTicketInput(subject=subject, description=description, priority=priority)
         import uuid
 
         ticket_id = f"TKT-{uuid.uuid4().hex[:8].upper()}"
@@ -231,7 +232,9 @@ class SupportAgent(BaseAgent):
         db_result = await self._db.create_ticket(
             ticket_id=ticket_id,
             tenant_id=self.tenant_id,
-            customer_id=self.state.input_data.get("customer_id", "unknown") if self.state else "unknown",
+            customer_id=(
+                self.state.input_data.get("customer_id", "unknown") if self.state else "unknown"
+            ),
             subject=validated.subject,
             description=validated.description,
             priority=validated.priority,
@@ -248,7 +251,7 @@ class SupportAgent(BaseAgent):
             "external_ticket": ext_result.get("external_ticket_id"),
         }
 
-    async def plan(self, state: AgentState) -> Dict[str, Any]:
+    async def plan(self, state: AgentState) -> dict[str, Any]:
         """Determine next action based on current state."""
         step = state.current_step
 
@@ -288,7 +291,7 @@ class SupportAgent(BaseAgent):
 
         return {"action": "complete", "action_input": {}}
 
-    async def execute_step(self, state: AgentState, action: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute_step(self, state: AgentState, action: dict[str, Any]) -> dict[str, Any]:
         """Execute a single step."""
         action_name = action.get("action")
         action_input = action.get("action_input", {})
@@ -321,13 +324,15 @@ class SupportAgent(BaseAgent):
         return {"action": action_name, "error": "Unknown action"}
 
     @llm_retry(max_attempts=3)
-    async def _analyze_intent(self, query: str) -> Dict[str, Any]:
+    async def _analyze_intent(self, query: str) -> dict[str, Any]:
         """Analyze query intent using LLM."""
         try:
             async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
                 chain = self.INTENT_PROMPT | self.llm
                 result = await chain.ainvoke({"query": query})
-                timer.set_tokens(input_tokens=len(query) // 4, output_tokens=len(result.content) // 4)
+                timer.set_tokens(
+                    input_tokens=len(query) // 4, output_tokens=len(result.content) // 4
+                )
             import json
 
             intent_data = json.loads(result.content)
@@ -343,9 +348,9 @@ class SupportAgent(BaseAgent):
     async def _generate_response(
         self,
         query: str,
-        context: List[Dict[str, Any]],
-        history: List[Dict[str, str]],
-    ) -> Dict[str, Any]:
+        context: list[dict[str, Any]],
+        history: list[dict[str, str]],
+    ) -> dict[str, Any]:
         """Generate response using RAG context."""
         context_str = "\n\n".join(
             [f"[Source: {c.get('source', 'Unknown')}]\n{c.get('content', '')}" for c in context]
@@ -386,11 +391,15 @@ class SupportAgent(BaseAgent):
         """Check if agent should continue."""
         if state.current_step >= self.config.max_iterations:
             return False
-        if state.status in [AgentStatus.COMPLETED, AgentStatus.FAILED, AgentStatus.AWAITING_HUMAN]:
+        if state.status in [
+            AgentStatus.COMPLETED,
+            AgentStatus.FAILED,
+            AgentStatus.AWAITING_HUMAN,
+        ]:
             return False
-        if state.intermediate_steps and state.intermediate_steps[-1].get("action") == "complete":
-            return False
-        return True
+        return not (
+            state.intermediate_steps and state.intermediate_steps[-1].get("action") == "complete"
+        )
 
 
 SupportAgentBlueprint = AgentBlueprint(

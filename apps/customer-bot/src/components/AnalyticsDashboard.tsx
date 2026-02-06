@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface Escalation {
   id: number;
@@ -165,7 +165,7 @@ export default function AnalyticsDashboard() {
                         borderRadius: 4,
                       }}
                       title={`${trend[i]} escalation${trend[i] !== 1 ? 's' : ''}`}
-                    ></div>
+                    />
                     <span className="text-xs mt-1" style={{ color: '#555' }}>
                       {day.slice(5)}
                     </span>
@@ -202,7 +202,7 @@ export default function AnalyticsDashboard() {
                 ))}
               </div>
             </div>
-            {analytics && analytics.last_escalation && (
+            {analytics?.last_escalation && (
               <div className="mb-4 p-3 bg-gray-100 rounded">
                 <div className="text-xs text-gray-500 mb-1">Last Escalation</div>
                 <div className="text-sm font-semibold">{analytics.last_escalation.text}</div>

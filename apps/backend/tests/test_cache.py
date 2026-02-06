@@ -24,7 +24,9 @@ async def test_init_redis_success(monkeypatch):
     )
     monkeypatch.setattr(cache_module, "RedisBackend", DummyBackend)
     monkeypatch.setattr(
-        cache_module.FastAPICache, "init", lambda backend, prefix: called.setdefault("init", True)
+        cache_module.FastAPICache,
+        "init",
+        lambda backend, prefix: called.setdefault("init", True),
     )
     await cache_module.init_redis()
     assert called.get("backend")

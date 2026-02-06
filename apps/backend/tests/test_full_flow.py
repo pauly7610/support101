@@ -58,7 +58,7 @@ async def test_rag_flow_error_handling(client):
     # Simulate LLM timeout or error
     with patch(
         "packages.llm_engine.chains.rag_chain.ChatOpenAI.ainvoke",
-        side_effect=asyncio.TimeoutError(),
+        side_effect=TimeoutError(),
     ):
         payload = {"user_query": "Trigger timeout"}
         resp = await client.post("/generate_reply", json=payload)

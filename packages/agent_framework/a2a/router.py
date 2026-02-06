@@ -8,13 +8,13 @@ Exposes:
 
 import logging
 import os
-from typing import Any, Dict
+from typing import Any
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from fastapi_limiter.depends import RateLimiter
 
-from .protocol import A2AServer, AgentCard, AgentSkill, TaskState
+from .protocol import A2AServer, AgentCard, AgentSkill
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +91,7 @@ _agent_card = AgentCard(
 _server = A2AServer(_agent_card)
 
 
-async def _handle_suggest_reply(query: str, metadata: Dict[str, Any]) -> str:
+async def _handle_suggest_reply(query: str, metadata: dict[str, Any]) -> str:
     """Handler for suggest_reply skill."""
     try:
         from packages.llm_engine.chains.rag_chain import RAGChain
@@ -113,7 +113,7 @@ async def _handle_suggest_reply(query: str, metadata: Dict[str, Any]) -> str:
         return f"[Mock] Suggested reply for: {query[:200]}"
 
 
-async def _handle_search_kb(query: str, metadata: Dict[str, Any]) -> str:
+async def _handle_search_kb(query: str, metadata: dict[str, Any]) -> str:
     """Handler for search_knowledge_base skill."""
     try:
         from packages.llm_engine.embeddings import get_fastembed_model
@@ -134,7 +134,7 @@ async def _handle_search_kb(query: str, metadata: Dict[str, Any]) -> str:
         return f"[Mock] KB search results for: {query[:200]}"
 
 
-async def _handle_triage(query: str, metadata: Dict[str, Any]) -> str:
+async def _handle_triage(query: str, metadata: dict[str, Any]) -> str:
     """Handler for triage_ticket skill."""
     return (
         f"Ticket triaged:\n"
@@ -146,7 +146,7 @@ async def _handle_triage(query: str, metadata: Dict[str, Any]) -> str:
     )
 
 
-async def _handle_playbook(query: str, metadata: Dict[str, Any]) -> str:
+async def _handle_playbook(query: str, metadata: dict[str, Any]) -> str:
     """Handler for execute_playbook skill."""
     try:
         from packages.agent_framework.learning.playbook_engine import PlaybookEngine
@@ -169,6 +169,7 @@ _server.set_default_handler(_handle_suggest_reply)
 
 
 # ── Routes ───────────────────────────────────────────────────────
+
 
 @router.get("/.well-known/agent.json")
 async def get_agent_card():

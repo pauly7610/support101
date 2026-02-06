@@ -1,3 +1,4 @@
+import contextlib
 import io
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -53,7 +54,8 @@ def test_register_and_login(monkeypatch):
     )
     monkeypatch.setattr("apps.backend.app.auth.users.verify_password", AsyncMock(return_value=True))
     monkeypatch.setattr(
-        "apps.backend.app.auth.jwt.create_access_token", AsyncMock(return_value="jwt_token")
+        "apps.backend.app.auth.jwt.create_access_token",
+        AsyncMock(return_value="jwt_token"),
     )
     resp = None  # TODO: replace with client.post(
     #     "/login", data={"username": "testuser", "password": "pass"}
@@ -110,10 +112,8 @@ def mock_limiter():
         pass
     yield
     # Restore original if needed
-    try:
+    with contextlib.suppress(Exception):
         RateLimiter.__call__ = original_call
-    except Exception:
-        pass
 
 
 @pytest.mark.asyncio
@@ -129,7 +129,13 @@ async def test_ingest_documentation_error_branches(monkeypatch):
             # 1. Invalid MIME type
             resp = await ac.post(
                 "/ingest_documentation",
-                files={"file": ("test.exe", io.BytesIO(file_content), "application/octet-stream")},
+                files={
+                    "file": (
+                        "test.exe",
+                        io.BytesIO(file_content),
+                        "application/octet-stream",
+                    )
+                },
                 headers=headers,
             )
             assert resp.status_code in (400, 422)
@@ -296,7 +302,8 @@ async def test_ingest_documentation_upsert_exception(monkeypatch):
 def test_generate_reply_llm_timeout(monkeypatch):
     # Simulate LLM timeout and check error response
     monkeypatch.setattr(
-        "apps.backend.main.get_rag_chain", AsyncMock(side_effect=TimeoutError("LLM timeout"))
+        "apps.backend.main.get_rag_chain",
+        AsyncMock(side_effect=TimeoutError("LLM timeout")),
     )
     # TODO: replace with client.post(
     #     "/generate_reply",

@@ -13,18 +13,18 @@ Environment variables:
 import asyncio
 import logging
 import os
-import time
 import threading
+import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 # ── Pricing per 1M tokens (as of Feb 2026) ──────────────────────
 
-MODEL_PRICING: Dict[str, Dict[str, float]] = {
+MODEL_PRICING: dict[str, dict[str, float]] = {
     # OpenAI
     "gpt-4o": {"input": 2.50, "output": 10.00},
     "gpt-4o-mini": {"input": 0.15, "output": 0.60},
@@ -42,7 +42,7 @@ MODEL_PRICING: Dict[str, Dict[str, float]] = {
     "mistral": {"input": 0.0, "output": 0.0},
 }
 
-DEFAULT_PRICING: Dict[str, float] = {"input": 2.50, "output": 10.00}
+DEFAULT_PRICING: dict[str, float] = {"input": 2.50, "output": 10.00}
 
 MONTHLY_BUDGET_USD = float(os.getenv("LLM_BUDGET_MONTHLY_USD", "100.0"))
 ALERT_THRESHOLD = float(os.getenv("LLM_BUDGET_ALERT_THRESHOLD", "0.8"))
@@ -63,7 +63,7 @@ class UsageRecord:
     request_type: str = "chat"
     tenant_id: str = ""
     agent_id: str = ""
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -91,8 +91,8 @@ class CostTracker:
         monthly_budget_usd: float = MONTHLY_BUDGET_USD,
         alert_threshold: float = ALERT_THRESHOLD,
     ) -> None:
-        self._records: List[UsageRecord] = []
-        self._alerts: List[BudgetAlert] = []
+        self._records: list[UsageRecord] = []
+        self._alerts: list[BudgetAlert] = []
         self._lock = threading.Lock()
         self.monthly_budget_usd = monthly_budget_usd
         self.alert_threshold = alert_threshold
@@ -104,6 +104,7 @@ class CostTracker:
         """Get an async DB session. Returns None if DB is unavailable."""
         try:
             from apps.backend.app.core.db import SessionLocal
+
             return SessionLocal()
         except Exception:
             return None
@@ -115,6 +116,7 @@ class CostTracker:
             return
         try:
             from apps.backend.app.analytics.models import LLMUsageRecord
+
             db_record = LLMUsageRecord(
                 timestamp=record.timestamp,
                 model=record.model,
@@ -144,6 +146,7 @@ class CostTracker:
             return
         try:
             from apps.backend.app.analytics.models import LLMBudgetAlert
+
             db_alert = LLMBudgetAlert(
                 timestamp=alert.timestamp,
                 message=alert.message,
@@ -169,7 +172,8 @@ class CostTracker:
             return
         try:
             from sqlalchemy import select
-            from apps.backend.app.analytics.models import LLMUsageRecord, LLMBudgetAlert
+
+            from apps.backend.app.analytics.models import LLMBudgetAlert, LLMUsageRecord
 
             now = datetime.utcnow()
             thirty_days_ago = (now - timedelta(days=30)).timestamp()
@@ -181,19 +185,21 @@ class CostTracker:
 
             with self._lock:
                 for row in rows:
-                    self._records.append(UsageRecord(
-                        timestamp=row.timestamp,
-                        model=row.model,
-                        provider=row.provider,
-                        prompt_tokens=row.prompt_tokens,
-                        completion_tokens=row.completion_tokens,
-                        total_tokens=row.total_tokens,
-                        estimated_cost_usd=row.estimated_cost_usd,
-                        request_type=row.request_type or "chat",
-                        tenant_id=row.tenant_id or "",
-                        agent_id=row.agent_id or "",
-                        metadata=row.metadata_ or {},
-                    ))
+                    self._records.append(
+                        UsageRecord(
+                            timestamp=row.timestamp,
+                            model=row.model,
+                            provider=row.provider,
+                            prompt_tokens=row.prompt_tokens,
+                            completion_tokens=row.completion_tokens,
+                            total_tokens=row.total_tokens,
+                            estimated_cost_usd=row.estimated_cost_usd,
+                            request_type=row.request_type or "chat",
+                            tenant_id=row.tenant_id or "",
+                            agent_id=row.agent_id or "",
+                            metadata=row.metadata_ or {},
+                        )
+                    )
 
             alert_result = await session.execute(
                 select(LLMBudgetAlert).where(LLMBudgetAlert.timestamp >= thirty_days_ago)
@@ -201,16 +207,22 @@ class CostTracker:
             alert_rows = alert_result.scalars().all()
             with self._lock:
                 for row in alert_rows:
-                    self._alerts.append(BudgetAlert(
-                        timestamp=row.timestamp,
-                        message=row.message,
-                        current_spend_usd=row.current_spend_usd,
-                        budget_usd=row.budget_usd,
-                        percentage=row.percentage,
-                    ))
+                    self._alerts.append(
+                        BudgetAlert(
+                            timestamp=row.timestamp,
+                            message=row.message,
+                            current_spend_usd=row.current_spend_usd,
+                            budget_usd=row.budget_usd,
+                            percentage=row.percentage,
+                        )
+                    )
 
             self._db_available = True
-            logger.info("Cost tracker hydrated %d records and %d alerts from DB", len(rows), len(alert_rows))
+            logger.info(
+                "Cost tracker hydrated %d records and %d alerts from DB",
+                len(rows),
+                len(alert_rows),
+            )
         except Exception as e:
             logger.debug("Cost tracker DB hydration failed (using empty cache): %s", e)
         finally:
@@ -226,7 +238,7 @@ class CostTracker:
         request_type: str = "chat",
         tenant_id: str = "",
         agent_id: str = "",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> UsageRecord:
         """
         Record a single LLM API call's token usage.
@@ -313,13 +325,9 @@ class CostTracker:
         """Get total spend for the current calendar month."""
         now = datetime.utcnow()
         month_start = datetime(now.year, now.month, 1).timestamp()
-        return sum(
-            r.estimated_cost_usd
-            for r in self._records
-            if r.timestamp >= month_start
-        )
+        return sum(r.estimated_cost_usd for r in self._records if r.timestamp >= month_start)
 
-    def get_dashboard(self) -> Dict[str, Any]:
+    def get_dashboard(self) -> dict[str, Any]:
         """
         Get a cost dashboard summary.
 
@@ -333,7 +341,7 @@ class CostTracker:
             month_records = [r for r in self._records if r.timestamp >= month_start]
 
             # Per-model breakdown
-            by_model: Dict[str, Dict[str, Any]] = defaultdict(
+            by_model: dict[str, dict[str, Any]] = defaultdict(
                 lambda: {"requests": 0, "tokens": 0, "cost_usd": 0.0}
             )
             for r in month_records:
@@ -342,7 +350,7 @@ class CostTracker:
                 by_model[r.model]["cost_usd"] += r.estimated_cost_usd
 
             # Per-tenant breakdown
-            by_tenant: Dict[str, Dict[str, Any]] = defaultdict(
+            by_tenant: dict[str, dict[str, Any]] = defaultdict(
                 lambda: {"requests": 0, "tokens": 0, "cost_usd": 0.0}
             )
             for r in month_records:
@@ -352,7 +360,7 @@ class CostTracker:
                 by_tenant[tid]["cost_usd"] += r.estimated_cost_usd
 
             # Daily trend (last 30 days)
-            daily: Dict[str, Dict[str, Any]] = defaultdict(
+            daily: dict[str, dict[str, Any]] = defaultdict(
                 lambda: {"requests": 0, "tokens": 0, "cost_usd": 0.0}
             )
             thirty_days_ago = (now - timedelta(days=30)).timestamp()
@@ -373,12 +381,21 @@ class CostTracker:
                 "monthly_budget_usd": self.monthly_budget_usd,
                 "budget_remaining_usd": round(self.monthly_budget_usd - current_spend, 4),
                 "budget_utilization_pct": round(
-                    (current_spend / self.monthly_budget_usd * 100) if self.monthly_budget_usd > 0 else 0, 1
+                    (
+                        (current_spend / self.monthly_budget_usd * 100)
+                        if self.monthly_budget_usd > 0
+                        else 0
+                    ),
+                    1,
                 ),
                 "total_requests": total_requests,
                 "total_tokens": total_tokens,
-                "avg_tokens_per_request": round(total_tokens / total_requests, 1) if total_requests > 0 else 0,
-                "avg_cost_per_request_usd": round(current_spend / total_requests, 6) if total_requests > 0 else 0,
+                "avg_tokens_per_request": (
+                    round(total_tokens / total_requests, 1) if total_requests > 0 else 0
+                ),
+                "avg_cost_per_request_usd": (
+                    round(current_spend / total_requests, 6) if total_requests > 0 else 0
+                ),
                 "by_model": dict(by_model),
                 "by_tenant": dict(by_tenant),
                 "daily_trend": dict(sorted(daily.items())),
@@ -392,7 +409,7 @@ class CostTracker:
                 ],
             }
 
-    def get_tenant_usage(self, tenant_id: str) -> Dict[str, Any]:
+    def get_tenant_usage(self, tenant_id: str) -> dict[str, Any]:
         """Get usage breakdown for a specific tenant."""
         with self._lock:
             records = [r for r in self._records if r.tenant_id == tenant_id]
@@ -413,7 +430,7 @@ class CostTracker:
 
 # ── Singleton ────────────────────────────────────────────────────
 
-_tracker: Optional[CostTracker] = None
+_tracker: CostTracker | None = None
 
 
 def get_cost_tracker() -> CostTracker:

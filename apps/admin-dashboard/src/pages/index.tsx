@@ -1,4 +1,3 @@
-import React, { useCallback, useEffect, useState } from 'react';
 import {
   BarChart3,
   BookOpen,
@@ -11,6 +10,8 @@ import {
   Shield,
   Upload,
 } from 'lucide-react';
+import type React from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
@@ -147,9 +148,7 @@ function OverviewTab({
           label="HITL Pending"
           value={governance?.hitl.pending ?? '—'}
           subtext={`${governance?.hitl.completed ?? 0} completed`}
-          color={
-            (governance?.hitl.pending ?? 0) > 5 ? 'text-red-600' : 'text-green-600'
-          }
+          color={(governance?.hitl.pending ?? 0) > 5 ? 'text-red-600' : 'text-green-600'}
         />
         <MetricCard
           icon={DollarSign}
@@ -299,10 +298,7 @@ function AgentsTab({ governance }: { governance: GovernanceData | null }) {
         </p>
         <div className="space-y-2">
           {['triage_agent', 'knowledge_manager_agent', 'compliance_auditor_agent'].map((bp) => (
-            <div
-              key={bp}
-              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-            >
+            <div key={bp} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center gap-2">
                 <Bot className="w-4 h-4 text-gray-400" />
                 <span className="text-sm font-medium text-gray-700">{bp}</span>
@@ -328,9 +324,7 @@ function AgentsTab({ governance }: { governance: GovernanceData | null }) {
 
 function CostsTab({ costs }: { costs: CostDashboard | null }) {
   if (!costs) {
-    return (
-      <div className="text-center py-12 text-gray-400">Loading cost data...</div>
-    );
+    return <div className="text-center py-12 text-gray-400">Loading cost data...</div>;
   }
 
   return (
@@ -380,7 +374,10 @@ function CostsTab({ costs }: { costs: CostDashboard | null }) {
         ) : (
           <div className="space-y-2">
             {Object.entries(costs.by_model).map(([model, data]) => (
-              <div key={model} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div
+                key={model}
+                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+              >
                 <div>
                   <span className="text-sm font-medium text-gray-700">{model}</span>
                   <span className="text-xs text-gray-400 ml-2">
@@ -410,9 +407,7 @@ function VoiceTab({ voiceStatus }: { voiceStatus: VoiceStatus | null }) {
           <h3 className="text-sm font-semibold text-gray-700">Voice Status</h3>
           <span
             className={`text-xs px-2 py-1 rounded-full font-medium ${
-              voiceStatus?.enabled
-                ? 'bg-green-100 text-green-700'
-                : 'bg-red-100 text-red-700'
+              voiceStatus?.enabled ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
             }`}
           >
             {voiceStatus?.enabled ? 'Enabled' : 'Disabled'}
@@ -427,10 +422,7 @@ function VoiceTab({ voiceStatus }: { voiceStatus: VoiceStatus | null }) {
               </h4>
               <div className="flex flex-wrap gap-1">
                 {voiceStatus.supported_audio_formats.map((fmt) => (
-                  <span
-                    key={fmt}
-                    className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded"
-                  >
+                  <span key={fmt} className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
                     .{fmt}
                   </span>
                 ))}
@@ -442,10 +434,7 @@ function VoiceTab({ voiceStatus }: { voiceStatus: VoiceStatus | null }) {
               </h4>
               <div className="flex flex-wrap gap-1">
                 {voiceStatus.supported_voices.map((v) => (
-                  <span
-                    key={v}
-                    className="text-xs px-2 py-0.5 bg-brand-50 text-brand-700 rounded"
-                  >
+                  <span key={v} className="text-xs px-2 py-0.5 bg-brand-50 text-brand-700 rounded">
                     {v}
                   </span>
                 ))}
@@ -493,7 +482,10 @@ function SettingsTab() {
             ['Agent Card', `${BACKEND_URL}/.well-known/agent.json`],
             ['WebSocket', `ws://${BACKEND_URL.replace(/^https?:\/\//, '')}/ws/copilot`],
           ].map(([label, url]) => (
-            <div key={label} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div
+              key={label}
+              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+            >
               <span className="text-sm text-gray-600">{label}</span>
               <code className="text-xs font-mono text-gray-500">{url}</code>
             </div>
@@ -511,7 +503,10 @@ function SettingsTab() {
             ['OTEL Tracing', true],
             ['Pinecone Reranking', true],
           ].map(([feature, enabled]) => (
-            <div key={String(feature)} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div
+              key={String(feature)}
+              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+            >
               <span className="text-sm text-gray-700">{String(feature)}</span>
               <span
                 className={`text-xs px-2 py-1 rounded-full font-medium ${

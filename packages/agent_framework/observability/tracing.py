@@ -5,10 +5,11 @@ Provides distributed tracing for agent executions.
 """
 
 import functools
+from collections.abc import Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable, Dict, Optional, TypeVar
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
@@ -32,14 +33,14 @@ class SpanContext:
 
     trace_id: str
     span_id: str
-    parent_span_id: Optional[str] = None
-    attributes: Dict[str, Any] = field(default_factory=dict)
+    parent_span_id: str | None = None
+    attributes: dict[str, Any] = field(default_factory=dict)
     start_time: datetime = field(default_factory=datetime.utcnow)
-    end_time: Optional[datetime] = None
+    end_time: datetime | None = None
     status: str = "ok"
     events: list = field(default_factory=list)
 
-    def add_event(self, name: str, attributes: Optional[Dict[str, Any]] = None) -> None:
+    def add_event(self, name: str, attributes: dict[str, Any] | None = None) -> None:
         """Add an event to the span."""
         self.events.append(
             {
@@ -55,7 +56,7 @@ class SpanContext:
         if description:
             self.attributes["status_description"] = description
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "trace_id": self.trace_id,
             "span_id": self.span_id,
@@ -85,7 +86,7 @@ class TracingProvider:
     ) -> None:
         self._service_name = service_name
         self._enabled = enabled and OTEL_AVAILABLE
-        self._tracer: Optional[Tracer] = None
+        self._tracer: Tracer | None = None
 
         if self._enabled:
             self._tracer = trace.get_tracer(service_name)
@@ -98,8 +99,8 @@ class TracingProvider:
     async def start_span(
         self,
         name: str,
-        attributes: Optional[Dict[str, Any]] = None,
-        parent: Optional[SpanContext] = None,
+        attributes: dict[str, Any] | None = None,
+        parent: SpanContext | None = None,
     ):
         """
         Start a new trace span.
@@ -145,7 +146,7 @@ class TracingProvider:
         self,
         trace_id: str,
         span_id: str,
-        attributes: Optional[Dict[str, Any]] = None,
+        attributes: dict[str, Any] | None = None,
     ) -> SpanContext:
         """Create a span context manually."""
         return SpanContext(
@@ -154,7 +155,7 @@ class TracingProvider:
             attributes=attributes or {},
         )
 
-    def inject_context(self, carrier: Dict[str, str]) -> None:
+    def inject_context(self, carrier: dict[str, str]) -> None:
         """Inject trace context into a carrier (e.g., HTTP headers)."""
         if not self._enabled:
             return
@@ -162,7 +163,7 @@ class TracingProvider:
         propagator = TraceContextTextMapPropagator()
         propagator.inject(carrier)
 
-    def extract_context(self, carrier: Dict[str, str]) -> Optional[SpanContext]:
+    def extract_context(self, carrier: dict[str, str]) -> SpanContext | None:
         """Extract trace context from a carrier."""
         if not self._enabled:
             return None
@@ -180,7 +181,7 @@ class TracingProvider:
         return None
 
 
-_default_provider: Optional[TracingProvider] = None
+_default_provider: TracingProvider | None = None
 
 
 def get_tracing_provider() -> TracingProvider:
@@ -192,8 +193,8 @@ def get_tracing_provider() -> TracingProvider:
 
 
 def trace_agent_execution(
-    name: Optional[str] = None,
-    attributes: Optional[Dict[str, Any]] = None,
+    name: str | None = None,
+    attributes: dict[str, Any] | None = None,
 ) -> Callable:
     """
     Decorator for tracing agent execution methods.
@@ -222,9 +223,8 @@ def trace_agent_execution(
             async with provider.start_span(span_name, span_attrs) as span:
                 result = await func(*args, **kwargs)
 
-                if isinstance(result, dict):
-                    if "action" in result:
-                        span.add_event("action", {"action": result["action"]})
+                if isinstance(result, dict) and "action" in result:
+                    span.add_event("action", {"action": result["action"]})
 
                 return result
 
@@ -240,7 +240,7 @@ class AgentTracer:
     Provides high-level tracing methods for common agent operations.
     """
 
-    def __init__(self, provider: Optional[TracingProvider] = None) -> None:
+    def __init__(self, provider: TracingProvider | None = None) -> None:
         self._provider = provider or get_tracing_provider()
 
     @asynccontextmanager
@@ -286,7 +286,7 @@ class AgentTracer:
         self,
         agent_id: str,
         model: str,
-        prompt_tokens: Optional[int] = None,
+        prompt_tokens: int | None = None,
     ):
         """Trace an LLM API call."""
         attrs = {

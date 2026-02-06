@@ -1,12 +1,12 @@
-import React from "react";
-import { Composition, Series } from "remotion";
-import { Scene1Hero } from "./scenes/Scene1Hero";
-import { Scene2ChatWidget } from "./scenes/Scene2ChatWidget";
-import { Scene3Copilot } from "./scenes/Scene3Copilot";
-import { Scene4HITL } from "./scenes/Scene4HITL";
-import { Scene5Governance } from "./scenes/Scene5Governance";
-import { Scene6Learning } from "./scenes/Scene6Learning";
-import { Scene7Closing } from "./scenes/Scene7Closing";
+import type React from 'react';
+import { Composition, Series } from 'remotion';
+import { Scene1Hero } from './scenes/Scene1Hero';
+import { Scene2ChatWidget } from './scenes/Scene2ChatWidget';
+import { Scene3Copilot } from './scenes/Scene3Copilot';
+import { Scene4HITL } from './scenes/Scene4HITL';
+import { Scene5Governance } from './scenes/Scene5Governance';
+import { Scene6Learning } from './scenes/Scene6Learning';
+import { Scene7Closing } from './scenes/Scene7Closing';
 
 // 30fps, 1080p
 const FPS = 30;
@@ -15,13 +15,13 @@ const HEIGHT = 1080;
 
 // Scene durations in frames (at 30fps)
 const SCENE_DURATIONS = {
-  hero: 4 * FPS,        // 4s
-  chat: 8 * FPS,        // 8s
-  copilot: 9 * FPS,     // 9s
-  hitl: 7 * FPS,        // 7s
-  governance: 7 * FPS,  // 7s
-  learning: 12 * FPS,   // 12s
-  closing: 6 * FPS,     // 6s
+  hero: 4 * FPS, // 4s
+  chat: 8 * FPS, // 8s
+  copilot: 9 * FPS, // 9s
+  hitl: 7 * FPS, // 7s
+  governance: 7 * FPS, // 7s
+  learning: 12 * FPS, // 12s
+  closing: 6 * FPS, // 6s
 };
 
 const TOTAL_DURATION = Object.values(SCENE_DURATIONS).reduce((a, b) => a + b, 0);

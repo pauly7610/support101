@@ -4,7 +4,6 @@ Modular: swap in-memory or Pinecone vector store as needed.
 """
 
 import os
-from typing import Optional
 
 from langchain.chains import RetrievalQA
 from langchain.embeddings import HuggingFaceEmbeddings
@@ -50,7 +49,7 @@ class RAGChain(BaseLangchainChain):
         super().__init__(llm, vectorstore)
         self.qa = RetrievalQA(llm=llm, retriever=vectorstore.as_retriever())
 
-    def generate(self, question: str, context: Optional[str] = None) -> dict:
+    def generate(self, question: str, context: str | None = None) -> dict:
         # For now, dummy output
         return {
             "reply": f"[RAGChain] Answer to: {question}",

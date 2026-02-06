@@ -1,7 +1,6 @@
 import os
-from typing import Any, Dict, List
+from typing import TYPE_CHECKING, Any
 
-from fastembed import TextEmbedding as FastEmbedModelType
 from langchain.schema.runnable import RunnableLambda, RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -11,6 +10,9 @@ from packages.shared.models import SourceDocument, SuggestedResponse, TicketCont
 
 from .embeddings import get_fastembed_model
 from .vector_store import query_pinecone
+
+if TYPE_CHECKING:
+    from fastembed import TextEmbedding as FastEmbedModelType
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 LLM_MODEL_NAME = os.getenv("LLM_MODEL_NAME", "gpt-4o")
@@ -49,9 +51,9 @@ class RAGChain:
             | self.llm
             | StrOutputParser()
         )
-        self.retrieved_sources: List[SourceDocument] = []
+        self.retrieved_sources: list[SourceDocument] = []
 
-    async def _retrieve_and_format_context(self, input_data: Dict[str, Any]) -> str:
+    async def _retrieve_and_format_context(self, input_data: dict[str, Any]) -> str:
         question = input_data["question"]
         top_k = input_data.get("top_k", 3)
         search_results_raw = await query_pinecone(

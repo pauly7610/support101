@@ -24,7 +24,8 @@ async def gdpr_delete(
     # Verify requester permissions
     if not getattr(current_user, "is_admin", False):
         return JSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN, content={"detail": "Insufficient permissions"}
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={"detail": "Insufficient permissions"},
         )
     # Perform cascading deletion
     from sqlalchemy import text

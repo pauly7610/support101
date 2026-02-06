@@ -4,8 +4,9 @@ Dependency Injection Container for Agent Framework.
 Replaces singleton pattern with proper DI for better testability and flexibility.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional, Type, TypeVar
+from typing import Any, TypeVar
 
 from .persistence.base import StateStore
 from .persistence.memory import InMemoryStateStore
@@ -19,7 +20,7 @@ class ServiceConfig:
 
     factory: Callable[..., Any]
     singleton: bool = True
-    instance: Optional[Any] = None
+    instance: Any | None = None
 
 
 class Container:
@@ -37,7 +38,7 @@ class Container:
     """
 
     def __init__(self) -> None:
-        self._services: Dict[Type, ServiceConfig] = {}
+        self._services: dict[type, ServiceConfig] = {}
         self._register_defaults()
 
     def _register_defaults(self) -> None:
@@ -46,7 +47,7 @@ class Container:
 
     def register(
         self,
-        service_type: Type[T],
+        service_type: type[T],
         factory: Callable[..., T],
         singleton: bool = True,
     ) -> None:
@@ -64,7 +65,7 @@ class Container:
             instance=None,
         )
 
-    def register_instance(self, service_type: Type[T], instance: T) -> None:
+    def register_instance(self, service_type: type[T], instance: T) -> None:
         """Register an existing instance as a singleton."""
         self._services[service_type] = ServiceConfig(
             factory=lambda: instance,
@@ -72,7 +73,7 @@ class Container:
             instance=instance,
         )
 
-    def resolve(self, service_type: Type[T]) -> T:
+    def resolve(self, service_type: type[T]) -> T:
         """
         Resolve a service.
 
@@ -100,18 +101,18 @@ class Container:
 
         return instance
 
-    def try_resolve(self, service_type: Type[T]) -> Optional[T]:
+    def try_resolve(self, service_type: type[T]) -> T | None:
         """Resolve a service, returning None if not registered."""
         try:
             return self.resolve(service_type)
         except KeyError:
             return None
 
-    def is_registered(self, service_type: Type) -> bool:
+    def is_registered(self, service_type: type) -> bool:
         """Check if a service is registered."""
         return service_type in self._services
 
-    def reset(self, service_type: Optional[Type] = None) -> None:
+    def reset(self, service_type: type | None = None) -> None:
         """
         Reset service instances.
 
@@ -131,7 +132,7 @@ class Container:
         self._register_defaults()
 
 
-_default_container: Optional[Container] = None
+_default_container: Container | None = None
 
 
 def get_container() -> Container:
@@ -165,13 +166,13 @@ class Injectable:
                 self.store = self.inject(StateStore)
     """
 
-    def __init__(self, container: Optional[Container] = None) -> None:
+    def __init__(self, container: Container | None = None) -> None:
         self._container = container or get_container()
 
-    def inject(self, service_type: Type[T]) -> T:
+    def inject(self, service_type: type[T]) -> T:
         """Inject a dependency."""
         return self._container.resolve(service_type)
 
-    def try_inject(self, service_type: Type[T]) -> Optional[T]:
+    def try_inject(self, service_type: type[T]) -> T | None:
         """Try to inject a dependency, returning None if not available."""
         return self._container.try_resolve(service_type)

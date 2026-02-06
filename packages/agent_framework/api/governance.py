@@ -8,8 +8,9 @@ Provides REST API for:
 - Compliance reporting
 """
 
+import contextlib
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
@@ -22,10 +23,10 @@ from ..multitenancy.tenant_manager import TenantManager
 router = APIRouter(prefix="/governance", tags=["Governance"])
 
 
-_permissions: Optional[AgentPermissions] = None
-_audit_logger: Optional[AuditLogger] = None
-_registry: Optional[AgentRegistry] = None
-_tenant_manager: Optional[TenantManager] = None
+_permissions: AgentPermissions | None = None
+_audit_logger: AuditLogger | None = None
+_registry: AgentRegistry | None = None
+_tenant_manager: TenantManager | None = None
 
 
 def get_permissions() -> AgentPermissions:
@@ -69,9 +70,9 @@ class GrantPermissionRequest(BaseModel):
     agent_id: str
     resource: str
     level: str
-    tenant_id: Optional[str] = None
-    conditions: Optional[Dict[str, Any]] = None
-    expires_in_hours: Optional[int] = None
+    tenant_id: str | None = None
+    conditions: dict[str, Any] | None = None
+    expires_in_hours: int | None = None
 
 
 class CreateRoleRequest(BaseModel):
@@ -79,30 +80,30 @@ class CreateRoleRequest(BaseModel):
 
     name: str
     description: str
-    permissions: List[Dict[str, Any]]
-    inherits_from: Optional[List[str]] = None
+    permissions: list[dict[str, Any]]
+    inherits_from: list[str] | None = None
 
 
 class AuditQueryParams(BaseModel):
     """Parameters for audit log queries."""
 
-    tenant_id: Optional[str] = None
-    agent_id: Optional[str] = None
-    event_type: Optional[str] = None
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
-    user_id: Optional[str] = None
+    tenant_id: str | None = None
+    agent_id: str | None = None
+    event_type: str | None = None
+    start_time: datetime | None = None
+    end_time: datetime | None = None
+    user_id: str | None = None
     limit: int = 100
     offset: int = 0
 
 
 @router.get("/dashboard")
 async def get_governance_dashboard(
-    tenant_id: Optional[str] = Query(None),
+    tenant_id: str | None = Query(None),
     registry: AgentRegistry = Depends(get_registry),
     audit_logger: AuditLogger = Depends(get_audit_logger),
     tenant_manager: TenantManager = Depends(get_tenant_manager),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get comprehensive governance dashboard data.
 
@@ -153,9 +154,9 @@ async def get_governance_dashboard(
     }
 
 
-def _count_by_field(items: List[Dict], field: str) -> Dict[str, int]:
+def _count_by_field(items: list[dict], field: str) -> dict[str, int]:
     """Count items by a field value."""
-    counts: Dict[str, int] = {}
+    counts: dict[str, int] = {}
     for item in items:
         value = item.get(field, "unknown")
         counts[value] = counts.get(value, 0) + 1
@@ -164,9 +165,9 @@ def _count_by_field(items: List[Dict], field: str) -> Dict[str, int]:
 
 @router.get("/agents/active")
 async def get_active_agents(
-    tenant_id: Optional[str] = Query(None),
+    tenant_id: str | None = Query(None),
     registry: AgentRegistry = Depends(get_registry),
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Get all currently active agents with their states."""
     agents = registry.list_agents(tenant_id=tenant_id)
 
@@ -197,7 +198,7 @@ async def get_active_agents(
 @router.get("/roles")
 async def list_roles(
     permissions: AgentPermissions = Depends(get_permissions),
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """List all available roles."""
     return permissions.list_roles()
 
@@ -207,7 +208,7 @@ async def create_role(
     request: CreateRoleRequest,
     permissions_mgr: AgentPermissions = Depends(get_permissions),
     audit_logger: AuditLogger = Depends(get_audit_logger),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a custom role."""
     role_permissions = []
     for p in request.permissions:
@@ -232,7 +233,7 @@ async def create_role(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
-        )
+        ) from e
 
     await audit_logger.log(
         audit_logger.query.__self__.__class__(
@@ -258,7 +259,7 @@ async def assign_role(
     permissions_mgr: AgentPermissions = Depends(get_permissions),
     registry: AgentRegistry = Depends(get_registry),
     audit_logger: AuditLogger = Depends(get_audit_logger),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Assign a role to an agent."""
     agent = registry.get_agent(request.agent_id)
     if not agent:
@@ -273,7 +274,7 @@ async def assign_role(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
-        )
+        ) from e
 
     await audit_logger.log_agent_event(
         event_type=AuditEventType.ROLE_ASSIGNED,
@@ -296,7 +297,7 @@ async def revoke_role(
     permissions_mgr: AgentPermissions = Depends(get_permissions),
     registry: AgentRegistry = Depends(get_registry),
     audit_logger: AuditLogger = Depends(get_audit_logger),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Revoke a role from an agent."""
     agent = registry.get_agent(agent_id)
 
@@ -316,9 +317,9 @@ async def revoke_role(
 @router.get("/permissions/{agent_id}")
 async def get_agent_permissions(
     agent_id: str,
-    tenant_id: Optional[str] = Query(None),
+    tenant_id: str | None = Query(None),
     permissions_mgr: AgentPermissions = Depends(get_permissions),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get all permissions for an agent."""
     perms = permissions_mgr.get_agent_permissions(agent_id, tenant_id)
     roles = permissions_mgr.get_agent_roles(agent_id)
@@ -344,15 +345,15 @@ async def grant_permission(
     permissions_mgr: AgentPermissions = Depends(get_permissions),
     registry: AgentRegistry = Depends(get_registry),
     audit_logger: AuditLogger = Depends(get_audit_logger),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Grant a permission to an agent."""
     try:
         level = PermissionLevel(request.level)
-    except ValueError:
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid permission level: {request.level}",
-        )
+        ) from e
 
     expires_at = None
     if request.expires_in_hours:
@@ -395,11 +396,11 @@ async def grant_permission(
 async def revoke_permission(
     agent_id: str,
     resource: str,
-    tenant_id: Optional[str] = Query(None),
+    tenant_id: str | None = Query(None),
     permissions_mgr: AgentPermissions = Depends(get_permissions),
     registry: AgentRegistry = Depends(get_registry),
     audit_logger: AuditLogger = Depends(get_audit_logger),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Revoke a permission from an agent."""
     success = permissions_mgr.revoke_permission(agent_id, resource, tenant_id)
 
@@ -420,17 +421,17 @@ async def check_permission(
     agent_id: str,
     resource: str,
     level: str,
-    tenant_id: Optional[str] = Query(None),
+    tenant_id: str | None = Query(None),
     permissions_mgr: AgentPermissions = Depends(get_permissions),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Check if an agent has a specific permission."""
     try:
         perm_level = PermissionLevel(level)
-    except ValueError:
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid permission level: {level}",
-        )
+        ) from e
 
     has_permission = permissions_mgr.check_permission(
         agent_id=agent_id,
@@ -449,23 +450,21 @@ async def check_permission(
 
 @router.get("/audit")
 async def query_audit_logs(
-    tenant_id: Optional[str] = Query(None),
-    agent_id: Optional[str] = Query(None),
-    event_type: Optional[str] = Query(None),
-    start_time: Optional[datetime] = Query(None),
-    end_time: Optional[datetime] = Query(None),
-    user_id: Optional[str] = Query(None),
+    tenant_id: str | None = Query(None),
+    agent_id: str | None = Query(None),
+    event_type: str | None = Query(None),
+    start_time: datetime | None = Query(None),
+    end_time: datetime | None = Query(None),
+    user_id: str | None = Query(None),
     limit: int = Query(100, le=500),
     offset: int = Query(0, ge=0),
     audit_logger: AuditLogger = Depends(get_audit_logger),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Query audit logs with filters."""
     audit_event_type = None
     if event_type:
-        try:
+        with contextlib.suppress(ValueError):
             audit_event_type = AuditEventType(event_type)
-        except ValueError:
-            pass
 
     events = audit_logger.query(
         tenant_id=tenant_id,
@@ -491,7 +490,7 @@ async def get_agent_audit_history(
     agent_id: str,
     limit: int = Query(50, le=200),
     audit_logger: AuditLogger = Depends(get_audit_logger),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get complete audit history for an agent."""
     history = audit_logger.get_agent_history(agent_id, limit)
 
@@ -506,7 +505,7 @@ async def get_agent_audit_history(
 async def get_execution_audit_trail(
     execution_id: str,
     audit_logger: AuditLogger = Depends(get_audit_logger),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get complete audit trail for an execution."""
     trail = audit_logger.get_execution_trail(execution_id)
 
@@ -519,11 +518,11 @@ async def get_execution_audit_trail(
 
 @router.get("/audit/human-interactions")
 async def get_human_interactions(
-    tenant_id: Optional[str] = Query(None),
-    start_time: Optional[datetime] = Query(None),
-    end_time: Optional[datetime] = Query(None),
+    tenant_id: str | None = Query(None),
+    start_time: datetime | None = Query(None),
+    end_time: datetime | None = Query(None),
     audit_logger: AuditLogger = Depends(get_audit_logger),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get all human-in-the-loop interactions."""
     interactions = audit_logger.get_human_interactions(
         tenant_id=tenant_id,
@@ -539,10 +538,10 @@ async def get_human_interactions(
 
 @router.get("/audit/security")
 async def get_security_events(
-    tenant_id: Optional[str] = Query(None),
+    tenant_id: str | None = Query(None),
     limit: int = Query(100, le=500),
     audit_logger: AuditLogger = Depends(get_audit_logger),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get security-related audit events."""
     events = audit_logger.get_security_events(tenant_id, limit)
 
@@ -554,7 +553,7 @@ async def get_security_events(
 
 @router.get("/audit/export")
 async def export_audit_logs(
-    tenant_id: Optional[str] = Query(None),
+    tenant_id: str | None = Query(None),
     format: str = Query("json", pattern="^(json|csv)$"),
     audit_logger: AuditLogger = Depends(get_audit_logger),
 ) -> Any:
@@ -564,10 +563,10 @@ async def export_audit_logs(
 
 @router.get("/stats")
 async def get_governance_stats(
-    tenant_id: Optional[str] = Query(None),
+    tenant_id: str | None = Query(None),
     audit_logger: AuditLogger = Depends(get_audit_logger),
     registry: AgentRegistry = Depends(get_registry),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get comprehensive governance statistics."""
     audit_stats = audit_logger.get_stats(tenant_id)
     registry_stats = registry.get_stats()

@@ -4,14 +4,15 @@ Blueprint validation for agent framework.
 Ensures blueprints and configurations are valid before use.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Type
+from typing import Any
 
 
 class ValidationError(Exception):
     """Raised when validation fails."""
 
-    def __init__(self, errors: List[Dict[str, Any]]) -> None:
+    def __init__(self, errors: list[dict[str, Any]]) -> None:
         self.errors = errors
         message = "; ".join(
             f"{e.get('field', 'unknown')}: {e.get('message', 'invalid')}" for e in errors
@@ -24,8 +25,8 @@ class ValidationResult:
     """Result of a validation check."""
 
     valid: bool
-    errors: List[Dict[str, Any]] = field(default_factory=list)
-    warnings: List[Dict[str, Any]] = field(default_factory=list)
+    errors: list[dict[str, Any]] = field(default_factory=list)
+    warnings: list[dict[str, Any]] = field(default_factory=list)
 
     def add_error(self, field: str, message: str, value: Any = None) -> None:
         self.valid = False
@@ -70,12 +71,12 @@ class BlueprintValidator:
     """
 
     def __init__(self) -> None:
-        self._custom_validators: Dict[str, List[Callable]] = {}
+        self._custom_validators: dict[str, list[Callable]] = {}
 
     def register_validator(
         self,
         blueprint_name: str,
-        validator: Callable[[Dict[str, Any]], ValidationResult],
+        validator: Callable[[dict[str, Any]], ValidationResult],
     ) -> None:
         """Register a custom validator for a blueprint."""
         if blueprint_name not in self._custom_validators:
@@ -85,9 +86,9 @@ class BlueprintValidator:
     def validate_blueprint(
         self,
         name: str,
-        agent_class: Type,
-        default_config: Dict[str, Any],
-        required_tools: List[str],
+        agent_class: type,
+        default_config: dict[str, Any],
+        required_tools: list[str],
     ) -> ValidationResult:
         """Validate a blueprint definition."""
         result = ValidationResult(valid=True)
@@ -129,8 +130,8 @@ class BlueprintValidator:
 
     def validate_config(
         self,
-        config: Dict[str, Any],
-        blueprint_name: Optional[str] = None,
+        config: dict[str, Any],
+        blueprint_name: str | None = None,
     ) -> ValidationResult:
         """Validate agent configuration."""
         result = ValidationResult(valid=True)
@@ -160,13 +161,14 @@ class BlueprintValidator:
             elif not 0 <= threshold <= 1:
                 result.add_error("confidence_threshold", "Must be between 0 and 1", threshold)
 
-        if "require_human_approval" in config:
-            if not isinstance(config["require_human_approval"], bool):
-                result.add_error(
-                    "require_human_approval",
-                    "Must be a boolean",
-                    config["require_human_approval"],
-                )
+        if "require_human_approval" in config and not isinstance(
+            config["require_human_approval"], bool
+        ):
+            result.add_error(
+                "require_human_approval",
+                "Must be a boolean",
+                config["require_human_approval"],
+            )
 
         if "allowed_tools" in config:
             tools = config["allowed_tools"]
@@ -196,7 +198,7 @@ class BlueprintValidator:
         blueprint_name: str,
         tenant_id: str,
         agent_name: str,
-        config_overrides: Optional[Dict[str, Any]] = None,
+        config_overrides: dict[str, Any] | None = None,
     ) -> ValidationResult:
         """Validate agent creation request."""
         result = ValidationResult(valid=True)
@@ -220,8 +222,8 @@ class BlueprintValidator:
 
     def validate_execution_input(
         self,
-        input_data: Dict[str, Any],
-        required_fields: Optional[List[str]] = None,
+        input_data: dict[str, Any],
+        required_fields: list[str] | None = None,
     ) -> ValidationResult:
         """Validate execution input data."""
         result = ValidationResult(valid=True)
@@ -240,7 +242,7 @@ class BlueprintValidator:
         return result
 
 
-_default_validator: Optional[BlueprintValidator] = None
+_default_validator: BlueprintValidator | None = None
 
 
 def get_blueprint_validator() -> BlueprintValidator:

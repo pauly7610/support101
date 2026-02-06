@@ -65,7 +65,10 @@ async def test_get_current_user_invalid_token():
 
 @pytest.mark.asyncio
 async def test_get_current_user_expired_token(monkeypatch):
-    expired_payload = {"sub": "user123", "exp": datetime.utcnow() - timedelta(minutes=1)}
+    expired_payload = {
+        "sub": "user123",
+        "exp": datetime.utcnow() - timedelta(minutes=1),
+    }
     expired_token = jwt.encode(expired_payload, SECRET_KEY, algorithm=ALGORITHM)
     with pytest.raises(HTTPException) as exc:
         await jwt_module.get_current_user(expired_token, None)

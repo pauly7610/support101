@@ -65,7 +65,11 @@ from .persistence.memory import InMemoryStateStore
 from .persistence.redis_store import RedisStateStore
 from .realtime.events import Event, EventBus, EventType, get_event_bus
 from .realtime.websocket import ConnectionManager, WebSocketManager
-from .resilience.circuit_breaker import CircuitBreaker, CircuitBreakerOpen, CircuitState
+from .resilience.circuit_breaker import (
+    CircuitBreaker,
+    CircuitBreakerOpenError,
+    CircuitState,
+)
 from .resilience.retry import (
     ExponentialBackoff,
     RetryPolicy,
@@ -74,12 +78,21 @@ from .resilience.retry import (
 )
 from .sdk import AgentFramework, create_framework
 from .templates.code_review_agent import CodeReviewAgent, CodeReviewBlueprint
-from .templates.compliance_auditor_agent import ComplianceAuditorAgent, ComplianceAuditorBlueprint
+from .templates.compliance_auditor_agent import (
+    ComplianceAuditorAgent,
+    ComplianceAuditorBlueprint,
+)
 from .templates.data_analyst_agent import DataAnalystAgent, DataAnalystBlueprint
-from .templates.knowledge_manager_agent import KnowledgeManagerAgent, KnowledgeManagerBlueprint
+from .templates.knowledge_manager_agent import (
+    KnowledgeManagerAgent,
+    KnowledgeManagerBlueprint,
+)
 from .templates.onboarding_agent import OnboardingAgent, OnboardingBlueprint
 from .templates.qa_test_agent import QATestAgent, QATestBlueprint
-from .templates.sentiment_monitor_agent import SentimentMonitorAgent, SentimentMonitorBlueprint
+from .templates.sentiment_monitor_agent import (
+    SentimentMonitorAgent,
+    SentimentMonitorBlueprint,
+)
 from .templates.support_agent import SupportAgent, SupportAgentBlueprint
 from .templates.triage_agent import TriageAgent, TriageAgentBlueprint
 from .validation.blueprint import BlueprintValidator, ValidationError, ValidationResult
@@ -154,7 +167,7 @@ __all__ = [
     "with_retry",
     "CircuitBreaker",
     "CircuitState",
-    "CircuitBreakerOpen",
+    "CircuitBreakerOpenError",
     # Observability
     "MetricsCollector",
     "get_metrics_collector",

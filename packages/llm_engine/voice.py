@@ -20,7 +20,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,17 @@ TTS_VOICE = os.getenv("VOICE_TTS_VOICE", "nova")
 TTS_SPEED = float(os.getenv("VOICE_TTS_SPEED", "1.0"))
 MAX_AUDIO_MB = float(os.getenv("VOICE_MAX_AUDIO_MB", "25"))
 
-SUPPORTED_AUDIO_FORMATS = {"mp3", "mp4", "mpeg", "mpga", "m4a", "wav", "webm", "ogg", "flac"}
+SUPPORTED_AUDIO_FORMATS = {
+    "mp3",
+    "mp4",
+    "mpeg",
+    "mpga",
+    "m4a",
+    "wav",
+    "webm",
+    "ogg",
+    "flac",
+}
 SUPPORTED_TTS_VOICES = {"alloy", "echo", "fable", "onyx", "nova", "shimmer"}
 SUPPORTED_TTS_FORMATS = {"mp3", "opus", "aac", "flac", "wav", "pcm"}
 
@@ -41,9 +51,9 @@ class TranscriptionResult:
     """Result from speech-to-text transcription."""
 
     text: str
-    language: Optional[str] = None
-    duration_seconds: Optional[float] = None
-    segments: Optional[List[Dict[str, Any]]] = None
+    language: str | None = None
+    duration_seconds: float | None = None
+    segments: list[dict[str, Any]] | None = None
     processing_time_ms: float = 0.0
 
 
@@ -74,8 +84,8 @@ def _get_openai_client():
 async def transcribe(
     audio_data: bytes,
     filename: str = "audio.wav",
-    language: Optional[str] = None,
-    prompt: Optional[str] = None,
+    language: str | None = None,
+    prompt: str | None = None,
 ) -> TranscriptionResult:
     """
     Transcribe audio to text using OpenAI Whisper.
@@ -114,7 +124,7 @@ async def transcribe(
     start = time.time()
 
     try:
-        kwargs: Dict[str, Any] = {
+        kwargs: dict[str, Any] = {
             "model": STT_MODEL,
             "file": (filename, io.BytesIO(audio_data)),
             "response_format": "verbose_json",
@@ -145,7 +155,10 @@ async def transcribe(
 
         logger.info(
             "Transcribed %s (%.1fMB) in %.0fms: %d chars",
-            filename, size_mb, processing_ms, len(text),
+            filename,
+            size_mb,
+            processing_ms,
+            len(text),
         )
 
         return TranscriptionResult(
@@ -164,9 +177,9 @@ async def transcribe(
 
 async def synthesize(
     text: str,
-    voice: Optional[str] = None,
-    model: Optional[str] = None,
-    speed: Optional[float] = None,
+    voice: str | None = None,
+    model: str | None = None,
+    speed: float | None = None,
     response_format: str = "mp3",
 ) -> SynthesisResult:
     """
@@ -198,8 +211,7 @@ async def synthesize(
     voice = voice or TTS_VOICE
     if voice not in SUPPORTED_TTS_VOICES:
         raise ValueError(
-            f"Unsupported voice: {voice}. "
-            f"Supported: {', '.join(sorted(SUPPORTED_TTS_VOICES))}"
+            f"Unsupported voice: {voice}. Supported: {', '.join(sorted(SUPPORTED_TTS_VOICES))}"
         )
 
     if response_format not in SUPPORTED_TTS_FORMATS:
@@ -232,7 +244,10 @@ async def synthesize(
 
         logger.info(
             "Synthesized %d chars -> %d bytes (%s) in %.0fms",
-            len(text), len(audio_bytes), response_format, processing_ms,
+            len(text),
+            len(audio_bytes),
+            response_format,
+            processing_ms,
         )
 
         return SynthesisResult(

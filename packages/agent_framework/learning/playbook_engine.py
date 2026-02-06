@@ -12,12 +12,10 @@ not installed.
 No hard dependency on LangGraph — gracefully degrades.
 """
 
-import json
 import logging
 import os
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
-from uuid import uuid4
+from typing import Any
 
 from .playbook_models import (
     Playbook,
@@ -64,10 +62,10 @@ class PlaybookEngine:
 
     def __init__(
         self,
-        activity_graph: Optional[Any] = None,
-        llm: Optional[Any] = None,
-        min_samples: Optional[int] = None,
-        min_success_rate: Optional[float] = None,
+        activity_graph: Any | None = None,
+        llm: Any | None = None,
+        min_samples: int | None = None,
+        min_success_rate: float | None = None,
     ) -> None:
         self._graph = activity_graph
         self._llm = llm
@@ -77,7 +75,7 @@ class PlaybookEngine:
         self._min_success_rate = min_success_rate or float(
             os.getenv("PLAYBOOK_MIN_SUCCESS_RATE", str(self.DEFAULT_MIN_SUCCESS_RATE))
         )
-        self._playbooks: Dict[str, Playbook] = {}
+        self._playbooks: dict[str, Playbook] = {}
         self._initialized = False
 
     @property
@@ -116,7 +114,7 @@ class PlaybookEngine:
         tenant_id: str = "",
         priority: str = "",
         top_k: int = 3,
-    ) -> List[PlaybookSuggestion]:
+    ) -> list[PlaybookSuggestion]:
         """
         Suggest playbooks for a given category/context.
 
@@ -151,7 +149,7 @@ class PlaybookEngine:
         self,
         category: str,
         tenant_id: str = "",
-    ) -> List[Playbook]:
+    ) -> list[Playbook]:
         """
         Extract new playbooks from successful resolution patterns in the graph.
 
@@ -189,13 +187,13 @@ class PlaybookEngine:
         self,
         blueprint: str,
         category: str,
-        resolutions: List[Dict[str, Any]],
+        resolutions: list[dict[str, Any]],
         tenant_id: str = "",
-    ) -> Optional[Playbook]:
+    ) -> Playbook | None:
         """Build a playbook from a cluster of similar resolutions."""
         # Extract common step sequences
-        all_steps: List[List[str]] = []
-        resolution_ids: List[str] = []
+        all_steps: list[list[str]] = []
+        resolution_ids: list[str] = []
         for res in resolutions:
             steps_str = res.get("steps", "")
             if isinstance(steps_str, str) and steps_str:
@@ -233,11 +231,13 @@ class PlaybookEngine:
                     "Be specific about what it does."
                 )
                 chain = prompt | self._llm
-                result = await chain.ainvoke({
-                    "category": category,
-                    "steps": " → ".join(common_steps),
-                    "count": len(resolutions),
-                })
+                result = await chain.ainvoke(
+                    {
+                        "category": category,
+                        "steps": " → ".join(common_steps),
+                        "count": len(resolutions),
+                    }
+                )
                 description = result.content.strip()
             except Exception as e:
                 logger.debug("PlaybookEngine: LLM description generation failed: %s", e)
@@ -257,11 +257,13 @@ class PlaybookEngine:
             pb_steps.append(step)
 
             if prev_step_id:
-                pb_edges.append(PlaybookEdge(
-                    from_step_id=prev_step_id,
-                    to_step_id=step.id,
-                    label=f"step_{i}",
-                ))
+                pb_edges.append(
+                    PlaybookEdge(
+                        from_step_id=prev_step_id,
+                        to_step_id=step.id,
+                        label=f"step_{i}",
+                    )
+                )
             prev_step_id = step.id
 
         # Calculate success rate from resolutions
@@ -298,8 +300,8 @@ class PlaybookEngine:
         self,
         playbook: Playbook,
         agent: Any,
-        input_data: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        input_data: dict[str, Any],
+    ) -> dict[str, Any]:
         """
         Execute a playbook using an agent.
 
@@ -317,17 +319,17 @@ class PlaybookEngine:
         self,
         playbook: Playbook,
         agent: Any,
-        input_data: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        input_data: dict[str, Any],
+    ) -> dict[str, Any]:
         """Execute playbook using LangGraph StateGraph."""
         from typing import TypedDict
 
         class PlaybookState(TypedDict):
-            input_data: Dict[str, Any]
-            step_results: Dict[str, Any]
+            input_data: dict[str, Any]
+            step_results: dict[str, Any]
             current_step: str
             completed: bool
-            error: Optional[str]
+            error: str | None
 
         builder = StateGraph(PlaybookState)
 
@@ -342,13 +344,17 @@ class PlaybookEngine:
                         if tool and tool.func:
                             result = await tool.func(**state["input_data"])
                         else:
-                            result = {"skipped": True, "reason": f"Tool {s.tool_name} not found"}
+                            result = {
+                                "skipped": True,
+                                "reason": f"Tool {s.tool_name} not found",
+                            }
                         state["step_results"][s.id] = result
                         state["current_step"] = s.id
                     except Exception as e:
                         state["step_results"][s.id] = {"error": str(e)}
                         state["error"] = str(e)
                     return state
+
                 return step_fn
 
             node_fn = await _make_step_fn(step)
@@ -360,9 +366,12 @@ class PlaybookEngine:
 
         for edge in playbook.edges:
             if edge.condition:
+                _to = edge.to_step_id
                 builder.add_conditional_edges(
                     edge.from_step_id,
-                    lambda state, cond=edge.condition: edge.to_step_id if state.get("error") is None else END,
+                    lambda state, cond=edge.condition, to=_to: (
+                        to if state.get("error") is None else END
+                    ),
                 )
             else:
                 builder.add_edge(edge.from_step_id, edge.to_step_id)
@@ -408,11 +417,11 @@ class PlaybookEngine:
         self,
         playbook: Playbook,
         agent: Any,
-        input_data: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        input_data: dict[str, Any],
+    ) -> dict[str, Any]:
         """Execute playbook steps sequentially (fallback when LangGraph unavailable)."""
-        step_results: Dict[str, Any] = {}
-        error: Optional[str] = None
+        step_results: dict[str, Any] = {}
+        error: str | None = None
 
         current_step_id = playbook.entry_step_id
         visited = set()
@@ -428,7 +437,10 @@ class PlaybookEngine:
                 if tool and tool.func:
                     result = await tool.func(**input_data)
                 else:
-                    result = {"skipped": True, "reason": f"Tool {step.tool_name} not found"}
+                    result = {
+                        "skipped": True,
+                        "reason": f"Tool {step.tool_name} not found",
+                    }
                 step_results[step.id] = result
             except Exception as e:
                 step_results[step.id] = {"error": str(e)}
@@ -456,16 +468,16 @@ class PlaybookEngine:
         """Register a playbook (manually or from extraction)."""
         self._playbooks[playbook.id] = playbook
 
-    def get_playbook(self, playbook_id: str) -> Optional[Playbook]:
+    def get_playbook(self, playbook_id: str) -> Playbook | None:
         """Get a playbook by ID."""
         return self._playbooks.get(playbook_id)
 
     def list_playbooks(
         self,
-        category: Optional[str] = None,
-        tenant_id: Optional[str] = None,
-        status: Optional[PlaybookStatus] = None,
-    ) -> List[Playbook]:
+        category: str | None = None,
+        tenant_id: str | None = None,
+        status: PlaybookStatus | None = None,
+    ) -> list[Playbook]:
         """List playbooks with optional filters."""
         results = list(self._playbooks.values())
         if category:
@@ -485,7 +497,7 @@ class PlaybookEngine:
             return True
         return False
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get playbook engine statistics."""
         active = [pb for pb in self._playbooks.values() if pb.status == PlaybookStatus.ACTIVE]
         total_executions = sum(pb.execution_count for pb in self._playbooks.values())

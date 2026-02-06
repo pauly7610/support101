@@ -8,7 +8,8 @@ from apps.backend.main import app as backend_app
 
 
 @pytest.mark.skipif(
-    not os.getenv("OPENAI_API_KEY"), reason="Requires OPENAI_API_KEY environment variable"
+    not os.getenv("OPENAI_API_KEY"),
+    reason="Requires OPENAI_API_KEY environment variable",
 )
 def test_api_key_masking_in_error():
     client = TestClient(backend_app)
@@ -29,7 +30,8 @@ def test_api_key_masking_in_error():
 
 
 @pytest.mark.skipif(
-    not os.getenv("OPENAI_API_KEY"), reason="Requires OPENAI_API_KEY environment variable"
+    not os.getenv("OPENAI_API_KEY"),
+    reason="Requires OPENAI_API_KEY environment variable",
 )
 @pytest.mark.asyncio
 async def test_rate_limiting_on_generate_reply(async_client):

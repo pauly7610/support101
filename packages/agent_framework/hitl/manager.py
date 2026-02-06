@@ -10,15 +10,15 @@ Provides a unified interface for:
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
-
-logger = logging.getLogger(__name__)
+from typing import Any
 
 from ..core.agent_registry import AgentRegistry
 from ..core.base_agent import AgentStatus, BaseAgent
 from ..governance.audit import AuditEventType, AuditLogger
 from .escalation import EscalationLevel, EscalationManager
 from .queue import HITLPriority, HITLQueue, HITLRequest, HITLRequestType
+
+logger = logging.getLogger(__name__)
 
 
 class HITLManager:
@@ -35,9 +35,9 @@ class HITLManager:
 
     def __init__(
         self,
-        registry: Optional[AgentRegistry] = None,
-        audit_logger: Optional[AuditLogger] = None,
-        feedback_collector: Optional[Any] = None,
+        registry: AgentRegistry | None = None,
+        audit_logger: AuditLogger | None = None,
+        feedback_collector: Any | None = None,
     ) -> None:
         self.registry = registry or AgentRegistry()
         self.audit_logger = audit_logger or AuditLogger()
@@ -45,8 +45,8 @@ class HITLManager:
         self.queue = HITLQueue()
         self.escalation_manager = EscalationManager(self.queue)
 
-        self._reviewers: Dict[str, Dict[str, Any]] = {}
-        self._reviewer_workloads: Dict[str, int] = {}
+        self._reviewers: dict[str, dict[str, Any]] = {}
+        self._reviewer_workloads: dict[str, int] = {}
         self._max_workload_per_reviewer: int = 10
 
         self._setup_callbacks()
@@ -83,7 +83,9 @@ class HITLManager:
             outcome="breached",
             details={
                 "request_id": request.request_id,
-                "sla_deadline": request.sla_deadline.isoformat() if request.sla_deadline else None,
+                "sla_deadline": (
+                    request.sla_deadline.isoformat() if request.sla_deadline else None
+                ),
                 "time_in_queue_seconds": request.time_in_queue().total_seconds(),
             },
         )
@@ -111,8 +113,8 @@ class HITLManager:
         reviewer_id: str,
         tenant_id: str,
         name: str,
-        skills: Optional[List[str]] = None,
-        max_workload: Optional[int] = None,
+        skills: list[str] | None = None,
+        max_workload: int | None = None,
     ) -> None:
         """Register a human reviewer."""
         self._reviewers[reviewer_id] = {
@@ -138,8 +140,8 @@ class HITLManager:
         self,
         agent: BaseAgent,
         action: str,
-        context: Dict[str, Any],
-        options: Optional[List[str]] = None,
+        context: dict[str, Any],
+        options: list[str] | None = None,
     ) -> HITLRequest:
         """
         Request human approval for an agent action.
@@ -185,8 +187,8 @@ class HITLManager:
         self,
         agent: BaseAgent,
         question: str,
-        context: Dict[str, Any],
-        options: Optional[List[str]] = None,
+        context: dict[str, Any],
+        options: list[str] | None = None,
     ) -> HITLRequest:
         """Request human feedback/clarification."""
         if not agent.state:
@@ -219,7 +221,7 @@ class HITLManager:
         self,
         agent: BaseAgent,
         content: str,
-        context: Dict[str, Any],
+        context: dict[str, Any],
     ) -> HITLRequest:
         """Request human review of agent output."""
         if not agent.state:
@@ -244,7 +246,7 @@ class HITLManager:
     async def provide_response(
         self,
         request_id: str,
-        response: Dict[str, Any],
+        response: dict[str, Any],
         reviewer_id: str,
     ) -> bool:
         """
@@ -310,7 +312,7 @@ class HITLManager:
     async def _send_to_feedback_collector(
         self,
         request: HITLRequest,
-        response: Dict[str, Any],
+        response: dict[str, Any],
         reviewer_id: str,
     ) -> None:
         """Route HITL outcome to the FeedbackCollector for learning."""
@@ -334,7 +336,9 @@ class HITLManager:
             )
         elif decision == "reject":
             await self.feedback_collector.record_failure(
-                trace=trace, reason=response.get("reason", ""), tenant_id=request.tenant_id
+                trace=trace,
+                reason=response.get("reason", ""),
+                tenant_id=request.tenant_id,
             )
         elif decision in ("modify", "edit"):
             await self.feedback_collector.record_correction(
@@ -349,8 +353,8 @@ class HITLManager:
         agent: BaseAgent,
         reason: str,
         level: EscalationLevel = EscalationLevel.L2,
-        context: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Manually escalate an agent's current task."""
         if not agent.state:
             raise RuntimeError("Agent state not initialized")
@@ -366,9 +370,9 @@ class HITLManager:
 
     def get_pending_requests(
         self,
-        tenant_id: Optional[str] = None,
-        reviewer_id: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        tenant_id: str | None = None,
+        reviewer_id: str | None = None,
+    ) -> list[dict[str, Any]]:
         """Get pending HITL requests."""
         if reviewer_id:
             requests = self.queue.get_user_assignments(reviewer_id)
@@ -377,7 +381,7 @@ class HITLManager:
 
         return [r.to_dict() for r in requests]
 
-    def get_reviewer_dashboard(self, reviewer_id: str) -> Dict[str, Any]:
+    def get_reviewer_dashboard(self, reviewer_id: str) -> dict[str, Any]:
         """Get dashboard data for a reviewer."""
         reviewer = self._reviewers.get(reviewer_id)
         if not reviewer:
@@ -400,7 +404,7 @@ class HITLManager:
             "queue_stats": self.queue.get_queue_stats(tenant_id),
         }
 
-    def get_stats(self, tenant_id: Optional[str] = None) -> Dict[str, Any]:
+    def get_stats(self, tenant_id: str | None = None) -> dict[str, Any]:
         """Get comprehensive HITL statistics."""
         queue_stats = self.queue.get_queue_stats(tenant_id)
         escalation_stats = self.escalation_manager.get_escalation_stats(tenant_id)
