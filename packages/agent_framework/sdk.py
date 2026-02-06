@@ -18,6 +18,13 @@ from .multitenancy.isolation import TenantIsolator
 from .multitenancy.tenant import Tenant, TenantTier
 from .multitenancy.tenant_manager import TenantManager
 from .observability.evalai_tracer import EvalAITracer
+from .templates.code_review_agent import CodeReviewBlueprint
+from .templates.compliance_auditor_agent import ComplianceAuditorBlueprint
+from .templates.data_analyst_agent import DataAnalystBlueprint
+from .templates.knowledge_manager_agent import KnowledgeManagerBlueprint
+from .templates.onboarding_agent import OnboardingBlueprint
+from .templates.qa_test_agent import QATestBlueprint
+from .templates.sentiment_monitor_agent import SentimentMonitorBlueprint
 from .templates.support_agent import SupportAgentBlueprint
 from .templates.triage_agent import TriageAgentBlueprint
 
@@ -91,6 +98,13 @@ class AgentFramework:
         """Register built-in agent blueprints."""
         self.registry.register_blueprint(SupportAgentBlueprint)
         self.registry.register_blueprint(TriageAgentBlueprint)
+        self.registry.register_blueprint(DataAnalystBlueprint)
+        self.registry.register_blueprint(CodeReviewBlueprint)
+        self.registry.register_blueprint(QATestBlueprint)
+        self.registry.register_blueprint(KnowledgeManagerBlueprint)
+        self.registry.register_blueprint(SentimentMonitorBlueprint)
+        self.registry.register_blueprint(OnboardingBlueprint)
+        self.registry.register_blueprint(ComplianceAuditorBlueprint)
 
     async def _audit_execution_event(self, event: Dict[str, Any]) -> None:
         """Callback for execution audit events."""

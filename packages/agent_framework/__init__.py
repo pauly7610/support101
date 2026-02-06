@@ -73,6 +73,13 @@ from .resilience.retry import (
     with_retry,
 )
 from .sdk import AgentFramework, create_framework
+from .templates.code_review_agent import CodeReviewAgent, CodeReviewBlueprint
+from .templates.compliance_auditor_agent import ComplianceAuditorAgent, ComplianceAuditorBlueprint
+from .templates.data_analyst_agent import DataAnalystAgent, DataAnalystBlueprint
+from .templates.knowledge_manager_agent import KnowledgeManagerAgent, KnowledgeManagerBlueprint
+from .templates.onboarding_agent import OnboardingAgent, OnboardingBlueprint
+from .templates.qa_test_agent import QATestAgent, QATestBlueprint
+from .templates.sentiment_monitor_agent import SentimentMonitorAgent, SentimentMonitorBlueprint
 from .templates.support_agent import SupportAgent, SupportAgentBlueprint
 from .templates.triage_agent import TriageAgent, TriageAgentBlueprint
 from .validation.blueprint import BlueprintValidator, ValidationError, ValidationResult
@@ -96,6 +103,20 @@ __all__ = [
     "SupportAgent",
     "TriageAgentBlueprint",
     "TriageAgent",
+    "DataAnalystBlueprint",
+    "DataAnalystAgent",
+    "CodeReviewBlueprint",
+    "CodeReviewAgent",
+    "QATestBlueprint",
+    "QATestAgent",
+    "KnowledgeManagerBlueprint",
+    "KnowledgeManagerAgent",
+    "SentimentMonitorBlueprint",
+    "SentimentMonitorAgent",
+    "OnboardingBlueprint",
+    "OnboardingAgent",
+    "ComplianceAuditorBlueprint",
+    "ComplianceAuditorAgent",
     # Governance
     "AgentPermissions",
     "Permission",
