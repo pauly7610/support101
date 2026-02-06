@@ -205,16 +205,14 @@ class ActivityGraph:
             return len(result) > 0
 
         # In-memory fallback
-        self._edges.append(
-            {
-                "label": edge.label,
-                "from_id": edge.from_id,
-                "from_label": edge.from_label,
-                "to_id": edge.to_id,
-                "to_label": edge.to_label,
-                "properties": edge.properties,
-            }
-        )
+        self._edges.append({
+            "label": edge.label,
+            "from_id": edge.from_id,
+            "from_label": edge.from_label,
+            "to_id": edge.to_id,
+            "to_label": edge.to_label,
+            "properties": edge.properties,
+        })
         return True
 
     # ── High-Level Operations ─────────────────────────────────

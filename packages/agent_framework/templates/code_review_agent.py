@@ -198,9 +198,10 @@ class CodeReviewAgent(BaseAgent):
         validated = CodeReviewInput(code=code, language=language)
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.SECURITY_PROMPT | self.llm
-            result = await chain.ainvoke(
-                {"code": validated.code[:5000], "language": validated.language}
-            )
+            result = await chain.ainvoke({
+                "code": validated.code[:5000],
+                "language": validated.language,
+            })
             timer.set_tokens(
                 input_tokens=len(validated.code) // 4,
                 output_tokens=len(result.content) // 4,
@@ -225,9 +226,10 @@ class CodeReviewAgent(BaseAgent):
         validated = CodeReviewInput(code=code, language=language)
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.QUALITY_PROMPT | self.llm
-            result = await chain.ainvoke(
-                {"code": validated.code[:5000], "language": validated.language}
-            )
+            result = await chain.ainvoke({
+                "code": validated.code[:5000],
+                "language": validated.language,
+            })
             timer.set_tokens(
                 input_tokens=len(validated.code) // 4,
                 output_tokens=len(result.content) // 4,
@@ -253,9 +255,10 @@ class CodeReviewAgent(BaseAgent):
         validated = CodeReviewInput(code=code, language=language)
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.PERFORMANCE_PROMPT | self.llm
-            result = await chain.ainvoke(
-                {"code": validated.code[:5000], "language": validated.language}
-            )
+            result = await chain.ainvoke({
+                "code": validated.code[:5000],
+                "language": validated.language,
+            })
             timer.set_tokens(
                 input_tokens=len(validated.code) // 4,
                 output_tokens=len(result.content) // 4,
@@ -280,13 +283,11 @@ class CodeReviewAgent(BaseAgent):
         """Generate overall review summary."""
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.SUMMARY_PROMPT | self.llm
-            result = await chain.ainvoke(
-                {
-                    "security": json.dumps(security, indent=2),
-                    "quality": json.dumps(quality, indent=2),
-                    "performance": json.dumps(performance, indent=2),
-                }
-            )
+            result = await chain.ainvoke({
+                "security": json.dumps(security, indent=2),
+                "quality": json.dumps(quality, indent=2),
+                "performance": json.dumps(performance, indent=2),
+            })
             timer.set_tokens(input_tokens=300, output_tokens=len(result.content) // 4)
         try:
             summary = json.loads(result.content)

@@ -231,13 +231,11 @@ class PlaybookEngine:
                     "Be specific about what it does."
                 )
                 chain = prompt | self._llm
-                result = await chain.ainvoke(
-                    {
-                        "category": category,
-                        "steps": " → ".join(common_steps),
-                        "count": len(resolutions),
-                    }
-                )
+                result = await chain.ainvoke({
+                    "category": category,
+                    "steps": " → ".join(common_steps),
+                    "count": len(resolutions),
+                })
                 description = result.content.strip()
             except Exception as e:
                 logger.debug("PlaybookEngine: LLM description generation failed: %s", e)

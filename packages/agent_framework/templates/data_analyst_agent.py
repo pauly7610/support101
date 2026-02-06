@@ -147,13 +147,11 @@ class DataAnalystAgent(BaseAgent):
         )
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.ANALYSIS_PROMPT | self.llm
-            result = await chain.ainvoke(
-                {
-                    "data_sample": validated.data_sample[:3000],
-                    "description": validated.description,
-                    "analysis_type": validated.analysis_type,
-                }
-            )
+            result = await chain.ainvoke({
+                "data_sample": validated.data_sample[:3000],
+                "description": validated.description,
+                "analysis_type": validated.analysis_type,
+            })
             timer.set_tokens(
                 input_tokens=len(validated.data_sample) // 4,
                 output_tokens=len(result.content) // 4,
@@ -182,12 +180,10 @@ class DataAnalystAgent(BaseAgent):
         validated = GenerateInsightsInput(analysis=analysis, context=context)
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.INSIGHT_PROMPT | self.llm
-            result = await chain.ainvoke(
-                {
-                    "analysis": json.dumps(validated.analysis, indent=2),
-                    "context": validated.context or "General business analysis",
-                }
-            )
+            result = await chain.ainvoke({
+                "analysis": json.dumps(validated.analysis, indent=2),
+                "context": validated.context or "General business analysis",
+            })
             timer.set_tokens(input_tokens=200, output_tokens=len(result.content) // 4)
         try:
             insights = json.loads(result.content)
@@ -222,13 +218,11 @@ class DataAnalystAgent(BaseAgent):
         )
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.QUERY_PROMPT | self.llm
-            result = await chain.ainvoke(
-                {
-                    "question": validated.question,
-                    "data_context": validated.data_context,
-                    "previous_analysis": validated.previous_analysis,
-                }
-            )
+            result = await chain.ainvoke({
+                "question": validated.question,
+                "data_context": validated.data_context,
+                "previous_analysis": validated.previous_analysis,
+            })
             timer.set_tokens(
                 input_tokens=len(validated.question) // 4,
                 output_tokens=len(result.content) // 4,

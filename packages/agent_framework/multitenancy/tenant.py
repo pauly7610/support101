@@ -6,12 +6,12 @@ Defines tenant structure for multi-tenant agent deployment.
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import uuid4
 
 
-class TenantStatus(str, Enum):
+class TenantStatus(StrEnum):
     """Tenant lifecycle status."""
 
     ACTIVE = "active"
@@ -20,7 +20,7 @@ class TenantStatus(str, Enum):
     DEACTIVATED = "deactivated"
 
 
-class TenantTier(str, Enum):
+class TenantTier(StrEnum):
     """Tenant subscription tiers."""
 
     FREE = "free"

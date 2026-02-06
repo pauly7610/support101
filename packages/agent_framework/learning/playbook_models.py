@@ -8,12 +8,12 @@ sequences that agents can follow instead of planning from scratch.
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import uuid4
 
 
-class PlaybookStatus(str, Enum):
+class PlaybookStatus(StrEnum):
     """Lifecycle status of a playbook."""
 
     DRAFT = "draft"
@@ -22,7 +22,7 @@ class PlaybookStatus(str, Enum):
     ARCHIVED = "archived"
 
 
-class StepType(str, Enum):
+class StepType(StrEnum):
     """Types of playbook steps."""
 
     TOOL_CALL = "tool_call"

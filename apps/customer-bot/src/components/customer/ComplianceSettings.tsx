@@ -4,7 +4,7 @@ import { requestCcpaOptout, requestGdprDelete } from '../../api';
 export default function ComplianceSettings({ userId }: { userId?: string }) {
   const [gdprStatus, setGdprStatus] = useState('');
   const [ccpaStatus, setCcpaStatus] = useState('');
-  const [loading, setLoading] = useState(null);
+  const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState('');
 
   async function handleGdprDelete() {

@@ -6,14 +6,33 @@ import CitationPopup from './CitationPopup';
 const CHAT_HISTORY_KEY = 'chat_history';
 const sentiment = new Sentiment(undefined);
 
-// Chat message structure; no explicit types per coding standards
-// Each agent message may include a citations array
+interface Citation {
+  excerpt: string;
+  confidence: number;
+  lastUpdated: string;
+  sourceUrl?: string;
+  idx?: number;
+}
 
-function saveHistory(history) {
+interface ChatMessage {
+  sender: string;
+  text: string;
+  timestamp: number;
+  sentiment?: string;
+  citations?: Citation[];
+  error?: boolean;
+}
+
+interface CitationPopupState {
+  open: boolean;
+  citation: (Citation & { idx: number }) | null;
+}
+
+function saveHistory(history: ChatMessage[]): void {
   idb.set(CHAT_HISTORY_KEY, history);
 }
-async function loadHistory() {
-  return (await idb.get(CHAT_HISTORY_KEY)) || [];
+async function loadHistory(): Promise<ChatMessage[]> {
+  return (await idb.get<ChatMessage[]>(CHAT_HISTORY_KEY)) || [];
 }
 
 // Real ML sentiment analysis
@@ -38,7 +57,7 @@ export default function ChatWidget() {
   const [feedback, setFeedback] = useState('');
   const [feedbackSent, setFeedbackSent] = useState(false);
 
-  async function handleFeedbackSubmit(event: SubmitEvent) {
+  async function handleFeedbackSubmit(event: React.FormEvent) {
     event.preventDefault();
     await fetch('/feedback', {
       method: 'POST',
@@ -53,12 +72,12 @@ export default function ChatWidget() {
     }, 2000);
   }
 
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [escalate, setEscalate] = useState(false);
   const [theme, setTheme] = useState('light');
-  const [citationPopup, setCitationPopup] = useState({ open: false, citation: null });
-  const chatEndRef = useRef(null);
+  const [citationPopup, setCitationPopup] = useState<CitationPopupState>({ open: false, citation: null });
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Load chat history from IndexedDB
   useEffect(() => {
@@ -77,14 +96,14 @@ export default function ChatWidget() {
   }, [messages]);
 
   // Keyboard accessibility for input: Enter to send, Shift+Enter for newline
-  async function handleInputKeyDown(e: KeyboardEvent) {
+  async function handleInputKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       await sendMessage();
     }
   }
 
-  async function handleSend(e: SubmitEvent) {
+  async function handleSend(e: React.FormEvent) {
     e.preventDefault();
     await sendMessage();
   }

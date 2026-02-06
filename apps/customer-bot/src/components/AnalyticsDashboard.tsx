@@ -21,7 +21,7 @@ export default function AnalyticsDashboard() {
   const [feedback, setFeedback] = useState('');
   const [feedbackSent, setFeedbackSent] = useState(false);
 
-  async function handleFeedbackSubmit(event: SubmitEvent) {
+  async function handleFeedbackSubmit(event: React.FormEvent) {
     event.preventDefault();
     await fetch('/feedback', {
       method: 'POST',
@@ -39,10 +39,10 @@ export default function AnalyticsDashboard() {
   const [userId, setUserId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [analytics, setAnalytics] = useState(null);
-  const [trend, setTrend] = useState([]);
-  const [trendLabels, setTrendLabels] = useState([]);
-  const [userBreakdown, setUserBreakdown] = useState({});
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [trend, setTrend] = useState<number[]>([]);
+  const [trendLabels, setTrendLabels] = useState<string[]>([]);
+  const [userBreakdown, setUserBreakdown] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {

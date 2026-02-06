@@ -13,14 +13,14 @@ import json
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import uuid4
 
 logger = logging.getLogger(__name__)
 
 
-class FeedbackOutcome(str, Enum):
+class FeedbackOutcome(StrEnum):
     """Outcome types for feedback signals."""
 
     APPROVED = "approved"

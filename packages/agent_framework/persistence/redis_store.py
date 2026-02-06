@@ -58,14 +58,12 @@ class RedisStateStore(StateStore):
     ) -> bool:
         client = await self._get_client()
         key = self._key("state", agent_id, execution_id)
-        data = json.dumps(
-            {
-                "agent_id": agent_id,
-                "execution_id": execution_id,
-                "state": state,
-                "saved_at": datetime.utcnow().isoformat(),
-            }
-        )
+        data = json.dumps({
+            "agent_id": agent_id,
+            "execution_id": execution_id,
+            "state": state,
+            "saved_at": datetime.utcnow().isoformat(),
+        })
 
         if ttl_seconds:
             await client.setex(key, ttl_seconds, data)
@@ -118,12 +116,10 @@ class RedisStateStore(StateStore):
     ) -> bool:
         client = await self._get_client()
         key = self._key("hitl", request_id)
-        data = json.dumps(
-            {
-                **request_data,
-                "saved_at": datetime.utcnow().isoformat(),
-            }
-        )
+        data = json.dumps({
+            **request_data,
+            "saved_at": datetime.utcnow().isoformat(),
+        })
 
         if ttl_seconds:
             await client.setex(key, ttl_seconds, data)

@@ -123,12 +123,10 @@ class InMemoryStateStore(StateStore):
         event_id: str,
         event_data: dict[str, Any],
     ) -> bool:
-        self._audit_events.append(
-            {
-                "event_id": event_id,
-                **event_data,
-            }
-        )
+        self._audit_events.append({
+            "event_id": event_id,
+            **event_data,
+        })
         return True
 
     async def query_audit_events(

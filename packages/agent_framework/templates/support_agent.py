@@ -352,27 +352,25 @@ class SupportAgent(BaseAgent):
         history: list[dict[str, str]],
     ) -> dict[str, Any]:
         """Generate response using RAG context."""
-        context_str = "\n\n".join(
-            [f"[Source: {c.get('source', 'Unknown')}]\n{c.get('content', '')}" for c in context]
-        )
+        context_str = "\n\n".join([
+            f"[Source: {c.get('source', 'Unknown')}]\n{c.get('content', '')}" for c in context
+        ])
 
         history_str = (
-            "\n".join(
-                [f"{msg.get('role', 'user')}: {msg.get('content', '')}" for msg in history[-5:]]
-            )
+            "\n".join([
+                f"{msg.get('role', 'user')}: {msg.get('content', '')}" for msg in history[-5:]
+            ])
             if history
             else "No previous conversation"
         )
 
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.RESPONSE_PROMPT | self.llm
-            result = await chain.ainvoke(
-                {
-                    "query": query,
-                    "context": context_str,
-                    "history": history_str,
-                }
-            )
+            result = await chain.ainvoke({
+                "query": query,
+                "context": context_str,
+                "history": history_str,
+            })
             timer.set_tokens(
                 input_tokens=(len(query) + len(context_str) + len(history_str)) // 4,
                 output_tokens=len(result.content) // 4,

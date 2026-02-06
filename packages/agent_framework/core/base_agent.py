@@ -13,14 +13,14 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
 
-class AgentStatus(str, Enum):
+class AgentStatus(StrEnum):
     """Agent lifecycle status."""
 
     IDLE = "idle"
@@ -197,13 +197,11 @@ class BaseAgent(ABC):
         if self.state.status != AgentStatus.AWAITING_HUMAN:
             raise RuntimeError("Agent is not awaiting human feedback")
 
-        self.state.intermediate_steps.append(
-            {
-                "type": "human_feedback",
-                "feedback": feedback,
-                "timestamp": datetime.utcnow().isoformat(),
-            }
-        )
+        self.state.intermediate_steps.append({
+            "type": "human_feedback",
+            "feedback": feedback,
+            "timestamp": datetime.utcnow().isoformat(),
+        })
         self.state.human_feedback_request = None
         self.state.status = AgentStatus.RUNNING
 

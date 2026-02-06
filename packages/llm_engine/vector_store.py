@@ -78,18 +78,16 @@ async def upsert_documents_to_pinecone(
     contents = [doc.content for doc in documents]
     embeddings_list = list(embedding_model.embed(contents))
     for i, doc in enumerate(documents):
-        vectors_to_upsert.append(
-            {
-                "id": doc.id,
-                "values": embeddings_list[i].tolist(),
-                "metadata": {
-                    "text": doc.content,
-                    "source_url": str(doc.source_url),
-                    "title": doc.title,
-                    **doc.metadata,
-                },
-            }
-        )
+        vectors_to_upsert.append({
+            "id": doc.id,
+            "values": embeddings_list[i].tolist(),
+            "metadata": {
+                "text": doc.content,
+                "source_url": str(doc.source_url),
+                "title": doc.title,
+                **doc.metadata,
+            },
+        })
         if len(vectors_to_upsert) >= batch_size:
             index.upsert(vectors=vectors_to_upsert, namespace=namespace)
             num_upserted += len(vectors_to_upsert)

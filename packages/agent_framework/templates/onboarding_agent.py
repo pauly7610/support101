@@ -187,12 +187,10 @@ class OnboardingAgent(BaseAgent):
         validated = AssessCustomerInput(customer_info=customer_info, product=product)
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.ASSESSMENT_PROMPT | self.llm
-            result = await chain.ainvoke(
-                {
-                    "customer_info": json.dumps(validated.customer_info, indent=2),
-                    "product": validated.product,
-                }
-            )
+            result = await chain.ainvoke({
+                "customer_info": json.dumps(validated.customer_info, indent=2),
+                "product": validated.product,
+            })
             timer.set_tokens(input_tokens=200, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
@@ -215,12 +213,10 @@ class OnboardingAgent(BaseAgent):
         validated = GenerateChecklistInput(assessment=assessment, product=product)
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.CHECKLIST_PROMPT | self.llm
-            result = await chain.ainvoke(
-                {
-                    "assessment": json.dumps(validated.assessment, indent=2),
-                    "product": validated.product,
-                }
-            )
+            result = await chain.ainvoke({
+                "assessment": json.dumps(validated.assessment, indent=2),
+                "product": validated.product,
+            })
             timer.set_tokens(input_tokens=200, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
@@ -248,14 +244,12 @@ class OnboardingAgent(BaseAgent):
         )
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.GUIDANCE_PROMPT | self.llm
-            result = await chain.ainvoke(
-                {
-                    "step_title": validated.step_title,
-                    "step_description": validated.step_description,
-                    "experience_level": validated.experience_level,
-                    "question": validated.question or "How do I complete this step?",
-                }
-            )
+            result = await chain.ainvoke({
+                "step_title": validated.step_title,
+                "step_description": validated.step_description,
+                "experience_level": validated.experience_level,
+                "question": validated.question or "How do I complete this step?",
+            })
             timer.set_tokens(input_tokens=200, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
@@ -282,13 +276,11 @@ class OnboardingAgent(BaseAgent):
         )
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.COMPLETION_PROMPT | self.llm
-            result = await chain.ainvoke(
-                {
-                    "checklist": json.dumps(validated.checklist, indent=2),
-                    "completed_steps": json.dumps(validated.completed_steps),
-                    "customer_profile": json.dumps(validated.customer_profile, indent=2),
-                }
-            )
+            result = await chain.ainvoke({
+                "checklist": json.dumps(validated.checklist, indent=2),
+                "completed_steps": json.dumps(validated.completed_steps),
+                "customer_profile": json.dumps(validated.customer_profile, indent=2),
+            })
             timer.set_tokens(input_tokens=300, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)

@@ -18,8 +18,8 @@ function groupByDay(escalations: unknown[]) {
     .map(([day, count]) => ({ day, count }));
 }
 
-function Skeleton({ className }: { className?: string }) {
-  return <div className={cn('animate-pulse rounded bg-gray-200 dark:bg-slate-700', className)} />;
+function Skeleton({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return <div className={cn('animate-pulse rounded bg-gray-200 dark:bg-slate-700', className)} style={style} />;
 }
 
 function ChartSkeleton() {

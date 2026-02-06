@@ -223,13 +223,11 @@ class ComplianceAuditorAgent(BaseAgent):
         active_policies = validated.policies or self._policies
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.POLICY_CHECK_PROMPT | self.llm
-            result = await chain.ainvoke(
-                {
-                    "action": validated.action[:2000],
-                    "response": validated.response[:3000],
-                    "policies": ", ".join(active_policies),
-                }
-            )
+            result = await chain.ainvoke({
+                "action": validated.action[:2000],
+                "response": validated.response[:3000],
+                "policies": ", ".join(active_policies),
+            })
             timer.set_tokens(
                 input_tokens=(len(validated.action) + len(validated.response)) // 4,
                 output_tokens=len(result.content) // 4,
@@ -256,13 +254,11 @@ class ComplianceAuditorAgent(BaseAgent):
         )
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.REPORT_PROMPT | self.llm
-            result = await chain.ainvoke(
-                {
-                    "pii_results": json.dumps(validated.pii_results, indent=2),
-                    "policy_results": json.dumps(validated.policy_results, indent=2),
-                    "scope": validated.scope or "Full agent interaction audit",
-                }
-            )
+            result = await chain.ainvoke({
+                "pii_results": json.dumps(validated.pii_results, indent=2),
+                "policy_results": json.dumps(validated.policy_results, indent=2),
+                "scope": validated.scope or "Full agent interaction audit",
+            })
             timer.set_tokens(input_tokens=400, output_tokens=len(result.content) // 4)
         try:
             report = json.loads(result.content)

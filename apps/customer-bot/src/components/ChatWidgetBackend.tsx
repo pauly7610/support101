@@ -4,6 +4,17 @@ import * as idb from 'idb-keyval';
 import Sentiment from 'sentiment';
 import { generateSuggestedReply, reportEscalation } from '../api';
 
+interface ChatMessage {
+  sender: string;
+  text: string;
+  timestamp: number;
+  sentiment?: string;
+  sources?: string[];
+  error?: boolean;
+  image?: string | ArrayBuffer | null;
+  reaction?: string;
+}
+
 const CHAT_HISTORY_KEY = 'chat_history';
 const ESCALATION_LOG_KEY = 'escalation_log';
 const sentiment = new Sentiment(undefined);
@@ -14,7 +25,7 @@ function saveHistory(history: unknown[]) {
 async function loadHistory() {
   return (await idb.get(CHAT_HISTORY_KEY)) || [];
 }
-async function saveEscalation(escalation: unknown) {
+async function saveEscalation(escalation: Record<string, unknown>) {
   idb.get(ESCALATION_LOG_KEY).then((log: unknown[] = []) => {
     idb.set(ESCALATION_LOG_KEY, [...log, escalation]);
   });
@@ -45,7 +56,7 @@ function analyzeSentiment(text: string): 'urgent' | 'normal' {
 }
 
 export default function ChatWidgetBackend() {
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [escalate, setEscalate] = useState(false);
   const [theme, setTheme] = useState('light');
@@ -53,7 +64,7 @@ export default function ChatWidgetBackend() {
   const [typing, setTyping] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [unread, setUnread] = useState(0);
-  const chatEndRef = useRef(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadHistory().then(setMessages);
@@ -62,20 +73,20 @@ export default function ChatWidgetBackend() {
     saveHistory(messages);
   }, [messages]);
   useEffect(() => {
-    if (chatEndRef.current) chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (chatEndRef.current) (chatEndRef.current as HTMLDivElement).scrollIntoView({ behavior: 'smooth' });
   }, [messages, minimized]);
   useEffect(() => {
     if (!minimized) setUnread(0);
   }, [minimized]);
 
-  function handleInputKeyDown(e: KeyboardEvent) {
+  function handleInputKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
   }
 
-  async function handleSend(e: SubmitEvent) {
+  async function handleSend(e: React.FormEvent) {
     e.preventDefault();
     sendMessage();
   }
@@ -149,8 +160,8 @@ export default function ChatWidgetBackend() {
     setTheme((t) => (t === 'light' ? 'dark' : 'light'));
   }
 
-  function handleFileUpload(event: Event) {
-    const target = event.target as HTMLInputElement;
+  function handleFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const target = event.target;
     const file = target?.files ? target.files[0] : null;
     if (file) {
       const reader = new FileReader();
@@ -293,7 +304,7 @@ export default function ChatWidgetBackend() {
                   {msg.text}
                   {msg.image && (
                     <img
-                      src={msg.image}
+                      src={msg.image as string}
                       alt="uploaded"
                       className="mt-2 rounded max-w-[180px] max-h-[120px] border"
                     />
@@ -329,7 +340,7 @@ export default function ChatWidgetBackend() {
                       {msg.sources.map((s: string, idx: number) => (
                         <span key={idx}>
                           {s}
-                          {idx < msg.sources.length - 1 ? ', ' : ''}
+                          {idx < (msg.sources?.length ?? 0) - 1 ? ', ' : ''}
                         </span>
                       ))}
                     </div>

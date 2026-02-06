@@ -128,15 +128,13 @@ class VectorStoreService:
                 if score < min_score:
                     continue
                 meta = match.get("metadata", {})
-                results.append(
-                    {
-                        "id": match.get("id", ""),
-                        "content": meta.get("text", ""),
-                        "source": meta.get("source_url", ""),
-                        "title": meta.get("title", ""),
-                        "score": score,
-                    }
-                )
+                results.append({
+                    "id": match.get("id", ""),
+                    "content": meta.get("text", ""),
+                    "source": meta.get("source_url", ""),
+                    "title": meta.get("title", ""),
+                    "score": score,
+                })
             return results
         except Exception as e:
             logger.warning("VectorStoreService: search failed: %s", e)
@@ -165,13 +163,11 @@ class VectorStoreService:
         for i, doc in enumerate(documents):
             meta = doc.get("metadata", {})
             meta["text"] = doc.get("content", "")[:5000]
-            vectors.append(
-                {
-                    "id": doc["id"],
-                    "values": embeddings[i],
-                    "metadata": meta,
-                }
-            )
+            vectors.append({
+                "id": doc["id"],
+                "values": embeddings[i],
+                "metadata": meta,
+            })
 
         upserted = 0
         try:

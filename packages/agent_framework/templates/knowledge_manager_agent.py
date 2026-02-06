@@ -190,9 +190,9 @@ class KnowledgeManagerAgent(BaseAgent):
             validated = AuditContentInput(articles=db_articles) if db_articles else validated
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.AUDIT_PROMPT | self.llm
-            result = await chain.ainvoke(
-                {"articles": json.dumps(validated.articles[:20], indent=2)}
-            )
+            result = await chain.ainvoke({
+                "articles": json.dumps(validated.articles[:20], indent=2)
+            })
             timer.set_tokens(input_tokens=500, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
@@ -209,12 +209,10 @@ class KnowledgeManagerAgent(BaseAgent):
         validated = FindGapsInput(queries=queries, existing_topics=existing_topics)
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.GAP_ANALYSIS_PROMPT | self.llm
-            result = await chain.ainvoke(
-                {
-                    "queries": "\n".join(f"- {q}" for q in validated.queries[:50]),
-                    "existing_topics": "\n".join(f"- {t}" for t in validated.existing_topics[:50]),
-                }
-            )
+            result = await chain.ainvoke({
+                "queries": "\n".join(f"- {q}" for q in validated.queries[:50]),
+                "existing_topics": "\n".join(f"- {t}" for t in validated.existing_topics[:50]),
+            })
             timer.set_tokens(input_tokens=300, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
@@ -226,9 +224,9 @@ class KnowledgeManagerAgent(BaseAgent):
         validated = DetectDuplicatesInput(articles=articles)
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.DEDUP_PROMPT | self.llm
-            result = await chain.ainvoke(
-                {"articles": json.dumps(validated.articles[:20], indent=2)}
-            )
+            result = await chain.ainvoke({
+                "articles": json.dumps(validated.articles[:20], indent=2)
+            })
             timer.set_tokens(input_tokens=500, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
@@ -244,13 +242,11 @@ class KnowledgeManagerAgent(BaseAgent):
         )
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.UPDATE_PROMPT | self.llm
-            result = await chain.ainvoke(
-                {
-                    "current_content": validated.current_content[:3000],
-                    "reason": validated.reason,
-                    "context": validated.context,
-                }
-            )
+            result = await chain.ainvoke({
+                "current_content": validated.current_content[:3000],
+                "reason": validated.reason,
+                "context": validated.context,
+            })
             timer.set_tokens(
                 input_tokens=len(validated.current_content) // 4,
                 output_tokens=len(result.content) // 4,

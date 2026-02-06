@@ -140,14 +140,12 @@ class InMemoryVectorStore:
             overlap = len(query_words & content_words)
             score = overlap / max(len(query_words), 1)
             if score > 0.3:
-                results.append(
-                    {
-                        "id": doc_id,
-                        "content": doc.get("content", ""),
-                        "score": min(score, 0.95),
-                        "metadata": meta,
-                    }
-                )
+                results.append({
+                    "id": doc_id,
+                    "content": doc.get("content", ""),
+                    "score": min(score, 0.95),
+                    "metadata": meta,
+                })
         results.sort(key=lambda x: x["score"], reverse=True)
         return results[:top_k]
 

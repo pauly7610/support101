@@ -30,22 +30,18 @@ class ValidationResult:
 
     def add_error(self, field: str, message: str, value: Any = None) -> None:
         self.valid = False
-        self.errors.append(
-            {
-                "field": field,
-                "message": message,
-                "value": value,
-            }
-        )
+        self.errors.append({
+            "field": field,
+            "message": message,
+            "value": value,
+        })
 
     def add_warning(self, field: str, message: str, value: Any = None) -> None:
-        self.warnings.append(
-            {
-                "field": field,
-                "message": message,
-                "value": value,
-            }
-        )
+        self.warnings.append({
+            "field": field,
+            "message": message,
+            "value": value,
+        })
 
     def merge(self, other: "ValidationResult") -> None:
         if not other.valid:

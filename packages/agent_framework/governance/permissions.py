@@ -10,11 +10,11 @@ Provides fine-grained access control for agents:
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class PermissionLevel(str, Enum):
+class PermissionLevel(StrEnum):
     """Permission access levels."""
 
     NONE = "none"

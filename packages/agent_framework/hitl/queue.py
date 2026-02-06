@@ -9,12 +9,12 @@ import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import uuid4
 
 
-class HITLRequestType(str, Enum):
+class HITLRequestType(StrEnum):
     """Types of HITL requests."""
 
     APPROVAL = "approval"
@@ -25,7 +25,7 @@ class HITLRequestType(str, Enum):
     CLARIFICATION = "clarification"
 
 
-class HITLRequestStatus(str, Enum):
+class HITLRequestStatus(StrEnum):
     """Status of HITL requests."""
 
     PENDING = "pending"
@@ -36,7 +36,7 @@ class HITLRequestStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-class HITLPriority(str, Enum):
+class HITLPriority(StrEnum):
     """Priority levels for HITL requests."""
 
     CRITICAL = "critical"

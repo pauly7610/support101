@@ -199,11 +199,9 @@ class SentimentMonitorAgent(BaseAgent):
         validated = TrackTrajectoryInput(sentiment_history=sentiment_history)
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.TRAJECTORY_PROMPT | self.llm
-            result = await chain.ainvoke(
-                {
-                    "sentiment_history": json.dumps(validated.sentiment_history, indent=2),
-                }
-            )
+            result = await chain.ainvoke({
+                "sentiment_history": json.dumps(validated.sentiment_history, indent=2),
+            })
             timer.set_tokens(input_tokens=300, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
@@ -227,13 +225,11 @@ class SentimentMonitorAgent(BaseAgent):
     ) -> dict[str, Any]:
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.SUMMARY_PROMPT | self.llm
-            result = await chain.ainvoke(
-                {
-                    "current_sentiment": json.dumps(current_sentiment),
-                    "trajectory": json.dumps(trajectory),
-                    "customer_context": customer_context or "No additional context",
-                }
-            )
+            result = await chain.ainvoke({
+                "current_sentiment": json.dumps(current_sentiment),
+                "trajectory": json.dumps(trajectory),
+                "customer_context": customer_context or "No additional context",
+            })
             timer.set_tokens(input_tokens=300, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)

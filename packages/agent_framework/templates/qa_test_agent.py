@@ -165,14 +165,12 @@ class QATestAgent(BaseAgent):
         )
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.TEST_GENERATION_PROMPT | self.llm
-            result = await chain.ainvoke(
-                {
-                    "agent_name": validated.agent_name,
-                    "agent_description": validated.agent_description,
-                    "sample_input": validated.sample_input,
-                    "sample_output": validated.sample_output,
-                }
-            )
+            result = await chain.ainvoke({
+                "agent_name": validated.agent_name,
+                "agent_description": validated.agent_description,
+                "sample_input": validated.sample_input,
+                "sample_output": validated.sample_output,
+            })
             timer.set_tokens(input_tokens=200, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
@@ -200,14 +198,12 @@ class QATestAgent(BaseAgent):
         )
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.VALIDATION_PROMPT | self.llm
-            result = await chain.ainvoke(
-                {
-                    "test_case": json.dumps(validated.test_case),
-                    "agent_input": json.dumps(validated.agent_input),
-                    "agent_output": json.dumps(validated.agent_output),
-                    "criteria": json.dumps(validated.criteria),
-                }
-            )
+            result = await chain.ainvoke({
+                "test_case": json.dumps(validated.test_case),
+                "agent_input": json.dumps(validated.agent_input),
+                "agent_output": json.dumps(validated.agent_output),
+                "criteria": json.dumps(validated.criteria),
+            })
             timer.set_tokens(input_tokens=300, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)
@@ -233,13 +229,11 @@ class QATestAgent(BaseAgent):
         )
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.REGRESSION_PROMPT | self.llm
-            result = await chain.ainvoke(
-                {
-                    "previous_output": json.dumps(validated.previous_output),
-                    "current_output": json.dumps(validated.current_output),
-                    "test_case": json.dumps(validated.test_case),
-                }
-            )
+            result = await chain.ainvoke({
+                "previous_output": json.dumps(validated.previous_output),
+                "current_output": json.dumps(validated.current_output),
+                "test_case": json.dumps(validated.test_case),
+            })
             timer.set_tokens(input_tokens=300, output_tokens=len(result.content) // 4)
         try:
             return json.loads(result.content)

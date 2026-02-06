@@ -223,12 +223,10 @@ async def execute_tool_call(
         return ToolResult(
             tool_call_id=tool_call.id,
             name=tool_call.name,
-            content=json.dumps(
-                {
-                    "error": f"Unknown tool: {tool_call.name}",
-                    "available_tools": [t.name for t in registry.list_tools()],
-                }
-            ),
+            content=json.dumps({
+                "error": f"Unknown tool: {tool_call.name}",
+                "available_tools": [t.name for t in registry.list_tools()],
+            }),
             is_error=True,
         )
 
@@ -250,13 +248,11 @@ async def execute_tool_call(
         return ToolResult(
             tool_call_id=tool_call.id,
             name=tool_call.name,
-            content=json.dumps(
-                {
-                    "error": f"Invalid arguments for {tool_call.name}: {e}",
-                    "provided_args": list(tool_call.arguments.keys()),
-                    "expected_params": list(tool_def.parameters.keys()),
-                }
-            ),
+            content=json.dumps({
+                "error": f"Invalid arguments for {tool_call.name}: {e}",
+                "provided_args": list(tool_call.arguments.keys()),
+                "expected_params": list(tool_def.parameters.keys()),
+            }),
             is_error=True,
         )
     except Exception as e:
@@ -264,13 +260,11 @@ async def execute_tool_call(
         return ToolResult(
             tool_call_id=tool_call.id,
             name=tool_call.name,
-            content=json.dumps(
-                {
-                    "error_type": "tool_execution_error",
-                    "message": str(e)[:500],
-                    "retryable": True,
-                }
-            ),
+            content=json.dumps({
+                "error_type": "tool_execution_error",
+                "message": str(e)[:500],
+                "retryable": True,
+            }),
             is_error=True,
         )
 

@@ -176,21 +176,19 @@ async def get_active_agents(
         if agent_summary.get("status") in ["running", "awaiting_human"]:
             agent = registry.get_agent(agent_summary["agent_id"])
             if agent and agent.state:
-                active.append(
-                    {
-                        "agent_id": agent.agent_id,
-                        "name": agent.config.name,
-                        "tenant_id": agent.tenant_id,
-                        "blueprint": agent.config.blueprint_name,
-                        "status": agent.state.status.value,
-                        "current_step": agent.state.current_step,
-                        "started_at": (
-                            agent.state.started_at.isoformat() if agent.state.started_at else None
-                        ),
-                        "execution_id": agent.state.execution_id,
-                        "has_human_request": agent.state.human_feedback_request is not None,
-                    }
-                )
+                active.append({
+                    "agent_id": agent.agent_id,
+                    "name": agent.config.name,
+                    "tenant_id": agent.tenant_id,
+                    "blueprint": agent.config.blueprint_name,
+                    "status": agent.state.status.value,
+                    "current_step": agent.state.current_step,
+                    "started_at": (
+                        agent.state.started_at.isoformat() if agent.state.started_at else None
+                    ),
+                    "execution_id": agent.state.execution_id,
+                    "has_human_request": agent.state.human_feedback_request is not None,
+                })
 
     return active
 

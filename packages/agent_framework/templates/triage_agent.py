@@ -112,13 +112,11 @@ class TriageAgent(BaseAgent):
         )
         async with LLMCallTimer(self._evalai_tracer, "openai", "gpt-4o") as timer:
             chain = self.TRIAGE_PROMPT | self.llm
-            result = await chain.ainvoke(
-                {
-                    "content": validated.content,
-                    "customer_tier": validated.customer_tier,
-                    "ticket_history": validated.ticket_history,
-                }
-            )
+            result = await chain.ainvoke({
+                "content": validated.content,
+                "customer_tier": validated.customer_tier,
+                "ticket_history": validated.ticket_history,
+            })
             timer.set_tokens(
                 input_tokens=len(validated.content) // 4,
                 output_tokens=len(result.content) // 4,

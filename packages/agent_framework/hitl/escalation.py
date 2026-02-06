@@ -11,14 +11,14 @@ Provides configurable escalation policies and rules for:
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import uuid4
 
 from .queue import HITLPriority, HITLQueue, HITLRequestType
 
 
-class EscalationTrigger(str, Enum):
+class EscalationTrigger(StrEnum):
     """Types of escalation triggers."""
 
     LOW_CONFIDENCE = "low_confidence"
@@ -32,7 +32,7 @@ class EscalationTrigger(str, Enum):
     MANUAL = "manual"
 
 
-class EscalationLevel(str, Enum):
+class EscalationLevel(StrEnum):
     """Escalation severity levels."""
 
     L1 = "l1"  # First-line support
