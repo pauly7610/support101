@@ -1,26 +1,47 @@
 import React from 'react';
-import { shadows } from '../../../theme';
+import { MessageCircle } from 'lucide-react';
+import { cn } from '../../../lib/utils';
 
 import PropTypes from 'prop-types';
 
-export default function FloatingChatButton({ onClick }) {
+export default function FloatingChatButton({ onClick, unreadCount = 0 }) {
   return (
     <button
-      aria-label="Open chat"
+      aria-label={unreadCount > 0 ? `Open chat (${unreadCount} unread)` : 'Open chat'}
       onClick={onClick}
-      className="fixed bottom-6 right-6 w-16 h-16 rounded-full flex items-center justify-center shadow-chat-float bg-gradient-to-br from-primary-blue to-primary-blue-dark text-white hover:scale-105 hover:shadow-lg transition-transform animate-pulse-slow z-50"
-      style={{ boxShadow: shadows.chatFloat }}
+      className={cn(
+        'fixed bottom-6 right-6 z-50',
+        'w-14 h-14 rounded-full',
+        'flex items-center justify-center',
+        'bg-gradient-to-br from-brand-500 to-brand-700',
+        'text-white shadow-chat-float',
+        'hover:scale-110 hover:shadow-glow',
+        'active:scale-95',
+        'transition-all duration-200 ease-out',
+        'focus:outline-none focus:ring-2 focus:ring-brand-400 focus:ring-offset-2',
+        'dark:from-brand-400 dark:to-brand-600 dark:focus:ring-offset-slate-900',
+      )}
     >
-      <svg width="24" height="24" fill="none" viewBox="0 0 24 24">
-        <path
-          d="M5 19l2.79-2.79A1 1 0 018.53 16H19a1 1 0 001-1V6a1 1 0 00-1-1H5a1 1 0 00-1 1v12a1 1 0 001 1z"
-          fill="currentColor"
-        />
-      </svg>
+      <MessageCircle className="w-6 h-6" strokeWidth={2} />
+      {unreadCount > 0 && (
+        <span
+          className={cn(
+            'absolute -top-1 -right-1',
+            'min-w-[20px] h-5 px-1.5',
+            'flex items-center justify-center',
+            'bg-red-500 text-white text-xs font-bold rounded-full',
+            'animate-scale-in',
+            'ring-2 ring-white dark:ring-slate-900',
+          )}
+        >
+          {unreadCount > 9 ? '9+' : unreadCount}
+        </span>
+      )}
     </button>
   );
 }
 
 FloatingChatButton.propTypes = {
   onClick: PropTypes.func.isRequired,
+  unreadCount: PropTypes.number,
 };

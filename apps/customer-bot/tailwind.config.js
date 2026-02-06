@@ -1,68 +1,102 @@
+/** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ['./pages/**/*.{js,ts,jsx,tsx}', './components/**/*.{js,ts,jsx,tsx}'],
+  darkMode: 'class',
+  content: [
+    './src/**/*.{js,ts,jsx,tsx}',
+    './pages/**/*.{js,ts,jsx,tsx}',
+    './components/**/*.{js,ts,jsx,tsx}',
+  ],
   theme: {
-    colors: {
-      'primary-blue': '#2563eb',
-      'primary-blue-dark': '#1d4ed8',
-      'primary-blue-light': '#3b82f6',
-      'success-green': '#10b981',
-      'warning-orange': '#f59e0b',
-      'error-red': '#ef4444',
-      'info-cyan': '#06b6d4',
-      'gray-50': '#f9fafb',
-      'gray-100': '#f3f4f6',
-      'gray-200': '#e5e7eb',
-      'gray-500': '#6b7280',
-      'gray-700': '#374151',
-      'gray-900': '#111827',
-      white: '#fff',
-      transparent: 'transparent',
-    },
-    spacing: {
-      1: '0.25rem',
-      2: '0.5rem',
-      4: '1rem',
-      6: '1.5rem',
-      8: '2rem',
-      12: '3rem',
-    },
-    fontSize: {
-      '4xl': ['2.25rem', { lineHeight: '2.5rem' }], // 36px
-      '3xl': ['1.875rem', { lineHeight: '2.25rem' }], // 30px
-      '2xl': ['1.5rem', { lineHeight: '2rem' }], // 24px
-      xl: ['1.25rem', { lineHeight: '1.75rem' }], // 20px
-      base: ['1rem', { lineHeight: '1.5rem' }], // 16px
-      sm: ['0.875rem', { lineHeight: '1.25rem' }], // 14px
-      xs: ['0.75rem', { lineHeight: '1rem' }], // 12px
-    },
-    container: {
-      center: true,
-      screens: {
-        sm: '640px',
-        md: '768px',
-        lg: '1024px',
-        xl: '1280px',
-        '2xl': '1536px',
-      },
-    },
     extend: {
+      colors: {
+        brand: {
+          50: '#eff6ff',
+          100: '#dbeafe',
+          200: '#bfdbfe',
+          300: '#93c5fd',
+          400: '#60a5fa',
+          500: '#2563eb',
+          600: '#1d4ed8',
+          700: '#1e40af',
+          800: '#1e3a8a',
+          900: '#172554',
+        },
+        // Keep legacy aliases for existing components
+        'primary-blue': '#2563eb',
+        'primary-blue-dark': '#1d4ed8',
+        'primary-blue-light': '#3b82f6',
+        'success-green': '#10b981',
+        'warning-orange': '#f59e0b',
+        'error-red': '#ef4444',
+        'info-cyan': '#06b6d4',
+      },
       boxShadow: {
-        'chat-float': '0 4px 12px rgba(37, 99, 235, 0.3)',
+        'chat-float': '0 4px 24px rgba(37, 99, 235, 0.25)',
+        'chat-window': '0 8px 40px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08)',
+        'glass': '0 8px 32px rgba(0, 0, 0, 0.08)',
+        'glow': '0 0 20px rgba(37, 99, 235, 0.15)',
       },
       borderRadius: {
         chat: '16px',
         bubble: '18px',
+        '2xl': '1rem',
+        '3xl': '1.5rem',
+      },
+      backdropBlur: {
+        xs: '2px',
       },
       keyframes: {
-        pulse: {
+        'fade-in': {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        'fade-in-up': {
+          '0%': { opacity: '0', transform: 'translateY(16px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'fade-in-down': {
+          '0%': { opacity: '0', transform: 'translateY(-16px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'slide-in-right': {
+          '0%': { opacity: '0', transform: 'translateX(24px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+        'slide-in-left': {
+          '0%': { opacity: '0', transform: 'translateX(-24px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+        'scale-in': {
+          '0%': { opacity: '0', transform: 'scale(0.9)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        'pulse-slow': {
           '0%, 100%': { transform: 'scale(1)' },
           '50%': { transform: 'scale(1.05)' },
         },
+        'bounce-dot': {
+          '0%, 80%, 100%': { transform: 'translateY(0)' },
+          '40%': { transform: 'translateY(-6px)' },
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
+        },
       },
       animation: {
-        'pulse-slow': 'pulse 3s infinite',
+        'fade-in': 'fade-in 0.3s ease-out',
+        'fade-in-up': 'fade-in-up 0.4s ease-out',
+        'fade-in-down': 'fade-in-down 0.4s ease-out',
+        'slide-in-right': 'slide-in-right 0.3s ease-out',
+        'slide-in-left': 'slide-in-left 0.3s ease-out',
+        'scale-in': 'scale-in 0.2s ease-out',
+        'pulse-slow': 'pulse-slow 3s infinite',
+        'bounce-dot': 'bounce-dot 1.4s infinite ease-in-out',
+        shimmer: 'shimmer 2s infinite linear',
       },
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/typography'),
+  ],
 };

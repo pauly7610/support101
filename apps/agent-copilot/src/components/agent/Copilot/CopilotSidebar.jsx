@@ -1,42 +1,65 @@
 import React, { useState, useEffect } from 'react';
+import { Sparkles, Copy, Check, X, Wifi, WifiOff, Send, Search, User, FileText, ExternalLink } from 'lucide-react';
 import { generateSuggestedReply } from '../../../api';
 import { useWebSocket } from '../../WebSocketProvider';
 import CitationPopup from '../../CitationPopup';
+
+function cn(...classes) {
+  return classes.filter(Boolean).join(' ');
+}
 
 function Toast({ message, type, onClose }) {
   useEffect(() => {
     if (!message) return;
     const t = setTimeout(onClose, 3500);
     return () => clearTimeout(t);
-  }, [message]);
+  }, [message, onClose]);
   if (!message) return null;
   return (
     <div
       role="status"
       aria-live="polite"
-      style={{
-        position: 'fixed',
-        bottom: 32,
-        right: 32,
-        background: type === 'error' ? '#ff4d4f' : '#222',
-        color: '#fff',
-        borderRadius: 8,
-        padding: '12px 24px',
-        fontSize: 15,
-        zIndex: 9999,
-        boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
-        minWidth: 180,
-        outline: 'none',
-      }}
-      tabIndex={0}
+      className={cn(
+        'fixed bottom-8 right-8 z-[9999]',
+        'px-4 py-3 rounded-xl shadow-lg',
+        'text-white text-sm font-medium',
+        'flex items-center gap-3',
+        'animate-fade-in-up',
+        type === 'error' ? 'bg-red-500' : 'bg-gray-900',
+      )}
     >
+      {type === 'error' ? <WifiOff className="w-4 h-4 flex-shrink-0" /> : <Wifi className="w-4 h-4 flex-shrink-0" />}
       {message}
       <button
         onClick={onClose}
-        style={{ marginLeft: 16, color: '#fff', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}
+        className="ml-2 hover:bg-white/20 rounded p-0.5 transition-colors"
         aria-label="Close notification"
-      >×</button>
+      >
+        <X className="w-3.5 h-3.5" />
+      </button>
     </div>
+  );
+}
+
+function ConnectionDot({ status }) {
+  const colors = {
+    open: 'bg-emerald-400',
+    connecting: 'bg-amber-400 animate-pulse',
+    closed: 'bg-gray-400',
+    error: 'bg-red-400',
+  };
+  return (
+    <span
+      tabIndex={0}
+      aria-label={`Connection status: ${status}`}
+      title={`Connection: ${status}`}
+      className={cn(
+        'w-2.5 h-2.5 rounded-full',
+        'ring-2 ring-white/30',
+        'transition-colors duration-200',
+        colors[status] || colors.closed,
+      )}
+    />
   );
 }
 
@@ -47,13 +70,11 @@ export default function CopilotSidebar() {
   const [suggested, setSuggested] = useState(null);
   const [tabUrl, setTabUrl] = useState('');
   const [citation, setCitation] = useState(null);
-  // Toast state
+  const [copied, setCopied] = useState(false);
   const [toast, setToast] = useState({ message: '', type: '' });
 
-  // WebSocket context
   const ws = useWebSocket();
 
-  // Get active tab URL (Chrome extension API)
   useEffect(() => {
     if (window.chrome && chrome.tabs) {
       chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
@@ -62,7 +83,6 @@ export default function CopilotSidebar() {
     }
   }, []);
 
-  // Listen for WebSocket messages (real-time suggestions/citations)
   useEffect(() => {
     if (!ws.lastMessage) return;
     try {
@@ -72,107 +92,169 @@ export default function CopilotSidebar() {
     } catch {}
   }, [ws.lastMessage]);
 
-  // Toast notifications for connection status
   useEffect(() => {
     if (ws.status === 'open') setToast({ message: 'Connected', type: '' });
-    if (ws.status === 'closed') setToast({ message: 'Connection lost. Trying to reconnect...', type: 'error' });
-    if (ws.status === 'error') setToast({ message: 'WebSocket error. Please check your connection.', type: 'error' });
+    if (ws.status === 'closed') setToast({ message: 'Connection lost. Reconnecting...', type: 'error' });
+    if (ws.status === 'error') setToast({ message: 'Connection error', type: 'error' });
   }, [ws.status]);
 
-  // Send input + context to backend via WebSocket
+  const handleCopy = async () => {
+    if (!suggested?.reply_text) return;
+    await navigator.clipboard.writeText(suggested.reply_text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const handleSuggest = (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
     setSuggested(null);
     setCitation(null);
-    const payload = {
+    ws.send({
       type: 'suggest',
       data: {
         ticket_id: 'demo-ticket-1',
         user_id: 'demo-user-1',
         content: input,
         tab_url: tabUrl,
-      }
-    };
-    ws.send(payload);
+      },
+    });
     setLoading(false);
   };
 
   return (
-    <aside className="fixed top-0 right-0 w-[360px] h-full bg-white border-l border-gray-200 shadow-lg flex flex-col z-40">
-      <header className="h-16 flex items-center px-6 border-b border-gray-100 bg-primary-blue relative">
-        <span className="text-white text-lg font-semibold">AI Copilot</span>
-        {/* Connection status indicator */}
-        <span
-          tabIndex={0}
-          aria-label={`Connection status: ${ws.status}`}
-          title={`Connection status: ${ws.status}`}
-          style={{
-            position: 'absolute',
-            right: 16,
-            top: 24,
-            width: 14,
-            height: 14,
-            borderRadius: '50%',
-            background: ws.status === 'open' ? '#16c60c' : ws.status === 'connecting' ? '#ffc107' : ws.status === 'closed' ? '#aaa' : '#ff4d4f',
-            border: '2px solid #fff',
-            outline: 'none',
-            boxShadow: ws.status !== 'open' ? '0 0 0 2px #ff4d4f44' : undefined,
-            transition: 'background 0.2s, box-shadow 0.2s',
-            cursor: 'pointer',
-          }}
-          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') e.target.click(); }}
-        />
+    <aside className={cn(
+      'fixed top-0 right-0 w-[360px] h-full z-40',
+      'bg-white dark:bg-slate-900',
+      'border-l border-gray-200 dark:border-slate-700',
+      'shadow-xl flex flex-col',
+    )}>
+      {/* Header */}
+      <header className={cn(
+        'px-5 py-3.5 flex items-center justify-between',
+        'bg-gradient-to-r from-brand-500 to-brand-600',
+        'dark:from-brand-600 dark:to-brand-800',
+      )}>
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+            <Sparkles className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <h1 className="text-white text-sm font-semibold leading-tight">AI Copilot</h1>
+            <p className="text-white/60 text-[10px]">Context-aware assistance</p>
+          </div>
+        </div>
+        <ConnectionDot status={ws.status} />
       </header>
-      <div className="flex-1 overflow-y-auto p-4">
-        <form onSubmit={handleSuggest} className="mb-4">
-          <label className="block text-sm font-semibold mb-1">Customer Message</label>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-5 scrollbar-thin">
+        {/* Input form */}
+        <form onSubmit={handleSuggest}>
+          <label className="block text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-2">
+            Customer Message
+          </label>
           <textarea
-            className="w-full border border-gray-200 rounded px-3 py-2 text-sm mb-2"
+            className={cn(
+              'w-full rounded-xl px-3.5 py-2.5 text-sm resize-none',
+              'bg-gray-50 dark:bg-slate-800',
+              'border border-gray-200 dark:border-slate-700',
+              'text-gray-900 dark:text-slate-100',
+              'placeholder:text-gray-400 dark:placeholder:text-slate-500',
+              'focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500',
+              'transition-all duration-200',
+            )}
             placeholder="Paste customer message or type query..."
             value={input}
-            onChange={e => setInput(e.target.value)}
+            onChange={(e) => setInput(e.target.value)}
             rows={3}
           />
           <button
             type="submit"
-            className="bg-primary-blue text-white rounded px-4 py-2 text-sm font-medium"
             disabled={loading || !input.trim()}
+            className={cn(
+              'mt-2 w-full flex items-center justify-center gap-2',
+              'rounded-xl px-4 py-2.5 text-sm font-medium',
+              'bg-brand-500 text-white',
+              'hover:bg-brand-600 active:scale-[0.98]',
+              'disabled:opacity-40 disabled:cursor-not-allowed',
+              'transition-all duration-200',
+              'focus:outline-none focus:ring-2 focus:ring-brand-400 focus:ring-offset-2',
+            )}
           >
+            <Send className="w-4 h-4" />
             {loading ? 'Generating...' : 'Suggest Reply'}
           </button>
         </form>
-        {error && <div className="text-red-500 text-sm mb-2">{error}</div>}
+
+        {error && (
+          <div className="px-3 py-2 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm">
+            {error}
+          </div>
+        )}
+
+        {/* Suggested Reply */}
         {suggested && (
-          <div className="mb-6 animate-fadein-slideup" style={{ animation: 'fadein-slideup 0.5s' }}>
-            <div className="font-semibold text-base mb-2">Suggested Reply</div>
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 flex flex-col gap-1">
-              <span className="text-sm">{suggested.reply_text}</span>
+          <div className="animate-fade-in-up">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                Suggested Reply
+              </span>
+              <button
+                onClick={handleCopy}
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium',
+                  'transition-all duration-200',
+                  copied
+                    ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700',
+                )}
+                aria-label="Copy reply"
+              >
+                {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+            <div className={cn(
+              'rounded-xl p-4',
+              'bg-gray-50 dark:bg-slate-800',
+              'border border-gray-200 dark:border-slate-700',
+              'shadow-sm',
+            )}>
+              <p className="text-sm text-gray-800 dark:text-slate-200 leading-relaxed whitespace-pre-wrap">
+                {suggested.reply_text}
+              </p>
               {suggested.sources && suggested.sources.length > 0 && (
-                <div className="mt-2">
-                  <div className="font-semibold text-xs mb-1">Sources:</div>
-                  <ul className="list-disc ml-5 text-xs">
+                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-slate-700">
+                  <span className="text-[10px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider">
+                    Sources
+                  </span>
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
                     {suggested.sources.map((src, idx) => (
-                      <li key={idx}>
-                        <a
-                          href={src.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary-blue underline focus:outline-none focus:ring-2 focus:ring-blue-400 hover:text-blue-700"
-                          tabIndex={0}
-                          aria-label={`View source: ${src.title || src.url}`}
-                        >
-                          {src.title || src.url}
-                        </a>
-                      </li>
+                      <a
+                        key={idx}
+                        href={src.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={cn(
+                          'inline-flex items-center gap-1',
+                          'text-[10px] font-medium px-2 py-0.5 rounded-full',
+                          'bg-brand-50 text-brand-600 dark:bg-brand-900/30 dark:text-brand-300',
+                          'hover:bg-brand-100 dark:hover:bg-brand-900/50',
+                          'transition-colors',
+                        )}
+                        aria-label={`View source: ${src.title || src.url}`}
+                      >
+                        <ExternalLink className="w-2.5 h-2.5" />
+                        {src.title || src.url}
+                      </a>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               )}
-              {/* Show CitationPopup if citation data is present */}
               {citation && (
-                <div className="mt-3 animate-fadein-slideup" style={{ animation: 'fadein-slideup 0.5s' }}>
+                <div className="mt-3 animate-fade-in-up">
                   <CitationPopup
                     excerpt={citation.excerpt}
                     confidence={citation.confidence}
@@ -184,25 +266,61 @@ export default function CopilotSidebar() {
             </div>
           </div>
         )}
-        {/* Animations */}
-        <style>{`
-          @keyframes fadein-slideup {
-            0% { opacity: 0; transform: translateY(24px); }
-            100% { opacity: 1; transform: translateY(0); }
-          }
-          .animate-fadein-slideup { animation: fadein-slideup 0.5s; }
-        `}</style>
-        <div className="mb-6">
-          <div className="font-semibold text-base mb-2">Customer Context</div>
-          <div className="text-xs text-gray-700">Previous tickets, purchase history, account info...</div>
-        </div>
-        {/* Knowledge Base Search (future) */}
+
+        {/* Customer Context */}
         <div>
-          <div className="font-semibold text-base mb-2">Knowledge Base Search</div>
-          <input className="w-full border border-gray-200 rounded px-3 py-2 text-sm mb-2" placeholder="Search KB..." disabled />
-          <div className="space-y-1 text-xs text-gray-400">(Coming soon)</div>
+          <div className="flex items-center gap-2 mb-2">
+            <User className="w-3.5 h-3.5 text-gray-400 dark:text-slate-500" />
+            <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+              Customer Context
+            </span>
+          </div>
+          <div className={cn(
+            'rounded-xl p-3',
+            'bg-gray-50 dark:bg-slate-800',
+            'border border-gray-200 dark:border-slate-700',
+          )}>
+            <p className="text-xs text-gray-500 dark:text-slate-400">
+              Previous tickets, purchase history, account info...
+            </p>
+          </div>
+        </div>
+
+        {/* Knowledge Base Search */}
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <FileText className="w-3.5 h-3.5 text-gray-400 dark:text-slate-500" />
+            <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+              Knowledge Base
+            </span>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-slate-500" />
+            <input
+              className={cn(
+                'w-full rounded-xl pl-9 pr-3 py-2.5 text-sm',
+                'bg-gray-50 dark:bg-slate-800',
+                'border border-gray-200 dark:border-slate-700',
+                'text-gray-900 dark:text-slate-100',
+                'placeholder:text-gray-400 dark:placeholder:text-slate-500',
+                'focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500',
+                'transition-all duration-200',
+              )}
+              placeholder="Search knowledge base..."
+              disabled
+            />
+          </div>
         </div>
       </div>
+
+      {/* Toast */}
+      {toast.message && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast({ message: '', type: '' })}
+        />
+      )}
     </aside>
   );
 }

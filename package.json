@@ -1,11 +1,7 @@
 {
   "name": "support101",
   "private": true,
-  "workspaces": [
-    "apps/agent-copilot",
-    "apps/customer-bot",
-    "apps/demo-video"
-  ],
+  "packageManager": "pnpm@9.15.0",
   "devDependencies": {
     "@babel/core": "^7.27.3",
     "@babel/preset-env": "^7.27.2",

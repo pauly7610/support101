@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Send, MessageCircle } from 'lucide-react';
+import { cn } from '../../../lib/utils';
 import FloatingChatButton from './FloatingChatButton';
 import ChatWindow from './ChatWindow';
 import MessageBubble from './MessageBubble';
@@ -6,6 +8,8 @@ import MessageBubble from './MessageBubble';
 export default function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [messages, setMessages] = useState([
     {
       from: 'bot',
@@ -15,6 +19,7 @@ export default function ChatWidget() {
   ]);
   const [input, setInput] = useState('');
   const inputRef = useRef(null);
+  const messagesEndRef = useRef(null);
 
   useEffect(() => {
     if (open && !minimized && inputRef.current) {
@@ -22,24 +27,27 @@ export default function ChatWidget() {
     }
   }, [open, minimized]);
 
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading]);
 
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { generateSuggestedReply } = require('../../api');
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || loading) return;
     const now = new Date().toLocaleTimeString();
-    setMessages([...messages, { from: 'user', text: input, timestamp: now }]);
-    // setLoading(true);
-    // setError(null);
+    setMessages((prev) => [...prev, { from: 'user', text: input, timestamp: now }]);
+    setLoading(true);
+    setError(null);
+    const currentInput = input;
+    setInput('');
     try {
-      // Compose TicketContext object
       const ticketContext = {
         ticket_id: 'customer-chat',
         user_id: 'customer-1',
-        content: input,
+        content: currentInput,
       };
       const result = await generateSuggestedReply(ticketContext);
       setMessages((msgs) => [
@@ -52,10 +60,9 @@ export default function ChatWidget() {
         },
       ]);
     } catch (err) {
-      // setError('Sorry, something went wrong.');
+      setError('Sorry, something went wrong. Please try again.');
     } finally {
-      // setLoading(false);
-      setInput('');
+      setLoading(false);
     }
   };
 
@@ -66,13 +73,21 @@ export default function ChatWidget() {
   if (minimized) {
     return (
       <button
-        className="fixed bottom-6 right-6 w-12 h-12 rounded-full bg-primary-blue text-white flex items-center justify-center shadow-chat-float z-50"
+        className={cn(
+          'fixed bottom-6 right-6 z-50',
+          'w-12 h-12 rounded-full',
+          'bg-gradient-to-br from-brand-500 to-brand-700',
+          'text-white shadow-chat-float',
+          'flex items-center justify-center',
+          'hover:scale-105 active:scale-95',
+          'transition-all duration-200',
+          'focus:outline-none focus:ring-2 focus:ring-brand-400 focus:ring-offset-2',
+          'dark:from-brand-400 dark:to-brand-600',
+        )}
         onClick={() => setMinimized(false)}
         aria-label="Restore chat"
       >
-        <svg width="24" height="24" fill="none" viewBox="0 0 24 24">
-          <rect y="9" width="24" height="6" rx="3" fill="currentColor" />
-        </svg>
+        <MessageCircle className="w-5 h-5" />
       </button>
     );
   }
@@ -84,33 +99,53 @@ export default function ChatWidget() {
         setMinimized(false);
       }}
       onMinimize={() => setMinimized(true)}
+      loading={loading}
+      error={error}
     >
-      <div className="flex flex-col gap-2 pb-4" style={{ minHeight: 360 }}>
+      <div className="flex flex-col pb-4 min-h-[360px]">
         {messages.map((msg, i) => (
           <MessageBubble key={i} {...msg} />
         ))}
+        <div ref={messagesEndRef} />
       </div>
-      {/* Footer input override */}
+      {/* Input area */}
       <form
-        className="flex items-center gap-2 mt-auto"
+        className="sticky bottom-0 flex items-center gap-2 p-3 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800"
         onSubmit={handleSend}
-        style={{ marginBottom: 0 }}
       >
         <input
           ref={inputRef}
-          className="flex-1 rounded-full border border-gray-200 px-4 py-2 text-base focus:outline-none focus:ring-2 focus:ring-primary-blue"
+          className={cn(
+            'flex-1 rounded-full px-4 py-2.5 text-sm',
+            'bg-gray-50 dark:bg-slate-800',
+            'border border-gray-200 dark:border-slate-700',
+            'text-gray-900 dark:text-slate-100',
+            'placeholder:text-gray-400 dark:placeholder:text-slate-500',
+            'focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500',
+            'transition-all duration-200',
+          )}
           placeholder="Type your message..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          disabled={loading}
         />
         <button
           type="submit"
-          className="bg-primary-blue hover:bg-primary-blue-dark text-white rounded-full px-5 py-2 font-medium transition-colors"
+          disabled={!input.trim() || loading}
+          className={cn(
+            'w-10 h-10 rounded-full flex items-center justify-center',
+            'bg-brand-500 text-white',
+            'hover:bg-brand-600 active:scale-95',
+            'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-brand-500',
+            'transition-all duration-200',
+            'focus:outline-none focus:ring-2 focus:ring-brand-400 focus:ring-offset-2',
+            'dark:focus:ring-offset-slate-900',
+          )}
+          aria-label="Send message"
         >
-          Send
+          <Send className="w-4 h-4" />
         </button>
       </form>
-      <div className="text-xs text-gray-500 text-right mt-1">Powered by AI</div>
     </ChatWindow>
   );
 }
