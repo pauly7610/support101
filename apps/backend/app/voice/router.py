@@ -10,9 +10,11 @@ Endpoints:
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
+from fastapi_limiter.depends import RateLimiter
 
+from apps.backend.app.auth.jwt import get_current_user
 from packages.llm_engine.voice import (
     SUPPORTED_AUDIO_FORMATS,
     SUPPORTED_TTS_VOICES,
@@ -31,6 +33,8 @@ async def transcribe_audio(
     file: UploadFile = File(..., description="Audio file to transcribe"),
     language: Optional[str] = Form(None, description="ISO-639-1 language hint"),
     prompt: Optional[str] = Form(None, description="Transcription style prompt"),
+    _user=Depends(get_current_user),
+    _limiter: None = Depends(RateLimiter(times=10, seconds=60)),
 ):
     """
     Transcribe an audio file to text using OpenAI Whisper.
@@ -68,6 +72,8 @@ async def synthesize_speech(
     voice: str = Form("nova", description="TTS voice name"),
     speed: float = Form(1.0, ge=0.25, le=4.0, description="Playback speed"),
     response_format: str = Form("mp3", description="Output audio format"),
+    _user=Depends(get_current_user),
+    _limiter: None = Depends(RateLimiter(times=10, seconds=60)),
 ):
     """
     Convert text to speech using OpenAI TTS.
@@ -115,6 +121,8 @@ async def voice_chat(
     language: Optional[str] = Form(None, description="ISO-639-1 language hint"),
     voice: str = Form("nova", description="TTS voice for response"),
     text_only: bool = Form(False, description="Return text only (no audio synthesis)"),
+    _user=Depends(get_current_user),
+    _limiter: None = Depends(RateLimiter(times=5, seconds=60)),
 ):
     """
     Full voice chat pipeline: Audio → Transcribe → RAG → Synthesize → Audio.

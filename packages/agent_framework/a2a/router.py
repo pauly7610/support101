@@ -10,8 +10,9 @@ import logging
 import os
 from typing import Any, Dict
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
+from fastapi_limiter.depends import RateLimiter
 
 from .protocol import A2AServer, AgentCard, AgentSkill, TaskState
 
@@ -176,7 +177,10 @@ async def get_agent_card():
 
 
 @router.post("/a2a")
-async def a2a_endpoint(request: Request):
+async def a2a_endpoint(
+    request: Request,
+    _limiter: None = Depends(RateLimiter(times=30, seconds=60)),
+):
     """
     A2A JSON-RPC 2.0 endpoint.
 

@@ -33,6 +33,7 @@ tenacity>=9.0.0
 
 # ── Observability ───────────────────────────────────────────
 prometheus_client>=0.21.0
+sentry-sdk[fastapi]>=2.0.0
 
 # ── Document Processing ─────────────────────────────────────
 pdfplumber>=0.11.0

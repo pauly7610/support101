@@ -63,6 +63,48 @@ from packages.shared.models import (
 # Load environment variables from .env if available
 load_dotenv()
 
+# ── Sentry Error Monitoring ──────────────────────────────────────
+_sentry_dsn = os.getenv("SENTRY_DSN")
+if _sentry_dsn:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.fastapi import FastApiIntegration
+        from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+        sentry_sdk.init(
+            dsn=_sentry_dsn,
+            environment=os.getenv("SENTRY_ENVIRONMENT", "development"),
+            release=os.getenv("SENTRY_RELEASE", "support101@1.0.0"),
+            traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+            profiles_sample_rate=float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.1")),
+            integrations=[
+                FastApiIntegration(transaction_style="endpoint"),
+                SqlalchemyIntegration(),
+            ],
+            send_default_pii=False,
+            before_send=lambda event, hint: _scrub_sentry_event(event),
+        )
+        print(f"Sentry initialized (env={os.getenv('SENTRY_ENVIRONMENT', 'development')})")
+    except ImportError:
+        print("Warning: sentry-sdk not installed, error monitoring disabled")
+    except Exception as e:
+        print(f"Warning: Sentry initialization failed: {e}")
+
+
+def _scrub_sentry_event(event: dict) -> dict:
+    """Remove sensitive data from Sentry events before sending."""
+    import re
+    if "exception" in event:
+        for exc in event.get("exception", {}).get("values", []):
+            value = exc.get("value", "")
+            if isinstance(value, str):
+                exc["value"] = re.sub(r"sk-[a-zA-Z0-9]+", "sk-***REDACTED***", value)
+                for key_name in ("PINECONE_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"):
+                    key_val = os.getenv(key_name, "")
+                    if key_val:
+                        exc["value"] = exc["value"].replace(key_val, "***REDACTED***")
+    return event
+
 
 @asynccontextmanager
 async def lifespan(app):
@@ -79,6 +121,14 @@ async def lifespan(app):
         print("Redis cache initialized.")
     except Exception as e:
         print(f"Warning: Redis cache not initialized: {e}")
+    # Hydrate cost tracker from DB
+    try:
+        from packages.llm_engine.cost_tracker import get_cost_tracker
+        tracker = get_cost_tracker()
+        await tracker.hydrate_from_db()
+        print("Cost tracker hydrated from DB.")
+    except Exception as e:
+        print(f"Warning: Cost tracker hydration skipped: {e}")
     yield
 
 

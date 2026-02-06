@@ -9,15 +9,20 @@ Endpoints:
 
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
+from fastapi_limiter.depends import RateLimiter
 
+from apps.backend.app.auth.jwt import get_current_user
 from packages.llm_engine.cost_tracker import get_cost_tracker
 
 router = APIRouter(prefix="/costs", tags=["Cost Tracking"])
 
 
 @router.get("")
-async def get_cost_dashboard() -> Dict[str, Any]:
+async def get_cost_dashboard(
+    _user=Depends(get_current_user),
+    _limiter: None = Depends(RateLimiter(times=30, seconds=60)),
+) -> Dict[str, Any]:
     """Get the LLM cost dashboard with spend, budget, and breakdowns."""
     tracker = get_cost_tracker()
     return tracker.get_dashboard()
@@ -26,6 +31,8 @@ async def get_cost_dashboard() -> Dict[str, Any]:
 @router.get("/tenant")
 async def get_tenant_costs(
     tenant_id: str = Query(..., description="Tenant ID to get costs for"),
+    _user=Depends(get_current_user),
+    _limiter: None = Depends(RateLimiter(times=30, seconds=60)),
 ) -> Dict[str, Any]:
     """Get cost breakdown for a specific tenant."""
     tracker = get_cost_tracker()
@@ -41,6 +48,8 @@ async def record_usage(
     request_type: str = Query("chat", description="Request type"),
     tenant_id: str = Query("", description="Tenant ID"),
     agent_id: str = Query("", description="Agent ID"),
+    _user=Depends(get_current_user),
+    _limiter: None = Depends(RateLimiter(times=60, seconds=60)),
 ) -> Dict[str, Any]:
     """Record an LLM usage event. Typically called internally by the RAG chain."""
     tracker = get_cost_tracker()

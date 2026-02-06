@@ -1,24 +1,75 @@
+# docker-compose.test.yml — Integration test environment
+# Usage:
+#   docker compose -f docker-compose.test.yml up -d postgres redis
+#   docker compose -f docker-compose.test.yml run --rm test-runner
+#   docker compose -f docker-compose.test.yml down -v
+
 services:
   postgres:
-    image: postgres:15
+    image: postgres:16-alpine
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: support101_test
     ports:
-      - "5432:5432"
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    networks:
+      - test-net
 
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "6380:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    networks:
+      - test-net
+
+  test-runner:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+      target: builder
+    working_dir: /app
+    command: >
+      sh -c "
+        echo '--- Running Alembic migrations ---' &&
+        PYTHONPATH=/app alembic -c apps/backend/alembic.ini upgrade head &&
+        echo '--- Running backend tests ---' &&
+        python -m pytest tests/ apps/backend/tests/ -v --tb=short &&
+        echo '--- All tests passed ---'
+      "
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/support101_test
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: test-secret-key
+      OPENAI_API_KEY: sk-test-not-real
+      PINECONE_API_KEY: test-not-real
+      PINECONE_ENVIRONMENT: gcp-starter
+      PINECONE_INDEX_NAME: test-index
+      LLM_COST_TRACKING_ENABLED: "true"
+      LLM_BUDGET_MONTHLY_USD: "100.0"
+      VOICE_ENABLED: "false"
+      ACTIVITY_GRAPH_ENABLED: "false"
+      PYTHONPATH: /app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - test-net
+
+networks:
+  test-net:
+    driver: bridge

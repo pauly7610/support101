@@ -2,7 +2,7 @@
 LLM Cost Tracking — per-request token counting, budget alerts, and cost dashboard.
 
 Tracks token usage and estimated costs across all LLM providers.
-Stores data in-memory with optional persistence to the database.
+Persists records to PostgreSQL for durability with an in-memory write-through cache.
 
 Environment variables:
     LLM_BUDGET_MONTHLY_USD: Monthly budget in USD (default: 100.0)
@@ -10,6 +10,7 @@ Environment variables:
     LLM_COST_TRACKING_ENABLED: Enable/disable tracking (default: true)
 """
 
+import asyncio
 import logging
 import os
 import time
@@ -80,7 +81,9 @@ class CostTracker:
     """
     Tracks LLM token usage and costs across all providers.
 
-    Thread-safe. Stores records in memory with periodic aggregation.
+    Thread-safe. Persists records to PostgreSQL via SQLAlchemy async engine.
+    Maintains an in-memory cache for fast dashboard reads.
+    Falls back to in-memory-only when the database is unavailable.
     """
 
     def __init__(
@@ -94,6 +97,125 @@ class CostTracker:
         self.monthly_budget_usd = monthly_budget_usd
         self.alert_threshold = alert_threshold
         self._alert_sent_this_period = False
+        self._db_available = False
+        self._hydrated = False
+
+    async def _get_session(self):
+        """Get an async DB session. Returns None if DB is unavailable."""
+        try:
+            from apps.backend.app.core.db import SessionLocal
+            return SessionLocal()
+        except Exception:
+            return None
+
+    async def _persist_record(self, record: UsageRecord) -> None:
+        """Persist a usage record to the database."""
+        session = await self._get_session()
+        if session is None:
+            return
+        try:
+            from apps.backend.app.analytics.models import LLMUsageRecord
+            db_record = LLMUsageRecord(
+                timestamp=record.timestamp,
+                model=record.model,
+                provider=record.provider,
+                prompt_tokens=record.prompt_tokens,
+                completion_tokens=record.completion_tokens,
+                total_tokens=record.total_tokens,
+                estimated_cost_usd=record.estimated_cost_usd,
+                request_type=record.request_type,
+                tenant_id=record.tenant_id,
+                agent_id=record.agent_id,
+                metadata_=record.metadata,
+            )
+            session.add(db_record)
+            await session.commit()
+            self._db_available = True
+        except Exception as e:
+            logger.debug("Cost tracker DB persist failed (falling back to memory): %s", e)
+            await session.rollback()
+        finally:
+            await session.close()
+
+    async def _persist_alert(self, alert: BudgetAlert) -> None:
+        """Persist a budget alert to the database."""
+        session = await self._get_session()
+        if session is None:
+            return
+        try:
+            from apps.backend.app.analytics.models import LLMBudgetAlert
+            db_alert = LLMBudgetAlert(
+                timestamp=alert.timestamp,
+                message=alert.message,
+                current_spend_usd=alert.current_spend_usd,
+                budget_usd=alert.budget_usd,
+                percentage=alert.percentage,
+            )
+            session.add(db_alert)
+            await session.commit()
+        except Exception as e:
+            logger.debug("Cost tracker DB alert persist failed: %s", e)
+            await session.rollback()
+        finally:
+            await session.close()
+
+    async def hydrate_from_db(self) -> None:
+        """Load existing records from DB into in-memory cache on startup."""
+        if self._hydrated:
+            return
+        session = await self._get_session()
+        if session is None:
+            self._hydrated = True
+            return
+        try:
+            from sqlalchemy import select
+            from apps.backend.app.analytics.models import LLMUsageRecord, LLMBudgetAlert
+
+            now = datetime.utcnow()
+            thirty_days_ago = (now - timedelta(days=30)).timestamp()
+
+            result = await session.execute(
+                select(LLMUsageRecord).where(LLMUsageRecord.timestamp >= thirty_days_ago)
+            )
+            rows = result.scalars().all()
+
+            with self._lock:
+                for row in rows:
+                    self._records.append(UsageRecord(
+                        timestamp=row.timestamp,
+                        model=row.model,
+                        provider=row.provider,
+                        prompt_tokens=row.prompt_tokens,
+                        completion_tokens=row.completion_tokens,
+                        total_tokens=row.total_tokens,
+                        estimated_cost_usd=row.estimated_cost_usd,
+                        request_type=row.request_type or "chat",
+                        tenant_id=row.tenant_id or "",
+                        agent_id=row.agent_id or "",
+                        metadata=row.metadata_ or {},
+                    ))
+
+            alert_result = await session.execute(
+                select(LLMBudgetAlert).where(LLMBudgetAlert.timestamp >= thirty_days_ago)
+            )
+            alert_rows = alert_result.scalars().all()
+            with self._lock:
+                for row in alert_rows:
+                    self._alerts.append(BudgetAlert(
+                        timestamp=row.timestamp,
+                        message=row.message,
+                        current_spend_usd=row.current_spend_usd,
+                        budget_usd=row.budget_usd,
+                        percentage=row.percentage,
+                    ))
+
+            self._db_available = True
+            logger.info("Cost tracker hydrated %d records and %d alerts from DB", len(rows), len(alert_rows))
+        except Exception as e:
+            logger.debug("Cost tracker DB hydration failed (using empty cache): %s", e)
+        finally:
+            self._hydrated = True
+            await session.close()
 
     def record_usage(
         self,
@@ -110,6 +232,7 @@ class CostTracker:
         Record a single LLM API call's token usage.
 
         Returns the UsageRecord with estimated cost.
+        Persists to DB asynchronously (fire-and-forget).
         """
         if not TRACKING_ENABLED:
             return UsageRecord(
@@ -145,6 +268,13 @@ class CostTracker:
             self._records.append(record)
             self._check_budget()
 
+        # Fire-and-forget DB persistence
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(self._persist_record(record))
+        except RuntimeError:
+            pass  # No event loop — skip DB persistence (e.g. in sync tests)
+
         return record
 
     def _check_budget(self) -> None:
@@ -163,6 +293,13 @@ class CostTracker:
             self._alerts.append(alert)
             self._alert_sent_this_period = True
             logger.warning("BUDGET ALERT: %s", alert.message)
+
+            # Fire-and-forget alert persistence
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(self._persist_alert(alert))
+            except RuntimeError:
+                pass
 
         if percentage >= 1.0:
             logger.error(
