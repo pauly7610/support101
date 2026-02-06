@@ -29,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.backend.app.analytics.cost_router import router as cost_router
 from apps.backend.app.analytics.router import router as analytics_router
+from apps.backend.app.voice.router import router as voice_router
 from apps.backend.app.websocket.copilot_ws import router as ws_router
 from packages.agent_framework.a2a import a2a_router
 from apps.backend.app.auth.jwt import create_access_token, get_current_user
@@ -91,6 +92,7 @@ app.include_router(governance_router, prefix="/v1")
 app.include_router(hitl_router, prefix="/v1")
 app.include_router(tenants_router, prefix="/v1")
 app.include_router(ws_router)
+app.include_router(voice_router)
 app.include_router(a2a_router)
 
 security = HTTPBearer()
