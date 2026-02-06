@@ -44,6 +44,19 @@ from .hitl.queue import HITLPriority, HITLQueue, HITLRequest, HITLRequestType
 from .multitenancy.isolation import IsolationContext, TenantIsolator
 from .multitenancy.tenant import Tenant, TenantConfig, TenantStatus, TenantTier
 from .multitenancy.tenant_manager import TenantManager
+from .observability.evalai_tracer import (
+    COMPLIANCE_PRESETS,
+    EvalAICostRecord,
+    EvalAIDecision,
+    EvalAIGovernanceConfig,
+    EvalAISpanContext,
+    EvalAITracer,
+    EvalAIWorkflowContext,
+    EvalAIWorkflowDefinition,
+    EvalAIWorkflowEdge,
+    EvalAIWorkflowNode,
+    check_governance,
+)
 from .observability.metrics import MetricsCollector, get_metrics_collector
 from .observability.tracing import SpanContext, TracingProvider, trace_agent_execution
 from .persistence.base import StateSerializer, StateStore
@@ -127,6 +140,18 @@ __all__ = [
     "TracingProvider",
     "SpanContext",
     "trace_agent_execution",
+    # EvalAI Integration
+    "EvalAITracer",
+    "EvalAIDecision",
+    "EvalAICostRecord",
+    "EvalAISpanContext",
+    "EvalAIWorkflowContext",
+    "EvalAIWorkflowDefinition",
+    "EvalAIWorkflowNode",
+    "EvalAIWorkflowEdge",
+    "EvalAIGovernanceConfig",
+    "COMPLIANCE_PRESETS",
+    "check_governance",
     # Real-time
     "WebSocketManager",
     "ConnectionManager",

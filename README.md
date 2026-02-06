@@ -53,6 +53,7 @@
 ## 🚦 New in This Release
 
 - **🤖 Enterprise Agent Framework:** A reusable agent SDK with swappable blueprints, human-in-the-loop queues, multi-tenant deployment, and governance dashboards. See [Agent Framework README](packages/agent_framework/README.md).
+- **📊 EvalAI Platform Integration:** Agent workflow tracing, decision auditing, cost tracking, and governance via [`@pauly4010/evalai-sdk`](https://www.npmjs.com/package/@pauly4010/evalai-sdk). Python backend sends traces to EvalAI REST API; JS frontends use the npm SDK directly. See [EvalAI Integration](#evalai-integration) below.
 - **GDPR/CCPA Compliance:** Endpoints `/gdpr_delete` and `/ccpa_optout` with JWT auth for secure data deletion and opt-out, supporting regulatory compliance.
 - **Analytics & Reporting:** Escalation tracking, 30-day reporting, and agent/category breakdowns.
 - **Compliance UI:** Customer-facing settings and admin dashboard for data/privacy management.
@@ -279,6 +280,93 @@ npm run dev
 | POST   | `/v1/hitl/queue/{id}/respond`  | Respond to a HITL request                |
 | POST   | `/v1/tenants`                  | Create a new tenant                      |
 | GET    | `/v1/tenants/{id}/usage`       | Get tenant usage statistics              |
+
+---
+
+## EvalAI Integration
+
+The agent framework integrates with the [EvalAI Platform](https://ai-evaluation-platform.vercel.app) (`@pauly4010/evalai-sdk`) for workflow tracing, decision auditing, cost tracking, and governance.
+
+### Architecture
+
+```text
+┌──────────────────┐  REST API   ┌──────────────┐  npm SDK   ┌──────────────────┐
+│ Python Agent     │ ──────────→ │  EvalAI      │ ←───────── │ JS/TS Frontend   │
+│ Framework        │  POST       │  Platform    │  import    │ (governance,     │
+│ (FastAPI)        │  /api/*     │  (Vercel)    │            │  DAG viz, costs) │
+└──────────────────┘             └──────────────┘            └──────────────────┘
+```
+
+- **Python backend** → calls EvalAI REST API via `httpx` (async, with retry + backoff)
+- **JS frontends** → import `@pauly4010/evalai-sdk` directly for type-safe SDK access
+
+### Setup
+
+1. Add env vars to your `.env`:
+   ```
+   EVALAI_API_KEY=your-evalai-api-key
+   EVALAI_BASE_URL=https://ai-evaluation-platform.vercel.app
+   EVALAI_ORGANIZATION_ID=123
+   ```
+
+2. The tracer auto-activates when env vars are set. No code changes needed — `AgentFramework` initializes it automatically.
+
+### Python Usage
+
+```python
+from packages.agent_framework import (
+    AgentFramework,
+    EvalAITracer,
+    EvalAIDecision,
+    EvalAICostRecord,
+    check_governance,
+    COMPLIANCE_PRESETS,
+)
+
+# Framework auto-traces all agent executions
+framework = AgentFramework()
+result = await framework.execute(agent, {"query": "Help me reset my password"})
+# → Workflow trace, agent spans, and timing sent to EvalAI automatically
+
+# Direct tracer usage for custom workflows
+tracer = EvalAITracer()
+async with tracer.workflow("Custom Pipeline"):
+    span = await tracer.start_agent_span("RouterAgent", {"query": "..."})
+    await tracer.record_decision(EvalAIDecision(
+        agent="RouterAgent",
+        type="route",
+        chosen="technical_support",
+        alternatives=[{"action": "billing", "confidence": 20}],
+        confidence=85,
+    ))
+    await tracer.record_cost(EvalAICostRecord(
+        provider="openai", model="gpt-4o", input_tokens=500, output_tokens=200
+    ))
+    await tracer.end_agent_span(span, {"result": "routed"})
+
+# Governance checks (mirrors EvalAI compliance presets)
+gov_result = check_governance(decision, COMPLIANCE_PRESETS["SOC2"])
+if gov_result["blocked"]:
+    raise RuntimeError(f"Blocked: {gov_result['reasons']}")
+```
+
+### What Gets Traced
+
+| Event | EvalAI Endpoint | Automatic? |
+|-------|----------------|------------|
+| Workflow start/end | `POST /api/traces` | Yes (via `framework.execute()`) |
+| Agent execution spans | `POST /api/traces/{id}/spans` | Yes (via `AgentExecutor`) |
+| Agent decisions | `POST /api/decisions` | Manual (call `tracer.record_decision()`) |
+| LLM token costs | `POST /api/costs` | Manual (call `tracer.record_cost()`) |
+| Agent handoffs | `POST /api/traces/{id}/spans` | Manual (call `tracer.record_handoff()`) |
+| Workflow DAG definitions | `POST /api/workflows` | Manual (pass `definition` to `start_workflow()`) |
+
+### Graceful Degradation
+
+The tracer silently no-ops when:
+- `httpx` is not installed
+- Any of the 3 env vars are missing
+- The EvalAI API is unreachable (errors are logged, never raised)
 
 ---
 

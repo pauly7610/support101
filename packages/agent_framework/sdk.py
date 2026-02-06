@@ -17,6 +17,7 @@ from .hitl.manager import HITLManager
 from .multitenancy.isolation import TenantIsolator
 from .multitenancy.tenant import Tenant, TenantTier
 from .multitenancy.tenant_manager import TenantManager
+from .observability.evalai_tracer import EvalAITracer
 from .templates.support_agent import SupportAgentBlueprint
 from .templates.triage_agent import TriageAgentBlueprint
 
@@ -49,13 +50,29 @@ class AgentFramework:
         result = await framework.execute(agent, {"query": "How do I reset my password?"})
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        evalai_api_key: Optional[str] = None,
+        evalai_base_url: Optional[str] = None,
+        evalai_organization_id: Optional[int] = None,
+        evalai_enabled: bool = True,
+    ) -> None:
         self.registry = AgentRegistry()
         self.tenant_manager = TenantManager()
         self.audit_logger = AuditLogger()
         self.permissions = AgentPermissions()
 
-        self.executor = AgentExecutor(self.registry)
+        self.evalai_tracer = EvalAITracer(
+            api_key=evalai_api_key,
+            base_url=evalai_base_url,
+            organization_id=evalai_organization_id,
+            enabled=evalai_enabled,
+        )
+
+        self.executor = AgentExecutor(
+            self.registry,
+            evalai_tracer=self.evalai_tracer,
+        )
         self.executor.set_audit_callback(self._audit_execution_event)
 
         self.hitl_manager = HITLManager(
@@ -188,7 +205,7 @@ class AgentFramework:
         timeout: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
-        Execute an agent with tenant isolation.
+        Execute an agent with tenant isolation and EvalAI workflow tracing.
 
         Args:
             agent: Agent to execute
@@ -210,10 +227,32 @@ class AgentFramework:
             tenant.increment_usage("concurrent_executions")
             tenant.increment_usage("requests_this_minute")
 
+        await self.evalai_tracer.start_workflow(
+            name=f"{agent.config.blueprint_name}:{agent.config.name}",
+            metadata={
+                "agent_id": agent.agent_id,
+                "tenant_id": agent.tenant_id,
+                "blueprint": agent.config.blueprint_name,
+                "input_keys": list(input_data.keys()),
+            },
+        )
+
         try:
             async with self.isolator.isolation_scope(agent.tenant_id):
                 result = await self.executor.execute(agent, input_data, timeout)
+
+                await self.evalai_tracer.end_workflow(
+                    output=result.to_dict(),
+                    status="completed" if result.status == AgentStatus.COMPLETED else "failed",
+                )
+
                 return result.to_dict()
+        except Exception as e:
+            await self.evalai_tracer.end_workflow(
+                output={"error": str(e)},
+                status="failed",
+            )
+            raise
         finally:
             if tenant:
                 tenant.decrement_usage("concurrent_executions")
@@ -342,10 +381,11 @@ class AgentFramework:
         await self.hitl_manager.start()
         await self.tenant_manager.start_rate_limit_reset()
 
-    def stop(self) -> None:
-        """Stop background services."""
+    async def stop(self) -> None:
+        """Stop background services and close connections."""
         self.hitl_manager.stop()
         self.tenant_manager.stop_rate_limit_reset()
+        await self.evalai_tracer.close()
 
 
 def create_framework() -> AgentFramework:

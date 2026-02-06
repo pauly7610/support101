@@ -9,11 +9,17 @@ Handles:
 """
 
 import asyncio
+import logging
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 from .agent_registry import AgentRegistry
 from .base_agent import AgentStatus, BaseAgent
+
+if TYPE_CHECKING:
+    from ..observability.evalai_tracer import EvalAITracer
+
+logger = logging.getLogger(__name__)
 
 
 class ExecutionResult:
@@ -65,6 +71,7 @@ class AgentExecutor:
         registry: Optional[AgentRegistry] = None,
         max_concurrent: int = 10,
         default_timeout: int = 300,
+        evalai_tracer: Optional["EvalAITracer"] = None,
     ) -> None:
         self.registry = registry or AgentRegistry()
         self.max_concurrent = max_concurrent
@@ -72,6 +79,7 @@ class AgentExecutor:
         self._semaphore = asyncio.Semaphore(max_concurrent)
         self._running_executions: Dict[str, asyncio.Task] = {}
         self._audit_callback: Optional[Callable] = None
+        self._evalai_tracer = evalai_tracer
 
     def set_audit_callback(self, callback: Callable) -> None:
         """Set callback for audit logging."""
@@ -124,6 +132,17 @@ class AgentExecutor:
             {"input_keys": list(input_data.keys())},
         )
 
+        # Start EvalAI agent span for this execution
+        evalai_span = None
+        if self._evalai_tracer:
+            try:
+                evalai_span = await self._evalai_tracer.start_agent_span(
+                    agent_name=agent.config.blueprint_name or agent.config.name,
+                    input_data={"input_keys": list(input_data.keys())},
+                )
+            except Exception as e:
+                logger.debug("EvalAI start_agent_span failed: %s", e)
+
         async with self._semaphore:
             try:
                 state = await asyncio.wait_for(
@@ -146,6 +165,19 @@ class AgentExecutor:
                     },
                 )
 
+                if self._evalai_tracer and evalai_span:
+                    try:
+                        await self._evalai_tracer.end_agent_span(
+                            evalai_span,
+                            output={
+                                "status": state.status.value,
+                                "steps": state.current_step,
+                                "duration_ms": duration_ms,
+                            },
+                        )
+                    except Exception as e:
+                        logger.debug("EvalAI end_agent_span failed: %s", e)
+
                 return ExecutionResult(
                     agent_id=agent.agent_id,
                     execution_id=state.execution_id,
@@ -164,6 +196,15 @@ class AgentExecutor:
                     agent.tenant_id,
                     {"timeout_seconds": timeout, "duration_ms": duration_ms},
                 )
+
+                if self._evalai_tracer and evalai_span:
+                    try:
+                        await self._evalai_tracer.end_agent_span(
+                            evalai_span,
+                            error=f"Execution timed out after {timeout}s",
+                        )
+                    except Exception as e:
+                        logger.debug("EvalAI end_agent_span (timeout) failed: %s", e)
 
                 return ExecutionResult(
                     agent_id=agent.agent_id,
@@ -184,6 +225,15 @@ class AgentExecutor:
                     agent.tenant_id,
                     {"error": str(e), "duration_ms": duration_ms},
                 )
+
+                if self._evalai_tracer and evalai_span:
+                    try:
+                        await self._evalai_tracer.end_agent_span(
+                            evalai_span,
+                            error=str(e),
+                        )
+                    except Exception as e_inner:
+                        logger.debug("EvalAI end_agent_span (error) failed: %s", e_inner)
 
                 return ExecutionResult(
                     agent_id=agent.agent_id,
