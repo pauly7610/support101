@@ -88,9 +88,9 @@
 ### Developer Experience
 - **pnpm workspaces** — Monorepo with 4 frontend apps
 - **Biome** — Replaced ESLint 8 + Prettier with single config (linting, formatting, import sorting)
-- **Vitest + RTL** — 8 frontend unit test suites (including admin dashboard + useVoiceChat)
-- **Cypress E2E** — 27 tests covering approval queue, governance dashboard, chat widget
-- **Integration tests** — 20+ tests covering feedback loop, activity stream, graph, playbooks, RAG, MCP, WebSocket
+- **Vitest + RTL** — 8 frontend test suites across 3 apps (customer-bot, agent-copilot, admin-dashboard)
+- **Cypress E2E** — 10 spec files covering approval queue, governance dashboard, chat widget, accessibility, persistence
+- **pytest** — 197 backend + integration tests across 30 test files (auth, RAG, ingestion, compliance, analytics, learning loop, MCP, WebSocket)
 - **Ruff** — Python linting (replaced black + flake8 + isort)
 
 ---
@@ -375,8 +375,8 @@ Auto-activates when `EVALAI_API_KEY`, `EVALAI_BASE_URL`, and `EVALAI_ORGANIZATIO
 ## Testing
 
 ```bash
-# Backend integration tests
-pytest tests/ -v
+# All backend + integration tests (197 tests)
+pytest tests/ apps/backend/tests/ -v
 
 # Frontend unit tests
 pnpm --filter customer-bot test
@@ -388,7 +388,10 @@ pnpm --filter customer-bot exec cypress run
 
 # Lint (Biome for JS/TS, Ruff for Python)
 pnpm --filter customer-bot lint
+pnpm --filter agent-copilot lint
+pnpm --filter admin-dashboard lint
 ruff check packages/ apps/backend/
+ruff format packages/ apps/backend/ tests/ --check
 
 # Feedback loop validation
 python -m packages.agent_framework.learning.feedback_validator --mock
@@ -419,7 +422,7 @@ Includes: PostgreSQL 16, Redis 7, backend (2 workers), customer-bot, agent-copil
 
 ## Resources
 
-- [`docs/openapi.yaml`](docs/openapi.yaml) — OpenAPI 3.0 spec (80+ endpoints)
+- [`docs/openapi.yaml`](docs/openapi.yaml) — OpenAPI 3.0 spec (90+ endpoints)
 - [`packages/agent_framework/README.md`](packages/agent_framework/README.md) — Agent framework docs
 - [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) — Shared UI guidelines
 - [`mcp-config.json`](mcp-config.json) — MCP client configuration
