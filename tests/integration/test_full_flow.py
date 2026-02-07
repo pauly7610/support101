@@ -213,9 +213,10 @@ class TestFeedbackLoopValidator(unittest.TestCase):
         validator = FeedbackLoopValidator(mock=True)
         report = asyncio.get_event_loop().run_until_complete(validator.run_validation())
 
-        self.assertIn("passed", report)
-        self.assertIn("phases", report)
-        self.assertEqual(len(report["phases"]), 4)
+        self.assertIn("validation_passed", report)
+        self.assertTrue(report["validation_passed"])
+        self.assertIn("validation_criteria", report)
+        self.assertGreater(report["total_queries"], 0)
 
 
 class TestRAGChainErrorHandling(unittest.TestCase):
