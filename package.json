@@ -16,8 +16,6 @@
     "husky": "^8.0.0",
     "lint-staged": "^15.0.0",
     "postcss": "^8.5.3",
-    "stylelint": "^15.11.0",
-    "stylelint-config-standard": "^34.0.0",
     "typescript": "^5.8.3",
     "vite": "^6.3.5",
     "webpack": "^5.76.5",
@@ -28,7 +26,7 @@
       "biome check --write"
     ],
     "*.{css,scss}": [
-      "stylelint --fix"
+      "biome check --write"
     ]
   },
   "husky": {

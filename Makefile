@@ -29,11 +29,10 @@ test-local: test-start
 
 # Quick lint check before push
 lint:
-	python -m black --check .
-	python -m flake8 apps/backend packages
-	python -m isort --check-only .
+	ruff check packages/ apps/backend/
+	ruff format packages/ apps/backend/ --check
 
 # Format code
 format:
-	python -m black .
-	python -m isort .
+	ruff format packages/ apps/backend/
+	ruff check packages/ apps/backend/ --fix

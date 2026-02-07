@@ -7,7 +7,7 @@ echo "[Bash] Starting backend and customer-bot in background..."
 # Use absolute path for project root
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
 (cd apps/backend && export PYTHONPATH="$PROJECT_ROOT" && uvicorn main:app --reload &)
-(cd apps/customer-bot && npm run dev &)
+(cd apps/customer-bot && pnpm dev &)
 
 # (Optional) Start agent-copilot
 # (cd apps/agent-copilot && npm run dev &)

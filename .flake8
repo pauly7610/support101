@@ -1,6 +1,0 @@
-[flake8]
-max-line-length = 100
-extend-ignore = E203
-per-file-ignores =
-    packages/llm_engine/chains/rag_chain.py: E501 F401
-exclude = node_modules
