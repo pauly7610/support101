@@ -13,7 +13,7 @@ export default function AdminCompliancePanel() {
     setLoading(true);
     setError('');
     try {
-      const res = await adminGdprDelete(userId);
+      const res = await adminGdprDelete(userId, undefined);
       setStatus(res.status || 'User data deleted');
       setUserId('');
       setConfirm(false);
