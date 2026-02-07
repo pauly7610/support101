@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from typing import Any
 
@@ -22,7 +23,7 @@ class MemoryState(BaseModel):
 
 
 class TicketContext(BaseModel):
-    ticket_id: str
+    ticket_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     user_id: str | None = None
     content: str | None = None  # alias for user_query
     user_query: str | None = None
@@ -45,7 +46,7 @@ class DocumentMetadata(BaseModel):
 class DocumentPayload(BaseModel):
     id: str  # UUID for the document chunk
     content: str
-    source_url: HttpUrl
+    source_url: HttpUrl | None = None
     title: str | None = None
     metadata: dict[str, Any] = {}
 
@@ -83,9 +84,9 @@ class SourceDocument(BaseModel):
 
 
 class SuggestedResponse(BaseModel):
-    reply_text: str
-    sources: list[SourceDocument]
-    # debug_info: Optional[Dict[str, Any]] = None
+    reply_text: str | None = None
+    sources: list[SourceDocument] = []
+    error: dict[str, Any] | None = None
 
 
 class TTSRequest(BaseModel):

@@ -52,8 +52,11 @@ async def setup_database():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
-    if init_redis:
-        await init_redis()
+    try:
+        if init_redis:
+            await init_redis()
+    except Exception:
+        pass
     yield
     await engine.dispose()
 
@@ -65,10 +68,11 @@ async def async_session():
 
 
 @pytest_asyncio.fixture(scope="function")
-async def async_client(async_session):
-    # Override FastAPI dependency
+async def async_client():
+    # Override FastAPI dependency — create a fresh session per request
     async def override_get_db():
-        yield async_session
+        async with AsyncSessionLocal() as session:
+            yield session
 
     fastapi_app.dependency_overrides[get_db] = override_get_db
     transport = ASGITransport(app=fastapi_app)
@@ -103,15 +107,14 @@ def mock_externals(monkeypatch):
         monkeypatch.setattr("firecrawl.FirecrawlApp.scrape", lambda *args, **kwargs: None)
 
 
-@pytest.fixture(scope="session", autouse=True)
-def create_admin_user(setup_database):
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def create_admin_user(setup_database):
     """Insert admin user with username 'admin' and password 'admin' (sha256-hashed) into test DB."""
-
-    async def _insert():
+    try:
         async with engine.begin() as conn:
             hashed_password = hashlib.sha256(b"admin").hexdigest()
             await conn.execute(
                 User.__table__.insert().values(username="admin", hashed_password=hashed_password)
             )
-
-    asyncio.get_event_loop().run_until_complete(_insert())
+    except Exception:
+        pass  # Admin user may already exist

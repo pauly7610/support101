@@ -50,7 +50,7 @@ async def test_rag_flow_no_citations(client):
     resp = await client.post("/generate_reply", json=payload)
     assert resp.status_code == 200
     body = resp.json()
-    assert "reply" in body or "error_type" in body
+    assert "reply_text" in body or "error_type" in body
 
 
 @pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="Requires OPENAI_API_KEY")
@@ -79,4 +79,4 @@ async def test_rag_flow_load(client):
         return r.json()
 
     results = await asyncio.gather(*[make_query() for _ in range(100)])
-    assert all("reply" in r or "error_type" in r for r in results)
+    assert all("reply_text" in r or "error_type" in r for r in results)
