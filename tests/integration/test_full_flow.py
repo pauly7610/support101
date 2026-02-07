@@ -211,7 +211,7 @@ class TestFeedbackLoopValidator(unittest.TestCase):
         )
 
         validator = FeedbackLoopValidator(mock=True)
-        report = asyncio.get_event_loop().run_until_complete(validator.run())
+        report = asyncio.get_event_loop().run_until_complete(validator.run_validation())
 
         self.assertIn("passed", report)
         self.assertIn("phases", report)
