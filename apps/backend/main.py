@@ -23,7 +23,7 @@ from fastapi.security import HTTPBearer
 from fastapi_cache.decorator import cache
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
-from prometheus_client import REGISTRY, Counter, Histogram
+from prometheus_client import REGISTRY, Counter, Histogram, generate_latest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from apps.backend.app.analytics.cost_router import router as cost_router
@@ -216,9 +216,11 @@ def submit_feedback(feedback: dict = Body(...)):
     Accepts user feedback in JSON: {"feedback": str}.
     Logs or stores feedback for review. No authentication required.
     """
+    print(f"Feedback received: {feedback}")
+    return {"status": "received", "message": "Thank you for your feedback."}
 
 
-JWT_SECRET = os.getenv("JWT_SECRET", "dev_secret")
+JWT_SECRET = os.getenv("SECRET_KEY") or os.getenv("JWT_SECRET", "dev_secret")
 JWT_ALGORITHM = "HS256"
 
 
@@ -307,6 +309,14 @@ async def health_check():
         "status": "healthy",
         "pinecone_index_name": os.getenv("PINECONE_INDEX_NAME", "support-docs"),
     }
+
+
+@app.get("/metrics", tags=["Observability"], summary="Prometheus metrics endpoint")
+async def prometheus_metrics():
+    """Expose Prometheus metrics for scraping."""
+    from fastapi.responses import Response
+
+    return Response(content=generate_latest(REGISTRY), media_type="text/plain; version=0.0.4")
 
 
 def chunk_page_content(

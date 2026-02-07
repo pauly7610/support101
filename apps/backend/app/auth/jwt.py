@@ -10,7 +10,11 @@ from sqlalchemy.future import select
 from apps.backend.app.auth.models import User
 from apps.backend.app.core.db import get_db
 
-SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "secret")
+SECRET_KEY = (
+    os.environ.get("SECRET_KEY")
+    or os.environ.get("JWT_SECRET")
+    or os.environ.get("JWT_SECRET_KEY", "secret")
+)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 

@@ -285,10 +285,20 @@ class TestMultiModelProvider(unittest.TestCase):
 
     def test_get_chat_model_openai(self):
         """Test creating an OpenAI chat model."""
+        import os
+
         from packages.llm_engine.multi_model import get_chat_model
 
-        model = get_chat_model(provider="openai", model_name="gpt-4o")
-        self.assertIsNotNone(model)
+        old_key = os.environ.get("OPENAI_API_KEY")
+        os.environ["OPENAI_API_KEY"] = os.environ.get("OPENAI_API_KEY", "sk-test-not-real")
+        try:
+            model = get_chat_model(provider="openai", model_name="gpt-4o")
+            self.assertIsNotNone(model)
+        finally:
+            if old_key is None:
+                os.environ.pop("OPENAI_API_KEY", None)
+            else:
+                os.environ["OPENAI_API_KEY"] = old_key
 
 
 class TestWebSocketCopilot(unittest.TestCase):

@@ -3,8 +3,6 @@ import os
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-print("DATABASE_URL at import (core/db.py):", os.getenv("DATABASE_URL"))
-
 DATABASE_URL = os.getenv(
     "DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/support101"
 )

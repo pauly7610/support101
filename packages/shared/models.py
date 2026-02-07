@@ -76,7 +76,7 @@ class QueryResult(BaseModel):
 
 
 class SourceDocument(BaseModel):
-    url: HttpUrl
+    url: str | None = None
     title: str | None = None
     excerpt: str | None = None
     confidence: float | None = None

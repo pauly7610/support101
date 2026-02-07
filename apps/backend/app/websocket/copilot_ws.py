@@ -20,7 +20,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
 router = APIRouter(tags=["WebSocket"])
 
-JWT_SECRET = os.getenv("JWT_SECRET", "dev_secret")
+JWT_SECRET = os.getenv("SECRET_KEY") or os.getenv("JWT_SECRET", "dev_secret")
 JWT_ALGORITHM = "HS256"
 
 # Active connections registry

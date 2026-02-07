@@ -35,10 +35,12 @@ export async function reportEscalation(escalation) {
  * @param {string} user_id
  * @returns {Promise<{status: string}>}
  */
-export async function requestGdprDelete(user_id) {
-  const res = await fetch(`${BACKEND_URL}/gdpr_delete`, {
+export async function requestGdprDelete(user_id, token) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(`${BACKEND_URL}/v1/compliance/gdpr_delete`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ user_id }),
   });
   if (!res.ok) {
@@ -53,10 +55,12 @@ export async function requestGdprDelete(user_id) {
  * @param {string} user_id
  * @returns {Promise<{status: string}>}
  */
-export async function requestCcpaOptout(user_id) {
-  const res = await fetch(`${BACKEND_URL}/ccpa_optout`, {
+export async function requestCcpaOptout(user_id, token) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(`${BACKEND_URL}/v1/compliance/ccpa_optout`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ user_id }),
   });
   if (!res.ok) {
