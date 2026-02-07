@@ -78,14 +78,16 @@ class TestFullLearningLoop(unittest.TestCase):
 
         collector = FeedbackCollector()
 
-        trace = {
+        original_trace = {
             "input_query": "How do I update billing info?",
             "output": {"response": "Original response"},
-            "corrected_output": {"response": "Go to Account > Billing > Update."},
             "agent_blueprint": "support_agent",
         }
+        corrected_output = "Go to Account > Billing > Update."
 
-        result = collector.record_correction(trace)
+        result = asyncio.get_event_loop().run_until_complete(
+            collector.record_correction(original_trace, corrected_output)
+        )
         self.assertIsNotNone(result)
 
 
@@ -94,38 +96,49 @@ class TestActivityStream(unittest.TestCase):
 
     def test_activity_stream_add_and_read(self):
         """Test adding and reading events from the activity stream."""
-        from packages.agent_framework.learning.activity_stream import ActivityStream
+        from packages.agent_framework.learning.activity_stream import (
+            ActivityEvent,
+            ActivityStream,
+        )
 
         stream = ActivityStream()
 
-        event = {
-            "event_type": "ticket_resolved",
-            "tenant_id": "test-tenant",
-            "data": {"ticket_id": "T-001", "resolution": "Password reset guide sent"},
-        }
+        event = ActivityEvent(
+            event_type="ticket_resolved",
+            tenant_id="test-tenant",
+            data={"ticket_id": "T-001", "resolution": "Password reset guide sent"},
+        )
 
-        entry_id = stream.add_event(event)
+        entry_id = asyncio.get_event_loop().run_until_complete(stream.publish(event))
         self.assertIsNotNone(entry_id)
 
     def test_activity_stream_tenant_isolation(self):
         """Test that events are isolated by tenant."""
-        from packages.agent_framework.learning.activity_stream import ActivityStream
+        from packages.agent_framework.learning.activity_stream import (
+            ActivityEvent,
+            ActivityStream,
+        )
 
         stream = ActivityStream()
+        loop = asyncio.get_event_loop()
 
-        stream.add_event(
-            {
-                "event_type": "ticket_created",
-                "tenant_id": "tenant-a",
-                "data": {"ticket_id": "A-001"},
-            }
+        loop.run_until_complete(
+            stream.publish(
+                ActivityEvent(
+                    event_type="ticket_created",
+                    tenant_id="tenant-a",
+                    data={"ticket_id": "A-001"},
+                )
+            )
         )
-        stream.add_event(
-            {
-                "event_type": "ticket_created",
-                "tenant_id": "tenant-b",
-                "data": {"ticket_id": "B-001"},
-            }
+        loop.run_until_complete(
+            stream.publish(
+                ActivityEvent(
+                    event_type="ticket_created",
+                    tenant_id="tenant-b",
+                    data={"ticket_id": "B-001"},
+                )
+            )
         )
 
         # Both events should be stored (tenant isolation is at query level)
@@ -140,21 +153,33 @@ class TestActivityGraph(unittest.TestCase):
         from packages.agent_framework.learning.graph import ActivityGraph
 
         graph = ActivityGraph()
+        loop = asyncio.get_event_loop()
 
-        graph.add_node("Customer", {"id": "C-001", "name": "Test Customer"})
-        # Should not raise
-        self.assertTrue(True)
+        result = loop.run_until_complete(
+            graph.upsert_node("Customer", "C-001", {"name": "Test Customer"})
+        )
+        self.assertTrue(result)
 
     def test_graph_add_edge(self):
         """Test adding an edge between nodes."""
         from packages.agent_framework.learning.graph import ActivityGraph
+        from packages.agent_framework.learning.graph_models import GraphEdge
 
         graph = ActivityGraph()
+        loop = asyncio.get_event_loop()
 
-        graph.add_node("Customer", {"id": "C-001", "name": "Test Customer"})
-        graph.add_node("Ticket", {"id": "T-001", "subject": "Password reset"})
-        graph.add_edge("C-001", "T-001", "FILED", {"timestamp": "2026-02-06"})
-        self.assertTrue(True)
+        loop.run_until_complete(graph.upsert_node("Customer", "C-001", {"name": "Test Customer"}))
+        loop.run_until_complete(graph.upsert_node("Ticket", "T-001", {"subject": "Password reset"}))
+        edge = GraphEdge(
+            label="FILED",
+            from_id="C-001",
+            from_label="Customer",
+            to_id="T-001",
+            to_label="Ticket",
+            properties={"timestamp": "2026-02-06"},
+        )
+        result = loop.run_until_complete(graph.create_edge(edge))
+        self.assertTrue(result)
 
 
 class TestPlaybookEngine(unittest.TestCase):
@@ -172,7 +197,7 @@ class TestPlaybookEngine(unittest.TestCase):
         from packages.agent_framework.learning.playbook_engine import PlaybookEngine
 
         engine = PlaybookEngine()
-        results = engine.suggest("How do I reset my password?")
+        results = asyncio.get_event_loop().run_until_complete(engine.suggest("password_reset"))
         self.assertIsInstance(results, list)
 
 
@@ -185,7 +210,7 @@ class TestFeedbackLoopValidator(unittest.TestCase):
             FeedbackLoopValidator,
         )
 
-        validator = FeedbackLoopValidator(mock_mode=True)
+        validator = FeedbackLoopValidator(mock=True)
         report = asyncio.get_event_loop().run_until_complete(validator.run())
 
         self.assertIn("passed", report)
@@ -315,14 +340,12 @@ class TestMCPServer(unittest.TestCase):
         from packages.agent_framework.mcp_server import server
 
         response = asyncio.get_event_loop().run_until_complete(
-            server.handle_request(
-                {
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "method": "initialize",
-                    "params": {},
-                }
-            )
+            server.handle_request({
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {},
+            })
         )
         self.assertEqual(response["id"], 1)
         self.assertIn("protocolVersion", response["result"])
@@ -334,14 +357,12 @@ class TestMCPServer(unittest.TestCase):
         from packages.agent_framework.mcp_server import server
 
         response = asyncio.get_event_loop().run_until_complete(
-            server.handle_request(
-                {
-                    "jsonrpc": "2.0",
-                    "id": 2,
-                    "method": "tools/list",
-                    "params": {},
-                }
-            )
+            server.handle_request({
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "tools/list",
+                "params": {},
+            })
         )
         tools = response["result"]["tools"]
         self.assertEqual(len(tools), 8)
@@ -351,14 +372,12 @@ class TestMCPServer(unittest.TestCase):
         from packages.agent_framework.mcp_server import server
 
         response = asyncio.get_event_loop().run_until_complete(
-            server.handle_request(
-                {
-                    "jsonrpc": "2.0",
-                    "id": 3,
-                    "method": "ping",
-                    "params": {},
-                }
-            )
+            server.handle_request({
+                "jsonrpc": "2.0",
+                "id": 3,
+                "method": "ping",
+                "params": {},
+            })
         )
         self.assertEqual(response["id"], 3)
 
@@ -367,14 +386,12 @@ class TestMCPServer(unittest.TestCase):
         from packages.agent_framework.mcp_server import server
 
         response = asyncio.get_event_loop().run_until_complete(
-            server.handle_request(
-                {
-                    "jsonrpc": "2.0",
-                    "id": 4,
-                    "method": "unknown/method",
-                    "params": {},
-                }
-            )
+            server.handle_request({
+                "jsonrpc": "2.0",
+                "id": 4,
+                "method": "unknown/method",
+                "params": {},
+            })
         )
         self.assertIn("error", response)
 
