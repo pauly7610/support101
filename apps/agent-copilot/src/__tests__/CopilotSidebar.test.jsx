@@ -24,8 +24,8 @@ Object.assign(navigator, {
   clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
 });
 
-import CopilotSidebar from '../components/agent/Copilot/CopilotSidebar';
 import { WebSocketProvider } from '../components/WebSocketProvider';
+import CopilotSidebar from '../components/agent/Copilot/CopilotSidebar';
 
 function renderWithProviders(ui) {
   return render(<WebSocketProvider>{ui}</WebSocketProvider>);
