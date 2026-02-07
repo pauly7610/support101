@@ -73,9 +73,9 @@ export const Scene3Copilot: React.FC = () => {
           style={{
             position: 'absolute',
             left: 80,
-            top: 120,
+            top: 100,
             width: 1420,
-            height: 840,
+            height: 960,
             backgroundColor: '#fafafa',
             borderRadius: 12,
             border: '1px solid #e0e0e0',
@@ -171,9 +171,9 @@ export const Scene3Copilot: React.FC = () => {
           style={{
             position: 'absolute',
             right: 0,
-            top: 120,
+            top: 100,
             width: 420,
-            height: 840,
+            height: 960,
             backgroundColor: COLORS.bgCard,
             borderLeft: `1px solid ${COLORS.gray700}`,
             borderRadius: '12px 0 0 12px',

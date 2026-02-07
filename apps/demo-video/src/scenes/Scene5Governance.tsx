@@ -107,7 +107,7 @@ export const Scene5Governance: React.FC = () => {
             <div
               style={{
                 ...card,
-                width: 220,
+                flex: 1,
                 padding: '20px 24px',
               }}
             >
@@ -196,7 +196,7 @@ export const Scene5Governance: React.FC = () => {
               position: 'absolute',
               top: 380,
               left: 80,
-              width: 1040,
+              right: 80,
               ...card,
               padding: 0,
               overflow: 'hidden',
@@ -298,9 +298,9 @@ export const Scene5Governance: React.FC = () => {
           <div
             style={{
               position: 'absolute',
-              top: 380,
-              left: 1140,
-              width: 700,
+              top: 700,
+              left: 80,
+              right: 80,
               ...card,
               padding: 0,
               overflow: 'hidden',

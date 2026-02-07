@@ -89,8 +89,8 @@ export const Scene4HITL: React.FC = () => {
         style={{
           position: 'absolute',
           left: 80,
-          top: 130,
-          width: 960,
+          top: 120,
+          width: 900,
           display: 'flex',
           flexDirection: 'column',
           gap: 0,
@@ -222,9 +222,9 @@ export const Scene4HITL: React.FC = () => {
           <div
             style={{
               position: 'absolute',
-              left: 1060,
-              top: 130,
-              width: 780,
+              left: 1000,
+              top: 120,
+              right: 80,
               ...card,
               padding: 0,
               overflow: 'hidden',
