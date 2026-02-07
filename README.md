@@ -343,15 +343,23 @@ Full OpenAPI spec: [`docs/openapi.yaml`](docs/openapi.yaml) (90+ endpoints)
 
 ### Validated Performance
 
-```text
-$ python -m packages.agent_framework.learning.feedback_validator --mock
+The feedback loop is validated by **21 pytest assertions** in `tests/performance/test_feedback_validation.py`:
 
-VALIDATION REPORT
-─────────────────────────────────────────────────────
-  Golden paths stored:        6 (top 60% by confidence)
-  Avg confidence after:       0.836  (+4.8%)
-  Avg response time after:    0.2ms  (-99.6%)
-  VALIDATION PASSED
+```bash
+pytest tests/performance/test_feedback_validation.py -v
+```
+
+| Test Suite | Assertions | What It Proves |
+|---|---|---|
+| **VectorStoreIntegrity** (4) | Upsert, search, delete, irrelevant-query filtering | Store is real, not a passthrough |
+| **GoldenPathLifecycle** (5) | Create, dedup, search, failure downgrade, correction override | FeedbackCollector works end-to-end |
+| **ValidationPipeline** (8) | 4-phase flow passes, ≥40% golden path usage, confidence maintained | Learning loop measurably improves |
+| **PerformanceBenchmarks** (4) | Single query <100ms, full run <500ms, 10 concurrent validators, p95 search <5ms | Quantitative performance gates |
+
+For live validation against real Pinecone + LLM (requires API keys):
+
+```bash
+python -m packages.agent_framework.learning.feedback_validator
 ```
 
 ---
@@ -393,8 +401,8 @@ pnpm --filter admin-dashboard lint
 ruff check packages/ apps/backend/
 ruff format packages/ apps/backend/ tests/ --check
 
-# Feedback loop validation
-python -m packages.agent_framework.learning.feedback_validator --mock
+# Feedback loop validation (21 tests, no external deps)
+pytest tests/performance/test_feedback_validation.py -v
 
 # Docker-based integration tests (real Postgres + Redis)
 docker compose -f docker-compose.test.yml run --rm test-runner
