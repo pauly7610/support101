@@ -38,7 +38,7 @@ describe('CopilotSidebar', () => {
 
   it('renders the sidebar header', () => {
     renderWithProviders(<CopilotSidebar />);
-    expect(screen.getByText(/agent copilot/i)).toBeInTheDocument();
+    expect(screen.getByText(/ai copilot/i)).toBeInTheDocument();
   });
 
   it('renders the knowledge base search input', () => {
