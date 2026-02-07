@@ -341,20 +341,20 @@ Full OpenAPI spec: [`docs/openapi.yaml`](docs/openapi.yaml) (90+ endpoints)
 
 **Graceful degradation:** Every layer falls back silently (no Redis → memory, no AGE → memory, no LangGraph → sequential).
 
-### Validated Performance
+### Validated Performance ✅
 
-The feedback loop is validated by **21 pytest assertions** in `tests/performance/test_feedback_validation.py`:
+**21 tests passing in CI** — `tests/performance/test_feedback_validation.py`
 
 ```bash
-pytest tests/performance/test_feedback_validation.py -v
+pytest tests/performance/test_feedback_validation.py -v   # 21 passed in ~13s
 ```
 
-| Test Suite | Assertions | What It Proves |
-|---|---|---|
-| **VectorStoreIntegrity** (4) | Upsert, search, delete, irrelevant-query filtering | Store is real, not a passthrough |
-| **GoldenPathLifecycle** (5) | Create, dedup, search, failure downgrade, correction override | FeedbackCollector works end-to-end |
-| **ValidationPipeline** (8) | 4-phase flow passes, ≥40% golden path usage, confidence maintained | Learning loop measurably improves |
-| **PerformanceBenchmarks** (4) | Single query <100ms, full run <500ms, 10 concurrent validators, p95 search <5ms | Quantitative performance gates |
+| Test Suite | Tests | What It Proves | Status |
+|---|---|---|---|
+| **VectorStoreIntegrity** | 4 | Upsert, search, delete, irrelevant-query filtering | ✅ |
+| **GoldenPathLifecycle** | 5 | Create, dedup, search, failure downgrade, correction override | ✅ |
+| **ValidationPipeline** | 8 | 4-phase flow passes, ≥40% golden path usage, confidence maintained | ✅ |
+| **PerformanceBenchmarks** | 4 | Single query <100ms, full run <500ms, 10 concurrent validators, p95 search <5ms | ✅ |
 
 For live validation against real Pinecone + LLM (requires API keys):
 
