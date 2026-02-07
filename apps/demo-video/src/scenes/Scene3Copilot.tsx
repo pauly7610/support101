@@ -74,7 +74,7 @@ export const Scene3Copilot: React.FC = () => {
             position: 'absolute',
             left: 80,
             top: 120,
-            width: 1040,
+            width: 1420,
             height: 840,
             backgroundColor: '#fafafa',
             borderRadius: 12,

@@ -284,8 +284,8 @@ export const Scene2ChatWidget: React.FC = () => {
         <div
           style={{
             position: 'absolute',
-            right: 160,
-            top: 280,
+            left: 1320,
+            top: 320,
             ...card,
             width: 380,
             padding: 20,
