@@ -41,6 +41,7 @@ export default function CitationPopup({
   return (
     <dialog
       open
+      data-testid="citation-backdrop"
       className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in"
       aria-modal="true"
       aria-label="Citation details"

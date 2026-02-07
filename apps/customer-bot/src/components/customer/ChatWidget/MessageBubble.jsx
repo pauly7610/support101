@@ -12,6 +12,7 @@ function Avatar({ isUser }) {
           ? 'bg-brand-500 text-white'
           : 'bg-gradient-to-br from-brand-100 to-brand-200 text-brand-600 dark:from-brand-800 dark:to-brand-900 dark:text-brand-300',
       )}
+      aria-label={isUser ? 'you' : 'agent'}
     >
       {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
     </div>
@@ -42,9 +43,10 @@ export default function MessageBubble({ from, text, timestamp, sources }) {
         </div>
         {sources && sources.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-1.5 px-1">
-            {sources.map((s) => (
+            {sources.map((s, i) => (
               <span
                 key={s}
+                title={s}
                 className={cn(
                   'inline-flex items-center gap-1',
                   'text-[10px] font-medium px-2 py-0.5 rounded-full',
@@ -54,7 +56,7 @@ export default function MessageBubble({ from, text, timestamp, sources }) {
                 )}
               >
                 <ExternalLink className="w-2.5 h-2.5" />
-                {s}
+                [{i + 1}]
               </span>
             ))}
           </div>

@@ -48,7 +48,10 @@ def test_generate_reply_llm_timeout():
         resp = client.post("/generate_reply", json=payload)
         assert resp.status_code in (200, 504)
         data = resp.json()
-        assert data.get("error_type") == "llm_timeout" or data.get("error", {}).get("error_type") == "llm_timeout"
+        assert (
+            data.get("error_type") == "llm_timeout"
+            or data.get("error", {}).get("error_type") == "llm_timeout"
+        )
 
 
 @pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="Requires OPENAI_API_KEY")

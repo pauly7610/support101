@@ -100,7 +100,9 @@ async def test_protected_route_no_token(async_client):
     assert response.status_code == 401
 
 
-@pytest.mark.xfail(reason="Requires running Redis for cache to work; without it both calls are slow")
+@pytest.mark.xfail(
+    reason="Requires running Redis for cache to work; without it both calls are slow"
+)
 @pytest.mark.asyncio
 async def test_cached_example(async_client):
     t0 = time.time()
