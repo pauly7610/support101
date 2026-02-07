@@ -1,99 +1,716 @@
 {
   "info": {
-    "_postman_id": "f3b3e0da-5c1d-4e9c-8c7b-analytics-demo",
+    "_postman_id": "f3b3e0da-5c1d-4e9c-8c7b-support101-full",
     "name": "Support Intelligence Core API",
-    "description": "Postman collection generated from OpenAPI spec for Support Intelligence Core (SIC)",
+    "description": "Full Postman collection for Support Intelligence Core (SIC). Covers Auth, RAG, Ingestion, Compliance, Agents, HITL, Governance, Tenants, Webhooks, Analytics, Voice I/O, Cost Tracking, A2A Protocol, and Observability.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000" },
+    { "key": "token", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
   },
   "item": [
     {
-      "name": "/generate_reply",
-      "request": {
-        "method": "POST",
-        "header": [
-          { "key": "Content-Type", "value": "application/json" }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"user_id\": \"demo-user\",\n  \"ticket\": {\n    \"subject\": \"Example\",\n    \"body\": \"Describe your issue...\",\n    \"context\": \"\"\n  },\n  \"history\": []\n}"
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "username", "value": "admin", "type": "text" },
+                { "key": "password", "value": "admin123", "type": "text" }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/register", "host": ["{{base_url}}"], "path": ["register"] }
+          }
         },
-        "url": {
-          "raw": "http://localhost:8000/generate_reply",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "8000",
-          "path": ["generate_reply"]
-        }
-      }
-    },
-    {
-      "name": "/ingest_documentation",
-      "request": {
-        "method": "POST",
-        "header": [],
-        "body": {
-          "mode": "formdata",
-          "formdata": [
-            { "key": "file", "type": "file" },
-            { "key": "chunk_size", "value": "1000", "type": "text" }
-          ]
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["var json = pm.response.json();", "if (json.access_token) pm.collectionVariables.set('token', json.access_token);"],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "username", "value": "admin", "type": "text" },
+                { "key": "password", "value": "admin123", "type": "text" }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/login", "host": ["{{base_url}}"], "path": ["login"] }
+          }
         },
-        "url": {
-          "raw": "http://localhost:8000/ingest_documentation",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "8000",
-          "path": ["ingest_documentation"]
+        {
+          "name": "Protected Route",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/protected", "host": ["{{base_url}}"], "path": ["protected"] }
+          }
         }
-      }
+      ]
     },
     {
-      "name": "/analytics/escalations",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "http://localhost:8000/analytics/escalations",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "8000",
-          "path": ["analytics", "escalations"]
+      "name": "RAG",
+      "item": [
+        {
+          "name": "Generate Reply",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticket_id\": \"demo-001\",\n  \"user_id\": \"user-123\",\n  \"user_query\": \"How do I reset my password?\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/generate_reply", "host": ["{{base_url}}"], "path": ["generate_reply"] }
+          }
         }
-      }
+      ]
     },
     {
-      "name": "/report_escalation",
-      "request": {
-        "method": "POST",
-        "header": [
-          { "key": "Content-Type", "value": "application/json" }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"user_id\": \"demo-user\",\n  \"text\": \"Escalation details...\",\n  \"confidence\": 0.92,\n  \"source_url\": \"https://example.com\"\n}"
+      "name": "Ingestion",
+      "item": [
+        {
+          "name": "Ingest Documentation (PDF/MD/TXT)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "description": "PDF, MD, or TXT file" },
+                { "key": "chunk_size", "value": "1024", "type": "text", "description": "512-2048 tokens" }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/ingest_documentation", "host": ["{{base_url}}"], "path": ["ingest_documentation"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Feedback",
+      "item": [
+        {
+          "name": "Submit Feedback",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"feedback\": \"The reply was helpful!\",\n  \"rating\": 5\n}"
+            },
+            "url": { "raw": "{{base_url}}/feedback", "host": ["{{base_url}}"], "path": ["feedback"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Compliance",
+      "item": [
+        {
+          "name": "GDPR Delete",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"user-to-delete\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/v1/compliance/gdpr_delete", "host": ["{{base_url}}"], "path": ["v1", "compliance", "gdpr_delete"] }
+          }
         },
-        "url": {
-          "raw": "http://localhost:8000/report_escalation",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "8000",
-          "path": ["report_escalation"]
+        {
+          "name": "CCPA Opt-Out",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"user-to-optout\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/v1/compliance/ccpa_optout", "host": ["{{base_url}}"], "path": ["v1", "compliance", "ccpa_optout"] }
+          }
         }
-      }
+      ]
     },
     {
-      "name": "/metrics",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "http://localhost:8000/metrics",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "8000",
-          "path": ["metrics"]
+      "name": "Agents",
+      "item": [
+        {
+          "name": "List Blueprints",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/blueprints", "host": ["{{base_url}}"], "path": ["v1", "blueprints"] }
+          }
+        },
+        {
+          "name": "Create Agent",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"blueprint_name\": \"support_agent\",\n  \"tenant_id\": \"tenant-001\",\n  \"name\": \"Support Bot\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/v1/agents", "host": ["{{base_url}}"], "path": ["v1", "agents"] }
+          }
+        },
+        {
+          "name": "List Agents",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/agents?tenant_id=tenant-001", "host": ["{{base_url}}"], "path": ["v1", "agents"], "query": [{ "key": "tenant_id", "value": "tenant-001" }] }
+          }
+        },
+        {
+          "name": "Execute Agent",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"input_data\": {\n    \"query\": \"How do I reset my password?\"\n  }\n}"
+            },
+            "url": { "raw": "{{base_url}}/v1/agents/:agent_id/execute", "host": ["{{base_url}}"], "path": ["v1", "agents", ":agent_id", "execute"], "variable": [{ "key": "agent_id", "value": "" }] }
+          }
+        },
+        {
+          "name": "Agent Stats Overview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/agents/stats/overview", "host": ["{{base_url}}"], "path": ["v1", "agents", "stats", "overview"] }
+          }
         }
-      }
+      ]
+    },
+    {
+      "name": "HITL",
+      "item": [
+        {
+          "name": "Get HITL Queue",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/hitl/queue?limit=20", "host": ["{{base_url}}"], "path": ["v1", "hitl", "queue"], "query": [{ "key": "limit", "value": "20" }] }
+          }
+        },
+        {
+          "name": "Get HITL Request",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/hitl/queue/:request_id", "host": ["{{base_url}}"], "path": ["v1", "hitl", "queue", ":request_id"], "variable": [{ "key": "request_id", "value": "" }] }
+          }
+        },
+        {
+          "name": "Assign Request",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/hitl/queue/:request_id/assign?reviewer_id=reviewer-001", "host": ["{{base_url}}"], "path": ["v1", "hitl", "queue", ":request_id", "assign"], "query": [{ "key": "reviewer_id", "value": "reviewer-001" }], "variable": [{ "key": "request_id", "value": "" }] }
+          }
+        },
+        {
+          "name": "Respond to Request",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"approve\",\n  \"response_text\": \"Looks good, approved.\",\n  \"feedback\": \"Accurate response\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/v1/hitl/queue/:request_id/respond", "host": ["{{base_url}}"], "path": ["v1", "hitl", "queue", ":request_id", "respond"], "variable": [{ "key": "request_id", "value": "" }] }
+          }
+        },
+        {
+          "name": "Cancel Request",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/hitl/queue/:request_id/cancel?reason=duplicate", "host": ["{{base_url}}"], "path": ["v1", "hitl", "queue", ":request_id", "cancel"], "query": [{ "key": "reason", "value": "duplicate" }], "variable": [{ "key": "request_id", "value": "" }] }
+          }
+        },
+        {
+          "name": "Escalate Ticket",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticket_id\": \"ticket-001\",\n  \"reason\": \"Customer is frustrated\",\n  \"priority\": \"high\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/v1/hitl/escalate", "host": ["{{base_url}}"], "path": ["v1", "hitl", "escalate"] }
+          }
+        },
+        {
+          "name": "Register Reviewer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reviewer_id\": \"reviewer-001\",\n  \"name\": \"Jane Doe\",\n  \"specializations\": [\"billing\", \"technical\"]\n}"
+            },
+            "url": { "raw": "{{base_url}}/v1/hitl/reviewers", "host": ["{{base_url}}"], "path": ["v1", "hitl", "reviewers"] }
+          }
+        },
+        {
+          "name": "Reviewer Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/hitl/reviewers/:reviewer_id/dashboard", "host": ["{{base_url}}"], "path": ["v1", "hitl", "reviewers", ":reviewer_id", "dashboard"], "variable": [{ "key": "reviewer_id", "value": "reviewer-001" }] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Governance",
+      "item": [
+        {
+          "name": "Governance Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/governance/dashboard", "host": ["{{base_url}}"], "path": ["v1", "governance", "dashboard"] }
+          }
+        },
+        {
+          "name": "List Roles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/governance/roles", "host": ["{{base_url}}"], "path": ["v1", "governance", "roles"] }
+          }
+        },
+        {
+          "name": "Create Role",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role_name\": \"senior_agent\",\n  \"permissions\": [\"read\", \"write\", \"execute\"],\n  \"description\": \"Senior support agent with full access\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/v1/governance/roles", "host": ["{{base_url}}"], "path": ["v1", "governance", "roles"] }
+          }
+        },
+        {
+          "name": "Assign Role",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"agent_id\": \"agent-001\",\n  \"role_name\": \"senior_agent\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/v1/governance/roles/assign", "host": ["{{base_url}}"], "path": ["v1", "governance", "roles", "assign"] }
+          }
+        },
+        {
+          "name": "Check Permission",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/governance/permissions/check?agent_id=agent-001&resource=tickets&action=read", "host": ["{{base_url}}"], "path": ["v1", "governance", "permissions", "check"], "query": [{ "key": "agent_id", "value": "agent-001" }, { "key": "resource", "value": "tickets" }, { "key": "action", "value": "read" }] }
+          }
+        },
+        {
+          "name": "Grant Permission",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"agent_id\": \"agent-001\",\n  \"resource\": \"tickets\",\n  \"actions\": [\"read\", \"write\"]\n}"
+            },
+            "url": { "raw": "{{base_url}}/v1/governance/permissions/grant", "host": ["{{base_url}}"], "path": ["v1", "governance", "permissions", "grant"] }
+          }
+        },
+        {
+          "name": "Query Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/governance/audit?limit=50", "host": ["{{base_url}}"], "path": ["v1", "governance", "audit"], "query": [{ "key": "limit", "value": "50" }] }
+          }
+        },
+        {
+          "name": "Export Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/governance/audit/export?format=json", "host": ["{{base_url}}"], "path": ["v1", "governance", "audit", "export"], "query": [{ "key": "format", "value": "json" }] }
+          }
+        },
+        {
+          "name": "Governance Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/governance/stats", "host": ["{{base_url}}"], "path": ["v1", "governance", "stats"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tenants",
+      "item": [
+        {
+          "name": "Create Tenant",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Acme Corp\",\n  \"tier\": \"professional\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/v1/tenants", "host": ["{{base_url}}"], "path": ["v1", "tenants"] }
+          }
+        },
+        {
+          "name": "List Tenants",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/tenants", "host": ["{{base_url}}"], "path": ["v1", "tenants"] }
+          }
+        },
+        {
+          "name": "Get Tenant",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/tenants/:tenant_id", "host": ["{{base_url}}"], "path": ["v1", "tenants", ":tenant_id"], "variable": [{ "key": "tenant_id", "value": "" }] }
+          }
+        },
+        {
+          "name": "Activate Tenant",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/tenants/:tenant_id/activate", "host": ["{{base_url}}"], "path": ["v1", "tenants", ":tenant_id", "activate"], "variable": [{ "key": "tenant_id", "value": "" }] }
+          }
+        },
+        {
+          "name": "Suspend Tenant",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/tenants/:tenant_id/suspend?reason=non-payment", "host": ["{{base_url}}"], "path": ["v1", "tenants", ":tenant_id", "suspend"], "query": [{ "key": "reason", "value": "non-payment" }], "variable": [{ "key": "tenant_id", "value": "" }] }
+          }
+        },
+        {
+          "name": "Tenant Usage",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/tenants/:tenant_id/usage", "host": ["{{base_url}}"], "path": ["v1", "tenants", ":tenant_id", "usage"], "variable": [{ "key": "tenant_id", "value": "" }] }
+          }
+        },
+        {
+          "name": "Set Tenant Limits",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"max_agents\": 10,\n  \"max_executions_per_hour\": 500,\n  \"max_concurrent_executions\": 5\n}"
+            },
+            "url": { "raw": "{{base_url}}/v1/tenants/:tenant_id/limits", "host": ["{{base_url}}"], "path": ["v1", "tenants", ":tenant_id", "limits"], "variable": [{ "key": "tenant_id", "value": "" }] }
+          }
+        },
+        {
+          "name": "Tenant Stats Overview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/tenants/stats/overview", "host": ["{{base_url}}"], "path": ["v1", "tenants", "stats", "overview"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Webhooks",
+      "item": [
+        {
+          "name": "Generic Webhook",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source\": \"custom\",\n  \"event_type\": \"ticket.created\",\n  \"data\": { \"ticket_id\": \"T-100\", \"subject\": \"Need help\" }\n}"
+            },
+            "url": { "raw": "{{base_url}}/v1/webhooks/generic", "host": ["{{base_url}}"], "path": ["v1", "webhooks", "generic"] }
+          }
+        },
+        {
+          "name": "Zendesk Webhook",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"ticket\": { \"id\": 12345, \"subject\": \"Help needed\" }\n}" },
+            "url": { "raw": "{{base_url}}/v1/webhooks/zendesk", "host": ["{{base_url}}"], "path": ["v1", "webhooks", "zendesk"] }
+          }
+        },
+        {
+          "name": "Slack Webhook",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"event\": { \"type\": \"message\", \"text\": \"Customer needs help\" }\n}" },
+            "url": { "raw": "{{base_url}}/v1/webhooks/slack", "host": ["{{base_url}}"], "path": ["v1", "webhooks", "slack"] }
+          }
+        },
+        {
+          "name": "Jira Webhook",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"issue\": { \"key\": \"SUP-42\", \"fields\": { \"summary\": \"Bug report\" } }\n}" },
+            "url": { "raw": "{{base_url}}/v1/webhooks/jira", "host": ["{{base_url}}"], "path": ["v1", "webhooks", "jira"] }
+          }
+        },
+        {
+          "name": "Webhook Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/webhooks/stats", "host": ["{{base_url}}"], "path": ["v1", "webhooks", "stats"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Escalation Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/analytics/escalations", "host": ["{{base_url}}"], "path": ["v1", "analytics", "escalations"] }
+          }
+        },
+        {
+          "name": "Escalations by Agent",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/analytics/escalations/by-agent", "host": ["{{base_url}}"], "path": ["v1", "analytics", "escalations", "by-agent"] }
+          }
+        },
+        {
+          "name": "Escalations by Category",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/analytics/escalations/by-category", "host": ["{{base_url}}"], "path": ["v1", "analytics", "escalations", "by-category"] }
+          }
+        },
+        {
+          "name": "Report Escalation",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"user-123\",\n  \"text\": \"Customer is very frustrated about billing\",\n  \"confidence\": 0.92,\n  \"source_url\": \"https://example.com/ticket/42\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/report_escalation", "host": ["{{base_url}}"], "path": ["report_escalation"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Voice I/O",
+      "item": [
+        {
+          "name": "Transcribe (Speech-to-Text)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "description": "Audio file (mp3, wav, webm, ogg, flac, m4a)" },
+                { "key": "language", "value": "en", "type": "text", "description": "ISO-639-1 language hint" }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/v1/voice/transcribe", "host": ["{{base_url}}"], "path": ["v1", "voice", "transcribe"] }
+          }
+        },
+        {
+          "name": "Synthesize (Text-to-Speech)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "text", "value": "Hello, how can I help you today?", "type": "text" },
+                { "key": "voice", "value": "nova", "type": "text", "description": "alloy, echo, fable, onyx, nova, shimmer" },
+                { "key": "speed", "value": "1.0", "type": "text" }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/v1/voice/synthesize", "host": ["{{base_url}}"], "path": ["v1", "voice", "synthesize"] }
+          }
+        },
+        {
+          "name": "Voice Chat (Full Pipeline)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "description": "Audio file with customer question" },
+                { "key": "voice", "value": "nova", "type": "text" },
+                { "key": "text_only", "value": "false", "type": "text" }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/v1/voice/chat", "host": ["{{base_url}}"], "path": ["v1", "voice", "chat"] }
+          }
+        },
+        {
+          "name": "Voice Status",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/voice/status", "host": ["{{base_url}}"], "path": ["v1", "voice", "status"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cost Tracking",
+      "item": [
+        {
+          "name": "Cost Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/analytics/costs", "host": ["{{base_url}}"], "path": ["v1", "analytics", "costs"] }
+          }
+        },
+        {
+          "name": "Tenant Costs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/analytics/costs/tenant?tenant_id=tenant-001", "host": ["{{base_url}}"], "path": ["v1", "analytics", "costs", "tenant"], "query": [{ "key": "tenant_id", "value": "tenant-001" }] }
+          }
+        },
+        {
+          "name": "Record Usage Event",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{base_url}}/v1/analytics/costs/record?model=gpt-4o&prompt_tokens=150&completion_tokens=300&provider=openai&tenant_id=tenant-001", "host": ["{{base_url}}"], "path": ["v1", "analytics", "costs", "record"], "query": [{ "key": "model", "value": "gpt-4o" }, { "key": "prompt_tokens", "value": "150" }, { "key": "completion_tokens", "value": "300" }, { "key": "provider", "value": "openai" }, { "key": "tenant_id", "value": "tenant-001" }] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "A2A Protocol",
+      "item": [
+        {
+          "name": "Agent Card Discovery",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/.well-known/agent.json", "host": ["{{base_url}}"], "path": [".well-known", "agent.json"] }
+          }
+        },
+        {
+          "name": "Send Task (JSON-RPC)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"req-001\",\n  \"method\": \"tasks/send\",\n  \"params\": {\n    \"message\": {\n      \"role\": \"user\",\n      \"parts\": [{ \"type\": \"text\", \"text\": \"How do I reset my password?\" }]\n    },\n    \"metadata\": { \"skill_id\": \"suggest_reply\" }\n  }\n}"
+            },
+            "url": { "raw": "{{base_url}}/a2a", "host": ["{{base_url}}"], "path": ["a2a"] }
+          }
+        },
+        {
+          "name": "Get Task (JSON-RPC)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"req-002\",\n  \"method\": \"tasks/get\",\n  \"params\": { \"id\": \"task-id-here\" }\n}"
+            },
+            "url": { "raw": "{{base_url}}/a2a", "host": ["{{base_url}}"], "path": ["a2a"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Observability",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/health", "host": ["{{base_url}}"], "path": ["health"] }
+          }
+        },
+        {
+          "name": "Prometheus Metrics",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/metrics", "host": ["{{base_url}}"], "path": ["metrics"] }
+          }
+        },
+        {
+          "name": "OpenAPI Spec",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/openapi.json", "host": ["{{base_url}}"], "path": ["openapi.json"] }
+          }
+        }
+      ]
     }
   ]
 }
