@@ -307,9 +307,9 @@ class TestWebSocketCopilot(unittest.TestCase):
     def test_verify_token_valid(self):
         """Test JWT verification with a valid token."""
         import jwt as pyjwt
-        from apps.backend.app.websocket.copilot_ws import _verify_token
+        from apps.backend.app.websocket.copilot_ws import JWT_SECRET, _verify_token
 
-        token = pyjwt.encode({"sub": "test_user"}, "dev_secret", algorithm="HS256")
+        token = pyjwt.encode({"sub": "test_user"}, JWT_SECRET, algorithm="HS256")
         payload = _verify_token(token)
         self.assertIsNotNone(payload)
         self.assertEqual(payload["sub"], "test_user")
