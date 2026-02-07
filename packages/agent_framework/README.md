@@ -9,6 +9,13 @@ Swappable "agent blueprints" that define agent behavior:
 
 - **SupportAgent**: RAG-powered customer support with intent analysis, knowledge retrieval, and escalation
 - **TriageAgent**: Intelligent ticket routing and prioritization
+- **DataAnalystAgent**: Data analysis and reporting
+- **CodeReviewAgent**: Code review with best practice checks
+- **QATestAgent**: Test generation and quality assurance
+- **KnowledgeManagerAgent**: Knowledge base curation and updates
+- **SentimentMonitorAgent**: Customer sentiment tracking and alerts
+- **OnboardingAgent**: New customer/employee onboarding workflows
+- **ComplianceAuditorAgent**: Compliance checking and audit reporting
 
 Create custom blueprints by extending `BaseAgent`:
 
@@ -253,6 +260,31 @@ new_playbooks = await framework.extract_playbooks("billing", tenant_id="acme")
 
 **Graceful degradation:** No Redis → in-memory buffer. No AGE → in-memory graph. No LangGraph → sequential execution. No Pinecone → golden paths in memory only.
 
+### 6. MCP Server (Model Context Protocol)
+8 tools exposed via JSON-RPC 2.0 over stdio for IDE/editor integration:
+
+```python
+# Tools: search_knowledge, generate_reply, list_agents, execute_agent,
+#        get_hitl_queue, respond_hitl, get_governance_dashboard, get_tenant_usage
+```
+
+### 7. A2A Protocol (Agent-to-Agent)
+Interoperability via AgentCard discovery and JSON-RPC 2.0 task dispatch:
+
+```python
+# GET /.well-known/agent.json  → AgentCard (capabilities, skills, auth)
+# POST /a2a                    → JSON-RPC 2.0 task dispatch
+```
+
+### 8. Feedback Loop Validator
+End-to-end validation that the learning system improves over time:
+
+```bash
+python -m packages.agent_framework.learning.feedback_validator --mock
+# Runs 4-phase validation: baseline → store golden paths → re-run → report
+# Validates: golden path usage >= 40%, confidence maintained, time improved
+```
+
 ## Architecture
 
 ```
@@ -261,7 +293,7 @@ packages/agent_framework/
 │   ├── base_agent.py       # BaseAgent abstract class
 │   ├── agent_registry.py   # Blueprint & instance registry
 │   └── agent_executor.py   # Execution with lifecycle management
-├── templates/               # Agent blueprints (9 built-in)
+├── blueprints/              # Agent blueprints (9 built-in)
 │   ├── support_agent.py    # RAG-powered support agent
 │   ├── triage_agent.py     # Ticket routing agent
 │   ├── data_analyst_agent.py
@@ -273,6 +305,7 @@ packages/agent_framework/
 │   └── compliance_auditor_agent.py
 ├── learning/                # Continuous learning system
 │   ├── feedback_loop.py    # Golden path capture from HITL outcomes
+│   ├── feedback_validator.py # End-to-end learning validation
 │   ├── activity_stream.py  # Redis Streams event sourcing
 │   ├── graph.py            # Apache AGE knowledge graph
 │   ├── graph_models.py     # Node/edge type definitions
@@ -312,12 +345,15 @@ packages/agent_framework/
 │   ├── tenant.py           # Tenant model
 │   ├── tenant_manager.py   # Tenant lifecycle
 │   └── isolation.py        # Execution isolation
+├── a2a/                     # A2A protocol
+│   └── protocol.py         # AgentCard + JSON-RPC 2.0
 ├── api/                     # FastAPI routers
 │   ├── agents.py
 │   ├── governance.py
 │   ├── hitl.py
 │   ├── tenants.py
 │   └── webhooks.py         # Inbound webhooks (Zendesk/Slack/Jira)
+├── mcp_server.py            # MCP server (8 tools, JSON-RPC 2.0)
 └── sdk.py                   # Main SDK entry point
 ```
 
@@ -344,5 +380,15 @@ All components gracefully degrade when their env vars are not set.
 ## Testing
 
 ```bash
+# Agent framework unit tests
 pytest tests/agent_framework/ -v
+
+# Integration tests (learning loop, MCP, WebSocket, multi-model)
+pytest tests/integration/ -v
+
+# All backend + integration tests (197 total)
+pytest tests/ apps/backend/tests/ -v
+
+# Feedback loop validation (mock mode, no external deps)
+python -m packages.agent_framework.learning.feedback_validator --mock
 ```

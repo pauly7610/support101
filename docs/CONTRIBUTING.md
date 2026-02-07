@@ -1,22 +1,32 @@
 # Contributing to Support101
 
-## Database Initialization
+See the root [`CONTRIBUTING.md`](../CONTRIBUTING.md) for the full contributing guide, including:
 
-1. Set your PYTHONPATH:
-   - Linux/macOS: `export PYTHONPATH=$PYTHONPATH:$(pwd)/apps/backend`
-   - Windows (PowerShell): `$env:PYTHONPATH="$env:PYTHONPATH;$(Get-Location)\apps\backend"`
-2. Run Alembic migrations:
-   ```sh
-   alembic upgrade head
-   ```
-3. (Optional) Seed test data:
-   ```sh
-   python -m scripts.seed_test_data
-   ```
+- Code style (Ruff for Python, Biome for JS/TS)
+- Package management (pnpm workspaces)
+- Testing commands (pytest, Vitest, Cypress)
+- Database migrations (Alembic)
 
-## Test Environment Safety
-- All API keys must be in `.env` or `config/creds.tpl` (never in code or test configs)
+## Quick Reference
+
+```sh
+# Database migrations
+PYTHONPATH=$PWD alembic -c apps/backend/alembic.ini upgrade head
+
+# Run all tests
+pytest tests/ apps/backend/tests/ -v
+pnpm --filter customer-bot test
+pnpm --filter agent-copilot test
+pnpm --filter admin-dashboard test
+
+# Lint
+ruff check packages/ apps/backend/ tests/
+pnpm --filter customer-bot lint
+pnpm --filter agent-copilot lint
+pnpm --filter admin-dashboard lint
+```
+
+## Security
+- All API keys must be in `.env` (never in code or test configs)
 - Never commit real credentials
-
-## Troubleshooting
-- If you see `relation "users" does not exist`, check Alembic and PYTHONPATH setup.
+- API keys are automatically scrubbed from error responses

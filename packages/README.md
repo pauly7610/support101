@@ -1,24 +1,35 @@
 # Packages
 
-This folder contains shared libraries and utilities for all apps in the monorepo.
+Shared libraries and utilities for all apps in the monorepo.
 
-## Core Packages
+## `shared`
+Pydantic models, constants, and utilities used as API contracts across backend and frontend.
 
-- **`shared`**: Pydantic models, types, and frontend utilities for all apps (used for API contracts and analytics)
-- **`llm_engine`**: LangChain chains, memory, prompts, and vector store integration (includes analytics support)
-- **`observability`**: LangSmith, PromptLayer, OpenTelemetry setup for tracing and metrics
+## `llm_engine`
+LLM and RAG infrastructure:
 
-## Enterprise Agent Framework
+| Module | Description |
+|--------|-------------|
+| `chains/rag_chain.py` | LangChain RAG with Pinecone, citation filtering, exponential backoff |
+| `multi_model.py` | Unified `get_chat_model()` — OpenAI, Anthropic, Gemini, Ollama, LiteLLM |
+| `vector_store.py` | Pinecone Serverless v3 with integrated reranking + metadata filtering |
+| `voice.py` | Whisper STT + OpenAI TTS with full voice chat pipeline |
+| `cost_tracker.py` | Per-model token pricing (10+ models), budget alerts, DB-persisted |
+| `embeddings.py` | FastEmbed model for local embeddings |
 
-- **`agent_framework`**: A reusable agent SDK that transforms the RAG + LangChain implementation into a full-featured enterprise agent platform.
+## `agent_framework`
+Enterprise agent SDK with 9 blueprints, HITL, multi-tenancy, and continuous learning.
 
-### Features
 | Feature | Description |
 |---------|-------------|
-| **Agent Templates** | Swappable blueprints (`SupportAgent`, `TriageAgent`) with custom agent support |
+| **9 Agent Blueprints** | Support, triage, data analyst, code review, QA, knowledge manager, sentiment, onboarding, compliance |
 | **Human-in-the-Loop** | Priority queue with SLA tracking, escalation policies, reviewer assignment |
-| **Multi-Tenant** | Tier-based limits (FREE→ENTERPRISE), namespace isolation, rate limiting |
+| **Multi-Tenant** | Tier-based limits (FREE → ENTERPRISE), namespace isolation, rate limiting |
 | **Governance** | RBAC permissions, complete audit trails, compliance export |
+| **Continuous Learning** | 4-layer system: Feedback Loop (Pinecone) → Activity Stream (Redis) → Activity Graph (AGE) → Playbook Engine (LangGraph) |
+| **A2A Protocol** | Agent-to-Agent interoperability via AgentCard + JSON-RPC 2.0 |
+| **MCP Server** | 8 tools exposed via JSON-RPC 2.0 for IDE integration |
+| **Observability** | OpenTelemetry tracing, EvalAI integration, Prometheus metrics |
 
 ### Quick Start
 ```python
@@ -34,12 +45,4 @@ See [agent_framework/README.md](agent_framework/README.md) for full documentatio
 
 ---
 
-All packages are production-ready, analytics-enabled, and tested via CI.
-
-See root `DESIGN_SYSTEM.md` for frontend design tokens and shared UI patterns.
-
----
-## Troubleshooting
-- For analytics or DB issues, ensure backend is migrated and env vars are set
-- For model/schema problems, update `shared` and rerun tests
-- For agent framework issues, ensure `OPENAI_API_KEY` is set for LLM calls
+All packages are production-ready, tested via CI (197 pytest tests), and gracefully degrade when optional infrastructure (Redis, AGE, LangGraph) is unavailable.
