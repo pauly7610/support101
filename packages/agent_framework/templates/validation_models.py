@@ -29,7 +29,8 @@ class CreateTicketInput(BaseModel):
     customer_id: str | None = Field(default=None, description="Customer ID")
 
     @validator("priority")
-    def validate_priority(self, v: str) -> str:
+    @classmethod
+    def validate_priority(cls, v: str) -> str:
         allowed = {"low", "medium", "high", "critical"}
         if v.lower() not in allowed:
             raise ValueError(f"priority must be one of {allowed}")
@@ -52,7 +53,8 @@ class AssignToQueueInput(BaseModel):
     metadata: dict[str, Any] | None = Field(default=None, description="Additional metadata")
 
     @validator("priority")
-    def validate_priority(self, v: str) -> str:
+    @classmethod
+    def validate_priority(cls, v: str) -> str:
         allowed = {"low", "medium", "high", "critical"}
         if v.lower() not in allowed:
             raise ValueError(f"priority must be one of {allowed}")
@@ -74,7 +76,8 @@ class AnalyzeDataInput(BaseModel):
     analysis_type: str = Field(default="exploratory", description="Type of analysis")
 
     @validator("analysis_type")
-    def validate_analysis_type(self, v: str) -> str:
+    @classmethod
+    def validate_analysis_type(cls, v: str) -> str:
         allowed = {
             "exploratory",
             "diagnostic",
@@ -106,7 +109,8 @@ class CodeReviewInput(BaseModel):
     language: str = Field(default="python", description="Programming language")
 
     @validator("language")
-    def validate_language(self, v: str) -> str:
+    @classmethod
+    def validate_language(cls, v: str) -> str:
         allowed = {
             "python",
             "javascript",
@@ -207,7 +211,8 @@ class TriggerEscalationInput(BaseModel):
     urgency: str = Field(default="high", description="Urgency level")
 
     @validator("urgency")
-    def validate_urgency(self, v: str) -> str:
+    @classmethod
+    def validate_urgency(cls, v: str) -> str:
         allowed = {"low", "medium", "high", "critical"}
         if v.lower() not in allowed:
             raise ValueError(f"urgency must be one of {allowed}")
@@ -236,7 +241,8 @@ class ProvideGuidanceInput(BaseModel):
     question: str = Field(default="", max_length=2000, description="Customer question")
 
     @validator("experience_level")
-    def validate_experience_level(self, v: str) -> str:
+    @classmethod
+    def validate_experience_level(cls, v: str) -> str:
         allowed = {"beginner", "intermediate", "expert"}
         if v.lower() not in allowed:
             raise ValueError(f"experience_level must be one of {allowed}")
@@ -262,7 +268,8 @@ class CheckPolicyInput(BaseModel):
     policies: list[str] | None = Field(default=None, description="Policies to check against")
 
     @validator("policies")
-    def validate_policies(self, v: list[str] | None) -> list[str] | None:
+    @classmethod
+    def validate_policies(cls, v: list[str] | None) -> list[str] | None:
         if v is None:
             return v
         allowed = {"GDPR", "HIPAA", "SOC2", "CCPA", "PCI_DSS", "FINRA_4511"}
@@ -285,7 +292,8 @@ class TriggerRemediationInput(BaseModel):
     required_action: str = Field(..., min_length=1, max_length=1000, description="Required action")
 
     @validator("severity")
-    def validate_severity(self, v: str) -> str:
+    @classmethod
+    def validate_severity(cls, v: str) -> str:
         allowed = {"low", "medium", "high", "critical"}
         if v.lower() not in allowed:
             raise ValueError(f"severity must be one of {allowed}")
