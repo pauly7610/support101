@@ -1,7 +1,29 @@
 import type React from 'react';
 import { useCurrentFrame } from 'remotion';
 import { FadeIn, Typewriter } from '../components/AnimatedText';
-import { COLORS, FONTS, gradientBg, gridLines } from '../styles';
+import {
+  CheckIcon,
+  CopyIcon,
+  ExternalLinkIcon,
+  FileTextIcon,
+  SearchIcon,
+  SendIcon,
+  SparklesIcon,
+} from '../components/Icons';
+import {
+  COLORS,
+  FONTS,
+  glassHeader,
+  gradientBg,
+  gridLines,
+  iconCircle,
+  sourceBadge,
+} from '../styles';
+
+const SOURCES = [
+  { id: 1, title: 'API Gateway Runbook', confidence: 96 },
+  { id: 2, title: 'Deploy Rollback SOP', confidence: 91 },
+];
 
 export const Scene3Copilot: React.FC = () => {
   const frame = useCurrentFrame();
@@ -135,15 +157,15 @@ export const Scene3Copilot: React.FC = () => {
               <strong>Customer:</strong> Sarah M. (Enterprise Plan)
               <br />
               <br />
-              "We're seeing intermittent 502 errors on the API gateway since yesterday's deployment.
-              Our monitoring shows ~15% of requests failing. This is affecting our production
-              environment and we need this resolved ASAP."
+              &quot;We&apos;re seeing intermittent 502 errors on the API gateway since
+              yesterday&apos;s deployment. Our monitoring shows ~15% of requests failing. This is
+              affecting our production environment and we need this resolved ASAP.&quot;
             </div>
           </div>
         </div>
       </FadeIn>
 
-      {/* Copilot sidebar */}
+      {/* Copilot sidebar — matches CopilotSidebar.jsx */}
       <FadeIn startFrame={25} durationFrames={20}>
         <div
           style={{
@@ -161,25 +183,27 @@ export const Scene3Copilot: React.FC = () => {
             boxShadow: '-8px 0 32px rgba(0,0,0,0.3)',
           }}
         >
-          {/* Sidebar header */}
-          <div
-            style={{
-              padding: '16px 20px',
-              borderBottom: `1px solid ${COLORS.gray700}`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              background: `linear-gradient(135deg, ${COLORS.primaryDark}, ${COLORS.primary})`,
-            }}
-          >
-            <span style={{ fontSize: 16, fontWeight: 700, color: COLORS.white }}>AI Copilot</span>
+          {/* Glass header with Sparkles + ConnectionDot */}
+          <div style={glassHeader}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={iconCircle(32)}>
+                <SparklesIcon size={16} color={COLORS.white} />
+              </div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.white }}>AI Copilot</div>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)' }}>
+                  Context-aware assistance
+                </div>
+              </div>
+            </div>
+            {/* ConnectionDot — emerald with ring */}
             <div
               style={{
                 width: 10,
                 height: 10,
                 borderRadius: '50%',
-                backgroundColor: COLORS.green,
-                boxShadow: `0 0 8px ${COLORS.green}`,
+                backgroundColor: COLORS.emerald,
+                boxShadow: `0 0 6px ${COLORS.emerald}, 0 0 0 3px rgba(255,255,255,0.3)`,
               }}
             />
           </div>
@@ -202,42 +226,78 @@ export const Scene3Copilot: React.FC = () => {
               <div
                 style={{
                   padding: '10px 14px',
-                  borderRadius: 8,
+                  borderRadius: 12,
                   backgroundColor: `${COLORS.accent}15`,
                   border: `1px solid ${COLORS.accent}33`,
                   fontSize: 13,
                   color: COLORS.accentLight,
                 }}
               >
-                🔗 Ticket #T-4821 · Enterprise · API Issue
+                Ticket #T-4821 · Enterprise · API Issue
               </div>
             </div>
           </FadeIn>
 
-          {/* Suggested reply */}
+          {/* Suggested reply with Copy button */}
           <FadeIn startFrame={60} durationFrames={15}>
             <div style={{ padding: '0 20px' }}>
               <div
                 style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: COLORS.textDim,
-                  textTransform: 'uppercase',
-                  letterSpacing: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                   marginBottom: 8,
                 }}
               >
-                Suggested Reply
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: COLORS.textDim,
+                    textTransform: 'uppercase',
+                    letterSpacing: 1,
+                  }}
+                >
+                  Suggested Reply
+                </span>
+                {/* Copy → Check feedback button */}
+                {frame >= 235 && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      padding: '3px 10px',
+                      borderRadius: 8,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      backgroundColor: frame >= 250 ? `${COLORS.emerald}22` : COLORS.bgCardLight,
+                      color: frame >= 250 ? COLORS.emerald : COLORS.textMuted,
+                      border: `1px solid ${frame >= 250 ? `${COLORS.emerald}44` : COLORS.gray700}`,
+                    }}
+                  >
+                    {frame >= 250 ? (
+                      <>
+                        <CheckIcon size={12} color={COLORS.emerald} /> Copied
+                      </>
+                    ) : (
+                      <>
+                        <CopyIcon size={12} color={COLORS.textMuted} /> Copy
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
               <div
                 style={{
                   padding: 14,
-                  borderRadius: 8,
+                  borderRadius: 12,
                   backgroundColor: COLORS.bgCardLight,
                   border: `1px solid ${COLORS.gray700}`,
                   fontSize: 14,
                   lineHeight: 1.6,
                   color: COLORS.text,
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                 }}
               >
                 <Typewriter
@@ -246,76 +306,94 @@ export const Scene3Copilot: React.FC = () => {
                   charsPerFrame={1.8}
                 />
               </div>
+
+              {/* Source badges — ExternalLink style */}
+              <FadeIn startFrame={210} durationFrames={15}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                  {SOURCES.map((src) => (
+                    <div key={src.title} style={sourceBadge}>
+                      <ExternalLinkIcon size={10} color={COLORS.brand300} />[{src.id}] {src.title}
+                      <span style={{ color: COLORS.green, marginLeft: 4 }}>{src.confidence}%</span>
+                    </div>
+                  ))}
+                </div>
+              </FadeIn>
             </div>
           </FadeIn>
 
-          {/* Sources */}
-          <FadeIn startFrame={210} durationFrames={15}>
+          {/* Knowledge Base search — Search icon */}
+          <FadeIn startFrame={225} durationFrames={15}>
             <div style={{ padding: '16px 20px' }}>
               <div
                 style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: COLORS.textDim,
-                  textTransform: 'uppercase',
-                  letterSpacing: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
                   marginBottom: 8,
                 }}
               >
-                Sources
-              </div>
-              {[
-                { id: 1, title: 'API Gateway Runbook', confidence: 96 },
-                { id: 2, title: 'Deploy Rollback SOP', confidence: 91 },
-              ].map((src) => (
-                <div
-                  key={src.id}
+                <FileTextIcon size={14} color={COLORS.textDim} />
+                <span
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '8px 12px',
-                    borderRadius: 6,
-                    backgroundColor: `${COLORS.primary}10`,
-                    border: `1px solid ${COLORS.primary}22`,
-                    marginBottom: 6,
-                    fontSize: 13,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: COLORS.textDim,
+                    textTransform: 'uppercase',
+                    letterSpacing: 1,
                   }}
                 >
-                  <span style={{ color: COLORS.primaryLight }}>
-                    [{src.id}] {src.title}
-                  </span>
-                  <span
-                    style={{
-                      color: COLORS.green,
-                      fontWeight: 600,
-                      fontSize: 12,
-                    }}
-                  >
-                    {src.confidence}%
-                  </span>
+                  Knowledge Base
+                </span>
+              </div>
+              <div
+                style={{
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                <div style={{ position: 'absolute', left: 12 }}>
+                  <SearchIcon size={14} color={COLORS.textDim} />
                 </div>
-              ))}
+                <div
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px 10px 36',
+                    borderRadius: 12,
+                    backgroundColor: COLORS.bgCardLight,
+                    border: `1px solid ${COLORS.gray700}`,
+                    fontSize: 13,
+                    color: COLORS.textDim,
+                  }}
+                >
+                  Search knowledge base...
+                </div>
+              </div>
             </div>
           </FadeIn>
 
-          {/* Copy button */}
+          {/* Suggest Reply button — Send icon */}
           <FadeIn startFrame={235} durationFrames={10}>
             <div style={{ padding: '0 20px' }}>
               <div
                 style={{
-                  padding: '12px 0',
-                  borderRadius: 8,
-                  background: `linear-gradient(135deg, ${COLORS.primary}, ${COLORS.primaryDark})`,
+                  padding: '10px 0',
+                  borderRadius: 12,
+                  background: `linear-gradient(135deg, ${COLORS.brand500}, ${COLORS.brand600})`,
                   textAlign: 'center',
                   fontSize: 14,
                   fontWeight: 600,
                   color: COLORS.white,
                   cursor: 'pointer',
-                  boxShadow: `0 4px 12px ${COLORS.primary}44`,
+                  boxShadow: `0 4px 12px ${COLORS.brand500}44`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
                 }}
               >
-                {frame >= 250 ? '✓ Copied to Clipboard' : '📋 Copy to Reply'}
+                <SendIcon size={14} color={COLORS.white} />
+                Suggest Reply
               </div>
             </div>
           </FadeIn>

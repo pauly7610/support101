@@ -12,10 +12,13 @@ export const COLORS = {
   accentLight: '#a78bfa',
   green: '#22c55e',
   greenLight: '#4ade80',
+  emerald: '#34d399',
   red: '#ef4444',
   orange: '#f97316',
   yellow: '#eab308',
+  amber: '#fbbf24',
   white: '#ffffff',
+  gray50: '#f9fafb',
   gray100: '#f3f4f6',
   gray200: '#e5e7eb',
   gray300: '#d1d5db',
@@ -28,6 +31,17 @@ export const COLORS = {
   text: '#f9fafb',
   textMuted: '#9ca3af',
   textDim: '#6b7280',
+  // Brand scale (matches frontend tailwind brand-*)
+  brand50: '#eff6ff',
+  brand100: '#dbeafe',
+  brand200: '#bfdbfe',
+  brand300: '#93c5fd',
+  brand400: '#60a5fa',
+  brand500: '#3b82f6',
+  brand600: '#2563eb',
+  brand700: '#1d4ed8',
+  brand800: '#1e40af',
+  brand900: '#1e3a8a',
 };
 
 export const FONTS = {
@@ -64,6 +78,37 @@ export const card: CSSProperties = {
   border: `1px solid ${COLORS.gray700}`,
   padding: 24,
   boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+};
+
+export const glassHeader: CSSProperties = {
+  background: `linear-gradient(135deg, ${COLORS.brand500}, ${COLORS.brand600})`,
+  padding: '14px 20px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+};
+
+export const iconCircle = (size = 32): CSSProperties => ({
+  width: size,
+  height: size,
+  borderRadius: '50%',
+  backgroundColor: 'rgba(255,255,255,0.2)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+});
+
+export const sourceBadge: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 4,
+  padding: '3px 10px',
+  borderRadius: 9999,
+  fontSize: 11,
+  fontWeight: 600,
+  backgroundColor: `${COLORS.brand900}44`,
+  color: COLORS.brand300,
+  cursor: 'pointer',
 };
 
 export const badge = (color: string, bg: string): CSSProperties => ({

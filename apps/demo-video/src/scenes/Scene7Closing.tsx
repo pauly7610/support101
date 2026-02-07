@@ -4,10 +4,10 @@ import { AnimatedText, FadeIn, ScaleIn } from '../components/AnimatedText';
 import { COLORS, FONTS, gradientBg, gridLines, heading2 } from '../styles';
 
 const STATS = [
-  { value: '9', label: 'Agent Blueprints', icon: '🤖' },
+  { value: '5', label: 'LLM Providers', icon: '🤖' },
   { value: '4', label: 'Learning Layers', icon: '🧠' },
-  { value: '∞', label: 'Multi-Tenant', icon: '🏢' },
-  { value: '100%', label: 'Open Source', icon: '🔓' },
+  { value: '21', label: 'Perf Tests', icon: '✅' },
+  { value: 'A2A', label: 'Agent Protocol', icon: '�' },
 ];
 
 const COMPLIANCE = ['GDPR', 'CCPA', 'SOC2', 'HIPAA'];
@@ -177,7 +177,7 @@ export const Scene7Closing: React.FC = () => {
             color: COLORS.textDim,
           }}
         >
-          Support Intelligence Core · Built with LangChain, Pinecone, Redis, Apache AGE, LangGraph
+          Support Intelligence Core · LangChain · Pinecone · Redis · Apache AGE · LangGraph · A2A
         </div>
       </FadeIn>
     </div>
