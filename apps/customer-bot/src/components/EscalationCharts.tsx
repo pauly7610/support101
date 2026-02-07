@@ -32,9 +32,9 @@ function ChartSkeleton() {
     <div className="space-y-3">
       <Skeleton className="h-5 w-40" />
       <div className="flex items-end gap-2 h-40">
-        {Array.from({ length: 7 }).map((_, i) => (
+        {['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((day) => (
           <Skeleton
-            key={`skeleton-${i}`}
+            key={`skeleton-${day}`}
             className="w-8"
             style={{ height: `${30 + Math.random() * 90}px` }}
           />

@@ -55,8 +55,7 @@ export default function MessageBubble({ from, text, timestamp, sources }) {
                   'cursor-pointer transition-colors',
                 )}
               >
-                <ExternalLink className="w-2.5 h-2.5" />
-                [{i + 1}]
+                <ExternalLink className="w-2.5 h-2.5" />[{i + 1}]
               </span>
             ))}
           </div>
